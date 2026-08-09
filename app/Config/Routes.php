@@ -15,3 +15,4 @@ $routes->get('bookings', 'Booking::index');
 $routes->get('booking-participants', 'BookingParticipant::index');
 $routes->get('catering-requests', 'CateringRequest::index');
 $routes->get('audit-logs', 'AuditLog::index');
+$routes->get('room-facilities', 'RoomFacility::index');
