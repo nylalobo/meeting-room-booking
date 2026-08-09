@@ -14,3 +14,4 @@ $routes->get('facilities', 'Facility::index');
 $routes->get('bookings', 'Booking::index');
 $routes->get('booking-participants', 'BookingParticipant::index');
 $routes->get('catering-requests', 'CateringRequest::index');
+$routes->get('audit-logs', 'AuditLog::index');
