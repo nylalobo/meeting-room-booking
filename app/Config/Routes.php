@@ -12,3 +12,4 @@ $routes->get('locations', 'Location::index');
 $routes->get('rooms', 'Room::index');
 $routes->get('facilities', 'Facility::index');
 $routes->get('bookings', 'Booking::index');
+$routes->get('booking-participants', 'BookingParticipant::index');
