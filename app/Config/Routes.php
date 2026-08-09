@@ -10,3 +10,5 @@ $routes->get('roles', 'Role::index');
 $routes->get('users', 'User::index');
 $routes->get('locations', 'Location::index');
 $routes->get('rooms', 'Room::index');
+$routes->get('facilities', 'Facility::index');
+$routes->get('bookings', 'Booking::index');
