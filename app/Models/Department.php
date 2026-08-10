@@ -13,11 +13,9 @@ class Department extends Model
     protected $useSoftDeletes   = false;
 
     protected $allowedFields = [
-        'name',
-        'description',
-        'is_active',
+    'name',
+    'description',
     ];
-
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
