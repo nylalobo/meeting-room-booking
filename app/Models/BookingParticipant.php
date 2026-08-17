@@ -26,8 +26,8 @@ class BookingParticipant extends Model
     protected $validationRules = [
         'booking_id'       => 'required|integer',
         'user_id'          => 'required|integer',
-        'participant_type' => 'required|max_length[30]',
-        'response_status'  => 'required|max_length[30]',
+        'participant_type' => 'required|in_list[organizer,participant,guest]',
+        'response_status'  => 'required|in_list[pending,accepted,declined,tentative]',
     ];
 
     protected $validationMessages = [
@@ -35,17 +35,20 @@ class BookingParticipant extends Model
             'required' => 'Booking is required.',
             'integer'  => 'Booking ID must be a valid number.',
         ],
+
         'user_id' => [
             'required' => 'User is required.',
             'integer'  => 'User ID must be a valid number.',
         ],
+
         'participant_type' => [
-            'required'   => 'Participant type is required.',
-            'max_length' => 'Participant type cannot exceed 30 characters.',
+            'required' => 'Participant type is required.',
+            'in_list'  => 'Invalid participant type.',
         ],
+
         'response_status' => [
-            'required'   => 'Response status is required.',
-            'max_length' => 'Response status cannot exceed 30 characters.',
+            'required' => 'Response status is required.',
+            'in_list'  => 'Invalid response status.',
         ],
     ];
 }
