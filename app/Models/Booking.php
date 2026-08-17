@@ -59,4 +59,24 @@ class Booking extends Model
             'in_list'  => 'Invalid booking status.',
         ],
     ];
+
+    public function hasOverlap(
+        int $roomId,
+        string $startTime,
+        string $endTime,
+        ?int $excludeBookingId = null
+    ): bool {
+        $builder = $this->builder();
+
+        $builder
+            ->where('room_id', $roomId)
+            ->whereIn('status', ['pending', 'approved'])
+            ->where('start_time <', $endTime)
+            ->where('end_time >', $startTime);
+        if ($excludeBookingId !== null) {
+            $builder->where('id !=', $excludeBookingId);
+        }
+
+        return $builder->countAllResults() > 0;
+    }
 }
