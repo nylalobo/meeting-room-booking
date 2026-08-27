@@ -32,7 +32,7 @@ class User extends Model
         'role_id'       => 'permit_empty|integer',
         'first_name'    => 'required|max_length[100]',
         'last_name'     => 'required|max_length[100]',
-        'email'         => 'required|valid_email|max_length[255]',
+        'email'         => 'required|valid_email|max_length[255]|is_unique[users.email,id,{id}]',
         'password_hash' => 'required',
         'phone'         => 'permit_empty|max_length[30]',
         'is_active'     => 'permit_empty|in_list[0,1]',
@@ -48,6 +48,7 @@ class User extends Model
         'email' => [
             'required'    => 'Email address is required.',
             'valid_email' => 'Please provide a valid email address.',
+            'is_unique'   => 'This email address is already registered.',
         ],
         'password_hash' => [
             'required' => 'Password hash is required.',

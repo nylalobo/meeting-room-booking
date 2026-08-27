@@ -17,6 +17,7 @@ class User extends BaseController
     public function index(): ResponseInterface
     {
         $users = $this->userModel
+            ->select('id, department_id, role_id, first_name, last_name, email, phone, is_active, created_at, updated_at')
             ->orderBy('id', 'ASC')
             ->findAll();
 

@@ -150,22 +150,49 @@ class BookingParticipant extends BaseController
                 ]);
         }
 
-        $data = $this->request->getJSON(true);
+        $data = $this->request->getJSON(true) ?? [];
 
         unset($data['booking_id'], $data['user_id']);
 
-        if (!$this->bookingParticipantModel
-            ->where('booking_id', $bookingId)
-            ->where('user_id', $userId)
-            ->set($data)
-            ->update()
-        ) {
-            return $this->response
-                ->setStatusCode(422)
-                ->setJSON([
-                    'status' => 'error',
-                    'errors' => $this->bookingParticipantModel->errors(),
-                ]);
+        $rules = [];
+        $messages = [];
+
+        if (array_key_exists('participant_type', $data)) {
+            $rules['participant_type'] = 'required|in_list[organizer,participant,guest]';
+            $messages['participant_type'] = [
+                'required' => 'Participant type is required.',
+                'in_list'  => 'Invalid participant type.',
+            ];
+        }
+
+        if (array_key_exists('response_status', $data)) {
+            $rules['response_status'] = 'required|in_list[pending,accepted,declined,tentative]';
+            $messages['response_status'] = [
+                'required' => 'Response status is required.',
+                'in_list'  => 'Invalid response status.',
+            ];
+        }
+
+        if (!empty($rules)) {
+            $validation = service('validation');
+            $validation->setRules($rules, $messages);
+
+            if (!$validation->run($data)) {
+                return $this->response
+                    ->setStatusCode(422)
+                    ->setJSON([
+                        'status' => 'error',
+                        'errors' => $validation->getErrors(),
+                    ]);
+            }
+        }
+
+        if (!empty($data)) {
+            $this->bookingParticipantModel
+                ->where('booking_id', $bookingId)
+                ->where('user_id', $userId)
+                ->set($data)
+                ->update();
         }
 
         $updatedParticipant = $this->bookingParticipantModel

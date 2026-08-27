@@ -3,15 +3,21 @@
 namespace App\Controllers;
 
 use App\Models\Booking as BookingModel;
+use App\Models\Room as RoomModel;
+use App\Models\User as UserModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Booking extends BaseController
 {
     protected BookingModel $bookingModel;
+    protected RoomModel $roomModel;
+    protected UserModel $userModel;
 
     public function __construct()
     {
         $this->bookingModel = new BookingModel();
+        $this->roomModel    = new RoomModel();
+        $this->userModel    = new UserModel();
     }
 
     public function index(): ResponseInterface
@@ -47,12 +53,28 @@ class Booking extends BaseController
 
     public function create(): ResponseInterface
     {
-        $data = $this->request->getJSON(true);
+        $data = $this->request->getJSON(true) ?? [];
 
-        if (
-            isset($data['start_time'], $data['end_time']) &&
-            strtotime($data['end_time']) <= strtotime($data['start_time'])
-        ) {
+        if (!isset($data['status'])) {
+            $data['status'] = 'pending';
+        }
+
+        $validation = service('validation');
+        $validation->setRules(
+            $this->bookingModel->getValidationRules(),
+            $this->bookingModel->getValidationMessages()
+        );
+
+        if (!$validation->run($data)) {
+            return $this->response
+                ->setStatusCode(422)
+                ->setJSON([
+                    'status' => 'error',
+                    'errors' => $validation->getErrors(),
+                ]);
+        }
+
+        if (strtotime($data['end_time']) <= strtotime($data['start_time'])) {
             return $this->response
                 ->setStatusCode(422)
                 ->setJSON([
@@ -60,6 +82,26 @@ class Booking extends BaseController
                     'errors' => [
                         'end_time' => 'End time must be after start time.',
                     ],
+                ]);
+        }
+
+        $room = $this->roomModel->find($data['room_id']);
+        if ($room === null) {
+            return $this->response
+                ->setStatusCode(404)
+                ->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Room not found.',
+                ]);
+        }
+
+        $user = $this->userModel->find($data['user_id']);
+        if ($user === null) {
+            return $this->response
+                ->setStatusCode(404)
+                ->setJSON([
+                    'status'  => 'error',
+                    'message' => 'User not found.',
                 ]);
         }
 
@@ -73,12 +115,12 @@ class Booking extends BaseController
             return $this->response
                 ->setStatusCode(409)
                 ->setJSON([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => 'Room is already booked during this time.',
                 ]);
         }
 
-        if (!$this->bookingModel->insert($data)) {
+        if (!$this->bookingModel->insert($data, false)) {
             return $this->response
                 ->setStatusCode(422)
                 ->setJSON([
