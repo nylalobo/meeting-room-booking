@@ -19,7 +19,7 @@
             </div>
             <div class="stat-meta">
                 <div class="stat-label">TOTAL ROOMS</div>
-                <div class="stat-value">12</div>
+                <div class="stat-value" id="total-rooms">0</div>
             </div>
         </div>
     </div>
@@ -32,7 +32,7 @@
             </div>
             <div class="stat-meta">
                 <div class="stat-label">TOTAL BOOKINGS</div>
-                <div class="stat-value">28</div>
+               <div class="stat-value" id="total-bookings">0</div>
             </div>
         </div>
     </div>
@@ -45,7 +45,7 @@
             </div>
             <div class="stat-meta">
                 <div class="stat-label">PENDING REQUESTS</div>
-                <div class="stat-value">5</div>
+                <div class="stat-value" id="pending-requests">0</div>
             </div>
         </div>
     </div>
@@ -58,7 +58,7 @@
             </div>
             <div class="stat-meta">
                 <div class="stat-label">ACTIVE USERS</div>
-                <div class="stat-value">36</div>
+                <div class="stat-value" id="active-users">0</div>
             </div>
         </div>
     </div>

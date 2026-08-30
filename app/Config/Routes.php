@@ -4,7 +4,7 @@ use CodeIgniter\Router\RouteCollection;
 
 /** @var RouteCollection $routes */
 $routes->get('/', 'Home::index');
-
+$routes->get('dashboard/stats', 'Dashboard::stats');
 
 $routes->get('roles', 'Role::index');
 $routes->get('users', 'User::index');
