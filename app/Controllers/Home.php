@@ -10,4 +10,11 @@ class Home extends BaseController
             'title' => 'Dashboard',
         ]);
     }
+
+    public function bookings(): string
+    {
+        return view('bookings/index', [
+            'title' => 'Bookings',
+        ]);
+    }
 }
