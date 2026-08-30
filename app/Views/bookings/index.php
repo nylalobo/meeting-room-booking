@@ -71,4 +71,165 @@
 
 </div>
 
+
+<!-- ================================================================
+     New Booking Modal
+     ================================================================ -->
+
+<div class="booking-modal-overlay d-none" id="bookingModal">
+
+    <div class="booking-modal" role="dialog" aria-modal="true" aria-labelledby="bookingModalTitle">
+
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="bookingModalTitle">New Booking</h2>
+                <p>Create a new meeting room booking.</p>
+            </div>
+
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeBookingModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+
+        <form id="newBookingForm">
+
+            <div id="bookingFormError" class="booking-form-alert booking-form-error d-none">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="bookingFormErrorText"></span>
+            </div>
+
+            <div id="bookingFormSuccess" class="booking-form-alert booking-form-success d-none">
+                <i class="bi bi-check-circle"></i>
+                <span id="bookingFormSuccessText"></span>
+            </div>
+
+
+            <div class="booking-form-grid">
+
+                <!-- Meeting title -->
+                <div class="booking-form-group booking-form-full">
+                    <label for="bookingTitle">
+                        Meeting Title
+                        <span>*</span>
+                    </label>
+
+                    <input
+                        type="text"
+                        id="bookingTitle"
+                        name="title"
+                        maxlength="200"
+                        placeholder="e.g. Team Planning Meeting"
+                        required
+                    >
+                </div>
+
+
+                <!-- Room -->
+                <div class="booking-form-group">
+                    <label for="bookingRoom">
+                        Room
+                        <span>*</span>
+                    </label>
+
+                    <select id="bookingRoom" name="room_id" required>
+                        <option value="">Loading rooms...</option>
+                    </select>
+                </div>
+
+
+                <!-- Organizer -->
+                <div class="booking-form-group">
+                    <label for="bookingUser">
+                        Organizer
+                        <span>*</span>
+                    </label>
+
+                    <select id="bookingUser" name="user_id" required>
+                        <option value="">Loading users...</option>
+                    </select>
+                </div>
+
+
+                <!-- Start -->
+                <div class="booking-form-group">
+                    <label for="bookingStart">
+                        Start Time
+                        <span>*</span>
+                    </label>
+
+                    <input
+                        type="datetime-local"
+                        id="bookingStart"
+                        name="start_time"
+                        required
+                    >
+                </div>
+
+
+                <!-- End -->
+                <div class="booking-form-group">
+                    <label for="bookingEnd">
+                        End Time
+                        <span>*</span>
+                    </label>
+
+                    <input
+                        type="datetime-local"
+                        id="bookingEnd"
+                        name="end_time"
+                        required
+                    >
+                </div>
+
+
+                <!-- Description -->
+                <div class="booking-form-group booking-form-full">
+                    <label for="bookingDescription">
+                        Description
+                    </label>
+
+                    <textarea
+                        id="bookingDescription"
+                        name="description"
+                        rows="4"
+                        placeholder="Add meeting details or notes..."
+                    ></textarea>
+                </div>
+
+            </div>
+
+
+            <div class="booking-modal-footer">
+
+                <button
+                    type="button"
+                    class="btn-booking-cancel"
+                    id="cancelBookingBtn"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-booking-submit"
+                    id="submitBookingBtn"
+                >
+                    <i class="bi bi-calendar-check"></i>
+                    Create Booking
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
 <?= $this->endSection() ?>

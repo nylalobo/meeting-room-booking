@@ -12,3 +12,10 @@ writable/uploads/*
 
 .DS_Store
 Thumbs.db
+# Local API test payloads
+booking-*.json
+room-*.json
+
+# CodeIgniter Debugbar output
+writable/debugbar/*
+booking.json

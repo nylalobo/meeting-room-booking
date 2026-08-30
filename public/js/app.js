@@ -3,7 +3,7 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Search input behavior
+    // Global search input
     const searchInput = document.querySelector('.search-input');
 
     if (searchInput) {
@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('bookingsTableBody')) {
         loadBookings();
         setupBookingFilters();
+        setupBookingModal();
     }
 
     console.log('MeetSpace Enterprise Suite initialized.');
@@ -128,23 +129,36 @@ function renderBookings(bookings) {
     bookings.forEach((booking) => {
         const row = document.createElement('tr');
 
-        const startDate = new Date(booking.start_time.replace(' ', 'T'));
-        const endDate = new Date(booking.end_time.replace(' ', 'T'));
+        const startDate = new Date(
+            String(booking.start_time).replace(' ', 'T')
+        );
+
+        const endDate = new Date(
+            String(booking.end_time).replace(' ', 'T')
+        );
 
         const dateText = formatBookingDate(startDate);
-        const timeText = `${formatBookingTime(startDate)} - ${formatBookingTime(endDate)}`;
 
-        const organizer = booking.organizer_name || `User #${booking.user_id}`;
-        const room = booking.room_name || `Room #${booking.room_id}`;
+        const timeText =
+            `${formatBookingTime(startDate)} - ${formatBookingTime(endDate)}`;
+
+        const organizer =
+            booking.organizer_name || `User #${booking.user_id}`;
+
+        const room =
+            booking.room_name || `Room #${booking.room_id}`;
 
         row.innerHTML = `
             <td>
                 <div class="booking-title">
                     ${escapeHtml(booking.title || 'Untitled Meeting')}
                 </div>
+
                 ${
                     booking.description
-                        ? `<div class="booking-description">${escapeHtml(booking.description)}</div>`
+                        ? `<div class="booking-description">
+                            ${escapeHtml(booking.description)}
+                           </div>`
                         : ''
                 }
             </td>
@@ -153,9 +167,12 @@ function renderBookings(bookings) {
                 <div class="booking-room-name">
                     ${escapeHtml(room)}
                 </div>
+
                 ${
                     booking.room_code
-                        ? `<div class="booking-room-code">${escapeHtml(booking.room_code)}</div>`
+                        ? `<div class="booking-room-code">
+                            ${escapeHtml(booking.room_code)}
+                           </div>`
                         : ''
                 }
             </td>
@@ -187,6 +204,10 @@ function renderBookings(bookings) {
     });
 }
 
+
+/* ==========================================================================
+   Booking Filters
+   ========================================================================== */
 
 function setupBookingFilters() {
     const searchInput = document.getElementById('bookingSearch');
@@ -242,8 +263,456 @@ function applyBookingFilters() {
 
 
 /* ==========================================================================
+   New Booking Modal
+   ========================================================================== */
+
+function setupBookingModal() {
+    const modal = document.getElementById('bookingModal');
+    const newBookingBtn = document.getElementById('newBookingBtn');
+    const closeBookingModal = document.getElementById('closeBookingModal');
+    const cancelBookingBtn = document.getElementById('cancelBookingBtn');
+    const form = document.getElementById('newBookingForm');
+
+    if (!modal || !newBookingBtn || !form) {
+        return;
+    }
+
+    newBookingBtn.addEventListener('click', async () => {
+        resetBookingForm();
+        openBookingModal();
+
+        await Promise.all([
+            loadBookingRooms(),
+            loadBookingUsers()
+        ]);
+    });
+
+    if (closeBookingModal) {
+        closeBookingModal.addEventListener('click', closeBookingModalWindow);
+    }
+
+    if (cancelBookingBtn) {
+        cancelBookingBtn.addEventListener('click', closeBookingModalWindow);
+    }
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            closeBookingModalWindow();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('d-none')) {
+            closeBookingModalWindow();
+        }
+    });
+
+    form.addEventListener('submit', handleNewBookingSubmit);
+}
+
+
+function openBookingModal() {
+    const modal = document.getElementById('bookingModal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('d-none');
+    document.body.classList.add('booking-modal-open');
+
+    setTimeout(() => {
+        document.getElementById('bookingTitle')?.focus();
+    }, 50);
+}
+
+
+function closeBookingModalWindow() {
+    const modal = document.getElementById('bookingModal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add('d-none');
+    document.body.classList.remove('booking-modal-open');
+}
+
+
+function resetBookingForm() {
+    const form = document.getElementById('newBookingForm');
+
+    if (form) {
+        form.reset();
+    }
+
+    hideBookingFormMessages();
+
+    const submitButton = document.getElementById('submitBookingBtn');
+
+    if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.innerHTML = `
+            <i class="bi bi-calendar-check"></i>
+            Create Booking
+        `;
+    }
+
+    const roomSelect = document.getElementById('bookingRoom');
+
+    if (roomSelect) {
+        roomSelect.innerHTML = '<option value="">Loading rooms...</option>';
+    }
+
+    const userSelect = document.getElementById('bookingUser');
+
+    if (userSelect) {
+        userSelect.innerHTML = '<option value="">Loading users...</option>';
+    }
+}
+
+
+/* ==========================================================================
+   Load Rooms
+   ========================================================================== */
+
+async function loadBookingRooms() {
+    const select = document.getElementById('bookingRoom');
+
+    if (!select) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/rooms');
+
+        if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.status !== 'success') {
+            throw new Error('Rooms request failed.');
+        }
+
+        const rooms = result.data || [];
+
+        select.innerHTML = '';
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a room';
+        select.appendChild(defaultOption);
+
+        rooms
+            .filter((room) => String(room.is_active) === '1')
+            .forEach((room) => {
+                const option = document.createElement('option');
+
+                option.value = room.id;
+                option.textContent =
+                    `${room.name} (${room.room_code})`;
+
+                select.appendChild(option);
+            });
+
+        if (select.options.length === 1) {
+            select.innerHTML =
+                '<option value="">No active rooms available</option>';
+        }
+
+    } catch (error) {
+        console.error('Unable to load rooms:', error);
+
+        select.innerHTML =
+            '<option value="">Unable to load rooms</option>';
+
+        showBookingFormError(
+            'Unable to load rooms. Please try again.'
+        );
+    }
+}
+
+
+/* ==========================================================================
+   Load Users
+   ========================================================================== */
+
+async function loadBookingUsers() {
+    const select = document.getElementById('bookingUser');
+
+    if (!select) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/users');
+
+        if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.status !== 'success') {
+            throw new Error('Users request failed.');
+        }
+
+        const users = result.data || [];
+
+        select.innerHTML = '';
+
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select organizer';
+        select.appendChild(defaultOption);
+
+        users
+            .filter((user) => String(user.is_active) === '1')
+            .forEach((user) => {
+                const option = document.createElement('option');
+
+                option.value = user.id;
+
+                const fullName =
+                    `${user.first_name || ''} ${user.last_name || ''}`
+                        .trim();
+
+                option.textContent =
+                    fullName || user.email || `User #${user.id}`;
+
+                select.appendChild(option);
+            });
+
+        if (select.options.length === 1) {
+            select.innerHTML =
+                '<option value="">No active users available</option>';
+        }
+
+    } catch (error) {
+        console.error('Unable to load users:', error);
+
+        select.innerHTML =
+            '<option value="">Unable to load users</option>';
+
+        showBookingFormError(
+            'Unable to load organizers. Please try again.'
+        );
+    }
+}
+
+
+/* ==========================================================================
+   Create Booking
+   ========================================================================== */
+
+async function handleNewBookingSubmit(event) {
+    event.preventDefault();
+
+    const form = document.getElementById('newBookingForm');
+    const submitButton = document.getElementById('submitBookingBtn');
+
+    if (!form || !submitButton) {
+        return;
+    }
+
+    hideBookingFormMessages();
+
+    const formData = new FormData(form);
+
+    const title = formData.get('title')?.trim() || '';
+    const roomId = formData.get('room_id');
+    const userId = formData.get('user_id');
+    const startTime = formData.get('start_time');
+    const endTime = formData.get('end_time');
+    const description = formData.get('description')?.trim() || '';
+
+    if (!title || !roomId || !userId || !startTime || !endTime) {
+        showBookingFormError(
+            'Please fill in all required fields.'
+        );
+        return;
+    }
+
+    if (new Date(startTime) >= new Date(endTime)) {
+        showBookingFormError(
+            'End time must be after start time.'
+        );
+        return;
+    }
+
+    const payload = {
+        title: title,
+        room_id: Number(roomId),
+        user_id: Number(userId),
+        start_time: formatDateTimeForApi(startTime),
+        end_time: formatDateTimeForApi(endTime),
+        description: description,
+        status: 'pending'
+    };
+
+    try {
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+            <i class="bi bi-arrow-repeat spin"></i>
+            Creating...
+        `;
+
+        const response = await fetch('/bookings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || result.status !== 'success') {
+            handleBookingApiError(response.status, result);
+            return;
+        }
+
+        showBookingFormSuccess(
+            result.message || 'Booking created successfully.'
+        );
+
+        await loadBookings();
+
+        setTimeout(() => {
+            closeBookingModalWindow();
+        }, 800);
+
+    } catch (error) {
+        console.error('Unable to create booking:', error);
+
+        showBookingFormError(
+            'Unable to create booking. Please try again.'
+        );
+
+    } finally {
+        submitButton.disabled = false;
+
+        submitButton.innerHTML = `
+            <i class="bi bi-calendar-check"></i>
+            Create Booking
+        `;
+    }
+}
+
+
+/* ==========================================================================
+   Booking API Error Handling
+   ========================================================================== */
+
+function handleBookingApiError(status, result) {
+    if (status === 409) {
+        showBookingFormError(
+            result.message ||
+            'Room is already booked during this time.'
+        );
+
+        return;
+    }
+
+    if (status === 422 && result.errors) {
+        const messages = Object.values(result.errors);
+
+        showBookingFormError(
+            messages.join(' ')
+        );
+
+        return;
+    }
+
+    if (status === 404) {
+        showBookingFormError(
+            result.message ||
+            'The selected room or organizer could not be found.'
+        );
+
+        return;
+    }
+
+    showBookingFormError(
+        result.message ||
+        'Unable to create booking.'
+    );
+}
+
+
+/* ==========================================================================
+   Booking Form Messages
+   ========================================================================== */
+
+function showBookingFormError(message) {
+    const errorBox = document.getElementById('bookingFormError');
+    const errorText = document.getElementById('bookingFormErrorText');
+
+    const successBox = document.getElementById('bookingFormSuccess');
+
+    if (successBox) {
+        successBox.classList.add('d-none');
+    }
+
+    if (errorText) {
+        errorText.textContent = message;
+    }
+
+    if (errorBox) {
+        errorBox.classList.remove('d-none');
+    }
+}
+
+
+function showBookingFormSuccess(message) {
+    const successBox = document.getElementById('bookingFormSuccess');
+    const successText = document.getElementById('bookingFormSuccessText');
+
+    const errorBox = document.getElementById('bookingFormError');
+
+    if (errorBox) {
+        errorBox.classList.add('d-none');
+    }
+
+    if (successText) {
+        successText.textContent = message;
+    }
+
+    if (successBox) {
+        successBox.classList.remove('d-none');
+    }
+}
+
+
+function hideBookingFormMessages() {
+    const errorBox = document.getElementById('bookingFormError');
+    const successBox = document.getElementById('bookingFormSuccess');
+
+    if (errorBox) {
+        errorBox.classList.add('d-none');
+    }
+
+    if (successBox) {
+        successBox.classList.add('d-none');
+    }
+}
+
+
+/* ==========================================================================
    Booking Helpers
    ========================================================================== */
+
+function formatDateTimeForApi(value) {
+    if (!value) {
+        return '';
+    }
+
+    return value.replace('T', ' ') + ':00';
+}
+
 
 function formatBookingDate(date) {
     if (Number.isNaN(date.getTime())) {
@@ -272,10 +741,12 @@ function formatBookingTime(date) {
 
 
 function renderBookingStatus(status) {
-    const normalizedStatus = String(status || 'pending').toLowerCase();
+    const normalizedStatus =
+        String(status || 'pending').toLowerCase();
 
-    const label = normalizedStatus.charAt(0).toUpperCase()
-        + normalizedStatus.slice(1);
+    const label =
+        normalizedStatus.charAt(0).toUpperCase() +
+        normalizedStatus.slice(1);
 
     return `
         <span class="booking-status booking-status-${escapeHtml(normalizedStatus)}">
