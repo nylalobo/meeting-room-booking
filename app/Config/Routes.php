@@ -26,7 +26,10 @@ $routes->get('roles', 'Role::index');
 $routes->get('users', 'User::index');
 
 $routes->get('locations', 'Location::index');
-
+$routes->get('locations/(:num)', 'Location::show/$1');
+$routes->post('locations', 'Location::create');
+$routes->put('locations/(:num)', 'Location::update/$1');
+$routes->delete('locations/(:num)', 'Location::delete/$1');
 
 /*
 |--------------------------------------------------------------------------
