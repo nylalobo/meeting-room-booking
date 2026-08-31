@@ -17,4 +17,11 @@ class Home extends BaseController
             'title' => 'Bookings',
         ]);
     }
+
+    public function rooms(): string
+    {
+        return view('rooms/index', [
+            'title' => 'Rooms',
+        ]);
+    }
 }
