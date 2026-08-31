@@ -20,10 +20,13 @@ class Booking extends BaseController
         $this->userModel    = new UserModel();
     }
 
+    /**
+     * Get all bookings.
+     */
     public function index(): ResponseInterface
     {
         $bookings = $this->bookingModel
-            ->orderBy('id', 'ASC')
+            ->orderBy('start_time', 'ASC')
             ->findAll();
 
         return $this->response->setJSON([
@@ -32,6 +35,44 @@ class Booking extends BaseController
         ]);
     }
 
+    /**
+     * Get all bookings with room and organizer details.
+     *
+     * Used by the frontend bookings page.
+     */
+    public function apiIndex(): ResponseInterface
+    {
+        $bookings = $this->bookingModel
+            ->orderBy('start_time', 'ASC')
+            ->findAll();
+
+        $data = [];
+
+        foreach ($bookings as $booking) {
+            $room = $this->roomModel->find($booking['room_id']);
+            $user = $this->userModel->find($booking['user_id']);
+
+            $booking['room_name'] = $room['name'] ?? 'Unknown Room';
+            $booking['room_code'] = $room['room_code'] ?? null;
+
+            $booking['organizer_name'] = $user
+                ? trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''))
+                : 'Unknown User';
+
+            $booking['organizer_email'] = $user['email'] ?? null;
+
+            $data[] = $booking;
+        }
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => $data,
+        ]);
+    }
+
+    /**
+     * Get a single booking.
+     */
     public function show(int $id): ResponseInterface
     {
         $booking = $this->bookingModel->find($id);
@@ -51,6 +92,9 @@ class Booking extends BaseController
         ]);
     }
 
+    /**
+     * Create a new booking.
+     */
     public function create(): ResponseInterface
     {
         $data = $this->request->getJSON(true) ?? [];
@@ -60,6 +104,7 @@ class Booking extends BaseController
         }
 
         $validation = service('validation');
+
         $validation->setRules(
             $this->bookingModel->getValidationRules(),
             $this->bookingModel->getValidationMessages()
@@ -86,6 +131,7 @@ class Booking extends BaseController
         }
 
         $room = $this->roomModel->find($data['room_id']);
+
         if ($room === null) {
             return $this->response
                 ->setStatusCode(404)
@@ -96,6 +142,7 @@ class Booking extends BaseController
         }
 
         $user = $this->userModel->find($data['user_id']);
+
         if ($user === null) {
             return $this->response
                 ->setStatusCode(404)
@@ -142,6 +189,9 @@ class Booking extends BaseController
             ]);
     }
 
+    /**
+     * Update an existing booking.
+     */
     public function update(int $id): ResponseInterface
     {
         $booking = $this->bookingModel->find($id);
@@ -155,7 +205,7 @@ class Booking extends BaseController
                 ]);
         }
 
-        $data = $this->request->getJSON(true);
+        $data = $this->request->getJSON(true) ?? [];
 
         $startTime = $data['start_time'] ?? $booking['start_time'];
         $endTime   = $data['end_time'] ?? $booking['end_time'];
@@ -172,6 +222,32 @@ class Booking extends BaseController
                 ]);
         }
 
+        if (array_key_exists('room_id', $data)) {
+            $room = $this->roomModel->find($roomId);
+
+            if ($room === null) {
+                return $this->response
+                    ->setStatusCode(404)
+                    ->setJSON([
+                        'status'  => 'error',
+                        'message' => 'Room not found.',
+                    ]);
+            }
+        }
+
+        if (array_key_exists('user_id', $data)) {
+            $user = $this->userModel->find((int) $data['user_id']);
+
+            if ($user === null) {
+                return $this->response
+                    ->setStatusCode(404)
+                    ->setJSON([
+                        'status'  => 'error',
+                        'message' => 'User not found.',
+                    ]);
+            }
+        }
+
         if (
             $this->bookingModel->hasOverlap(
                 $roomId,
@@ -183,7 +259,7 @@ class Booking extends BaseController
             return $this->response
                 ->setStatusCode(409)
                 ->setJSON([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => 'Room is already booked during this time.',
                 ]);
         }
@@ -206,6 +282,9 @@ class Booking extends BaseController
         ]);
     }
 
+    /**
+     * Delete an existing booking.
+     */
     public function delete(int $id): ResponseInterface
     {
         $booking = $this->bookingModel->find($id);
