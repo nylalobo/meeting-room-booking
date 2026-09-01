@@ -25,11 +25,26 @@ $routes->get('roles', 'Role::index');
 
 $routes->get('users', 'User::index');
 
-$routes->get('locations', 'Location::index');
-$routes->get('locations/(:num)', 'Location::show/$1');
-$routes->post('locations', 'Location::create');
-$routes->put('locations/(:num)', 'Location::update/$1');
-$routes->delete('locations/(:num)', 'Location::delete/$1');
+
+/*
+|--------------------------------------------------------------------------
+| Locations
+|--------------------------------------------------------------------------
+|
+| /api/locations       -> List locations
+| /api/locations/{id}  -> Get one location
+| /api/locations       -> Create location
+| /api/locations/{id}  -> Update location
+| /api/locations/{id}  -> Delete location
+|
+*/
+
+$routes->get('api/locations', 'Location::index');
+$routes->get('api/locations/(:num)', 'Location::show/$1');
+$routes->post('api/locations', 'Location::create');
+$routes->put('api/locations/(:num)', 'Location::update/$1');
+$routes->delete('api/locations/(:num)', 'Location::delete/$1');
+
 
 /*
 |--------------------------------------------------------------------------
@@ -89,15 +104,22 @@ $routes->delete('bookings/(:num)', 'Booking::delete/$1');
 */
 
 $routes->get('booking-participants', 'BookingParticipant::index');
+
 $routes->get(
     'booking-participants/(:num)/(:num)',
     'BookingParticipant::show/$1/$2'
 );
-$routes->post('booking-participants', 'BookingParticipant::create');
+
+$routes->post(
+    'booking-participants',
+    'BookingParticipant::create'
+);
+
 $routes->put(
     'booking-participants/(:num)/(:num)',
     'BookingParticipant::update/$1/$2'
 );
+
 $routes->delete(
     'booking-participants/(:num)/(:num)',
     'BookingParticipant::delete/$1/$2'
@@ -110,7 +132,10 @@ $routes->delete(
 |--------------------------------------------------------------------------
 */
 
-$routes->get('catering-requests', 'CateringRequest::index');
+$routes->get(
+    'catering-requests',
+    'CateringRequest::index'
+);
 
 
 /*
@@ -119,7 +144,10 @@ $routes->get('catering-requests', 'CateringRequest::index');
 |--------------------------------------------------------------------------
 */
 
-$routes->get('audit-logs', 'AuditLog::index');
+$routes->get(
+    'audit-logs',
+    'AuditLog::index'
+);
 
 
 /*
@@ -128,7 +156,10 @@ $routes->get('audit-logs', 'AuditLog::index');
 |--------------------------------------------------------------------------
 */
 
-$routes->get('room-facilities', 'RoomFacility::index');
+$routes->get(
+    'room-facilities',
+    'RoomFacility::index'
+);
 
 
 /*
@@ -137,8 +168,27 @@ $routes->get('room-facilities', 'RoomFacility::index');
 |--------------------------------------------------------------------------
 */
 
-$routes->get('departments', 'Department::index');
-$routes->get('departments/(:num)', 'Department::show/$1');
-$routes->post('departments', 'Department::create');
-$routes->put('departments/(:num)', 'Department::update/$1');
-$routes->delete('departments/(:num)', 'Department::delete/$1');
+$routes->get(
+    'departments',
+    'Department::index'
+);
+
+$routes->get(
+    'departments/(:num)',
+    'Department::show/$1'
+);
+
+$routes->post(
+    'departments',
+    'Department::create'
+);
+
+$routes->put(
+    'departments/(:num)',
+    'Department::update/$1'
+);
+
+$routes->delete(
+    'departments/(:num)',
+    'Department::delete/$1'
+);
