@@ -129,14 +129,24 @@ $routes->delete('facilities/(:num)', 'Facility::delete/$1');
 | Bookings
 |--------------------------------------------------------------------------
 |
-| /bookings       -> Bookings frontend page
-| /api/bookings   -> Bookings API
+| /bookings            -> Bookings frontend page
+| /api/bookings        -> List bookings (enriched)
+| /api/bookings/{id}   -> Get one booking
+| /api/bookings        -> Create booking
+| /api/bookings/{id}   -> Update booking
+| /api/bookings/{id}   -> Delete booking
 |
 */
 
 $routes->get('bookings', 'Home::bookings');
 
 $routes->get('api/bookings', 'Booking::apiIndex');
+$routes->get('api/bookings/(:num)', 'Booking::show/$1');
+$routes->post('api/bookings', 'Booking::create');
+$routes->put('api/bookings/(:num)', 'Booking::update/$1');
+$routes->delete('api/bookings/(:num)', 'Booking::delete/$1');
+
+// Legacy routes for backward compatibility
 $routes->get('bookings/(:num)', 'Booking::show/$1');
 $routes->post('bookings', 'Booking::create');
 $routes->put('bookings/(:num)', 'Booking::update/$1');

@@ -9,7 +9,7 @@
     </div>
 
     <button type="button" class="btn-primary-action" id="newBookingBtn">
-        <i class="bi bi-plus-lg"></i>
+        <i class="bi bi-calendar-plus"></i>
         New Booking
     </button>
 </div>
@@ -20,10 +20,14 @@
         <input
             type="text"
             id="bookingSearch"
-            placeholder="Search bookings..."
+            placeholder="Search meetings, rooms, or organizers..."
             aria-label="Search bookings"
         >
     </div>
+
+    <select id="bookingRoomFilter" class="booking-filter" aria-label="Filter by room">
+        <option value="">All Rooms</option>
+    </select>
 
     <select id="statusFilter" class="booking-filter" aria-label="Filter by status">
         <option value="">All Statuses</option>
@@ -62,6 +66,7 @@
                     <th>TIME</th>
                     <th>ORGANIZER</th>
                     <th>STATUS</th>
+                    <th>ACTIONS</th>
                 </tr>
             </thead>
 
@@ -73,7 +78,7 @@
 
 
 <!-- ================================================================
-     New Booking Modal
+     Booking Modal (Create / Edit)
      ================================================================ -->
 
 <div class="booking-modal-overlay d-none" id="bookingModal">
@@ -83,7 +88,7 @@
         <div class="booking-modal-header">
             <div>
                 <h2 id="bookingModalTitle">New Booking</h2>
-                <p>Create a new meeting room booking.</p>
+                <p id="bookingModalSubtitle">Create a new meeting room booking.</p>
             </div>
 
             <button
@@ -97,7 +102,9 @@
         </div>
 
 
-        <form id="newBookingForm">
+        <form id="bookingForm">
+
+            <input type="hidden" id="bookingId">
 
             <div id="bookingFormError" class="booking-form-alert booking-form-error d-none">
                 <i class="bi bi-exclamation-circle"></i>
@@ -138,7 +145,7 @@
                     </label>
 
                     <select id="bookingRoom" name="room_id" required>
-                        <option value="">Loading rooms...</option>
+                        <option value="">Select a room...</option>
                     </select>
                 </div>
 
@@ -151,7 +158,7 @@
                     </label>
 
                     <select id="bookingUser" name="user_id" required>
-                        <option value="">Loading users...</option>
+                        <option value="">Select organizer...</option>
                     </select>
                 </div>
 
@@ -188,6 +195,23 @@
                 </div>
 
 
+                <!-- Status -->
+                <div class="booking-form-group booking-form-full">
+                    <label for="bookingStatus">
+                        Status
+                        <span>*</span>
+                    </label>
+
+                    <select id="bookingStatus" name="status" required>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                </div>
+
+
                 <!-- Description -->
                 <div class="booking-form-group booking-form-full">
                     <label for="bookingDescription">
@@ -197,7 +221,7 @@
                     <textarea
                         id="bookingDescription"
                         name="description"
-                        rows="4"
+                        rows="3"
                         placeholder="Add meeting details or notes..."
                     ></textarea>
                 </div>
@@ -231,5 +255,82 @@
     </div>
 
 </div>
+
+<style>
+.bookings-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.bookings-table thead th {
+    padding: 15px 18px;
+}
+
+.bookings-table tbody td {
+    padding: 16px 18px;
+}
+
+.booking-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.booking-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    color: #8496b5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s ease;
+}
+
+.booking-action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+}
+
+.booking-delete-btn:hover {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.booking-status-pending {
+    background-color: rgba(234, 179, 8, 0.12);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+.booking-status-approved {
+    background-color: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.booking-status-rejected {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.booking-status-cancelled {
+    background-color: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.booking-status-completed {
+    background-color: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+</style>
 
 <?= $this->endSection() ?>
