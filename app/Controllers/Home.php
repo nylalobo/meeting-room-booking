@@ -38,4 +38,11 @@ class Home extends BaseController
             'title' => 'Participants',
         ]);
     }
+
+    public function facilities(): string
+    {
+        return view('facilities/index', [
+            'title' => 'Facilities',
+        ]);
+    }
 }

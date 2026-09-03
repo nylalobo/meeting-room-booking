@@ -72,9 +72,25 @@ $routes->delete('api/rooms/(:num)', 'Room::delete/$1');
 |--------------------------------------------------------------------------
 | Facilities
 |--------------------------------------------------------------------------
+|
+| /facilities            -> Facilities frontend page
+| /api/facilities        -> List facilities
+| /api/facilities/{id}   -> Get one facility
+| /api/facilities        -> Create facility
+| /api/facilities/{id}   -> Update facility
+| /api/facilities/{id}   -> Delete facility
+|
 */
 
-$routes->get('facilities', 'Facility::index');
+$routes->get('facilities', 'Home::facilities');
+
+$routes->get('api/facilities', 'Facility::index');
+$routes->get('api/facilities/(:num)', 'Facility::show/$1');
+$routes->post('api/facilities', 'Facility::create');
+$routes->put('api/facilities/(:num)', 'Facility::update/$1');
+$routes->delete('api/facilities/(:num)', 'Facility::delete/$1');
+
+// Legacy routes for backward compatibility
 $routes->get('facilities/(:num)', 'Facility::show/$1');
 $routes->post('facilities', 'Facility::create');
 $routes->put('facilities/(:num)', 'Facility::update/$1');

@@ -118,6 +118,7 @@
 <script src="<?= base_url('js/rooms.js') ?>"></script>
 <script src="<?= base_url('js/bookings.js') ?>"></script>
 <script src="<?= base_url('js/participants.js') ?>"></script>
+<script src="<?= base_url('js/facilities.js') ?>"></script>
 
 </body>
 </html>
