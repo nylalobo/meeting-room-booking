@@ -31,4 +31,11 @@ class Home extends BaseController
             'title' => 'Locations',
         ]);
     }
+
+    public function participants(): string
+    {
+        return view('participants/index', [
+            'title' => 'Participants',
+        ]);
+    }
 }

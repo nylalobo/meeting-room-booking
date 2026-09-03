@@ -104,7 +104,17 @@ $routes->delete('bookings/(:num)', 'Booking::delete/$1');
 |--------------------------------------------------------------------------
 | Booking Participants
 |--------------------------------------------------------------------------
+|
+| /participants                         -> Participants frontend page
+| /booking-participants                 -> List booking participants
+| /booking-participants/{bid}/{uid}     -> Get one booking participant
+| /booking-participants                 -> Create booking participant
+| /booking-participants/{bid}/{uid}     -> Update booking participant
+| /booking-participants/{bid}/{uid}     -> Delete booking participant
+|
 */
+
+$routes->get('participants', 'Home::participants');
 
 $routes->get('booking-participants', 'BookingParticipant::index');
 
