@@ -17,13 +17,40 @@ $routes->get('dashboard/stats', 'Dashboard::stats');
 
 /*
 |--------------------------------------------------------------------------
-| Basic API Resources
+| Roles
 |--------------------------------------------------------------------------
 */
 
 $routes->get('roles', 'Role::index');
 
-$routes->get('users', 'User::index');
+
+/*
+|--------------------------------------------------------------------------
+| Users
+|--------------------------------------------------------------------------
+|
+| /users            -> Users frontend page
+| /api/users        -> List users
+| /api/users/{id}   -> Get one user
+| /api/users        -> Create user
+| /api/users/{id}   -> Update user
+| /api/users/{id}   -> Delete user
+|
+*/
+
+$routes->get('users', 'Home::users');
+
+$routes->get('api/users', 'User::index');
+$routes->get('api/users/(:num)', 'User::show/$1');
+$routes->post('api/users', 'User::create');
+$routes->put('api/users/(:num)', 'User::update/$1');
+$routes->delete('api/users/(:num)', 'User::delete/$1');
+
+// Legacy routes for backward compatibility
+$routes->get('users/(:num)', 'User::show/$1');
+$routes->post('users', 'User::create');
+$routes->put('users/(:num)', 'User::update/$1');
+$routes->delete('users/(:num)', 'User::delete/$1');
 
 
 /*

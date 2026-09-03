@@ -45,4 +45,11 @@ class Home extends BaseController
             'title' => 'Facilities',
         ]);
     }
+
+    public function users(): string
+    {
+        return view('users/index', [
+            'title' => 'Users',
+        ]);
+    }
 }

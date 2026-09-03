@@ -84,7 +84,7 @@ async function loadParticipantsData() {
         ] = await Promise.all([
             fetch('/booking-participants'),
             fetch('/api/bookings'),
-            fetch('/users')
+            fetch('/api/users')
         ]);
 
         if (

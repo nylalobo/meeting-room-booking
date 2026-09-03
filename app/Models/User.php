@@ -28,6 +28,7 @@ class User extends Model
     protected $updatedField  = 'updated_at';
 
     protected $validationRules = [
+        'id'            => 'permit_empty|is_natural_no_zero',
         'department_id' => 'permit_empty|integer',
         'role_id'       => 'permit_empty|integer',
         'first_name'    => 'required|max_length[100]',
