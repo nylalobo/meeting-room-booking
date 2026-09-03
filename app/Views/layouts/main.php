@@ -52,6 +52,11 @@
                 <span>Dashboard</span>
             </a>
 
+            <a href="<?= base_url('locations') ?>" class="nav-item <?= str_starts_with(uri_string(), 'locations') ? 'active' : '' ?>">
+                <i class="bi bi-geo-alt nav-icon"></i>
+                <span>Locations</span>
+            </a>
+
             <a href="<?= base_url('rooms') ?>" class="nav-item <?= str_starts_with(uri_string(), 'rooms') ? 'active' : '' ?>">
                 <i class="bi bi-door-open nav-icon"></i>
                 <span>Rooms</span>
@@ -109,6 +114,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="<?= base_url('js/app.js') ?>"></script>
 <script src="<?= base_url('js/dashboard.js') ?>"></script>
+<script src="<?= base_url('js/locations.js') ?>"></script>
 <script src="<?= base_url('js/rooms.js') ?>"></script>
 <script src="<?= base_url('js/bookings.js') ?>"></script>
 

@@ -31,13 +31,16 @@ $routes->get('users', 'User::index');
 | Locations
 |--------------------------------------------------------------------------
 |
-| /api/locations       -> List locations
-| /api/locations/{id}  -> Get one location
-| /api/locations       -> Create location
-| /api/locations/{id}  -> Update location
-| /api/locations/{id}  -> Delete location
+| /locations            -> Locations frontend page
+| /api/locations        -> List locations
+| /api/locations/{id}   -> Get one location
+| /api/locations        -> Create location
+| /api/locations/{id}   -> Update location
+| /api/locations/{id}   -> Delete location
 |
 */
+
+$routes->get('locations', 'Home::locations');
 
 $routes->get('api/locations', 'Location::index');
 $routes->get('api/locations/(:num)', 'Location::show/$1');

@@ -24,4 +24,11 @@ class Home extends BaseController
             'title' => 'Rooms',
         ]);
     }
+
+    public function locations(): string
+    {
+        return view('locations/index', [
+            'title' => 'Locations',
+        ]);
+    }
 }
