@@ -120,6 +120,7 @@
 <script src="<?= base_url('js/participants.js') ?>"></script>
 <script src="<?= base_url('js/facilities.js') ?>"></script>
 <script src="<?= base_url('js/users.js') ?>"></script>
+<script src="<?= base_url('js/departments.js') ?>"></script>
 
 </body>
 </html>

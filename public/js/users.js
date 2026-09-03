@@ -85,7 +85,7 @@
             ] = await Promise.all([
                 fetch('/api/users'),
                 fetch('/roles'),
-                fetch('/departments')
+                fetch('/api/departments')
             ]);
 
             if (

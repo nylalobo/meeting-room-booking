@@ -52,4 +52,11 @@ class Home extends BaseController
             'title' => 'Users',
         ]);
     }
+
+    public function departments(): string
+    {
+        return view('departments/index', [
+            'title' => 'Departments',
+        ]);
+    }
 }

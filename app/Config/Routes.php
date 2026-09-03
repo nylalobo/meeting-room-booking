@@ -232,29 +232,26 @@ $routes->get(
 |--------------------------------------------------------------------------
 | Departments
 |--------------------------------------------------------------------------
+|
+| /departments            -> Departments frontend page
+| /api/departments        -> List departments
+| /api/departments/{id}   -> Get one department
+| /api/departments        -> Create department
+| /api/departments/{id}   -> Update department
+| /api/departments/{id}   -> Delete department
+|
 */
 
-$routes->get(
-    'departments',
-    'Department::index'
-);
+$routes->get('departments', 'Home::departments');
 
-$routes->get(
-    'departments/(:num)',
-    'Department::show/$1'
-);
+$routes->get('api/departments', 'Department::index');
+$routes->get('api/departments/(:num)', 'Department::show/$1');
+$routes->post('api/departments', 'Department::create');
+$routes->put('api/departments/(:num)', 'Department::update/$1');
+$routes->delete('api/departments/(:num)', 'Department::delete/$1');
 
-$routes->post(
-    'departments',
-    'Department::create'
-);
-
-$routes->put(
-    'departments/(:num)',
-    'Department::update/$1'
-);
-
-$routes->delete(
-    'departments/(:num)',
-    'Department::delete/$1'
-);
+// Legacy routes for backward compatibility
+$routes->get('departments/(:num)', 'Department::show/$1');
+$routes->post('departments', 'Department::create');
+$routes->put('departments/(:num)', 'Department::update/$1');
+$routes->delete('departments/(:num)', 'Department::delete/$1');
