@@ -17,6 +17,9 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?= base_url('css/app.css') ?>">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="<?= base_url('assets/images/meetspace-icon.png') ?>">
 </head>
 
 <body>
@@ -27,15 +30,15 @@
     <aside class="sidebar">
 
         <!-- Logo & Branding -->
-        <div class="sidebar-brand">
+        <a href="<?= base_url('/') ?>" class="sidebar-brand" aria-label="MeetSpace Enterprise Suite">
             <div class="brand-logo-box">
-                <span class="brand-letter">M</span>
+                <img src="<?= base_url('assets/images/meetspace-logo.png') ?>" alt="MeetSpace M Symbol" class="brand-logo-crop">
             </div>
             <div class="brand-info">
-                <div class="brand-title">MeetSpace</div>
+                <div class="brand-title">Meet<span class="brand-title-accent">Space</span></div>
                 <div class="brand-subtitle">Enterprise Suite</div>
             </div>
-        </div>
+        </a>
 
         <!-- Primary Action Button -->
         <div class="sidebar-action">
