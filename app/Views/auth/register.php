@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $title ?? 'Register' ?> - MeetSpace Enterprise Suite</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="<?= base_url('assets/images/meetspace-icon.png') ?>">
+
+    <style>
+        :root {
+            --bg-main: #070b28;
+            --bg-card: #0f1535;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-focus: #38bdf8;
+            --color-text-white: #ffffff;
+            --color-text-muted: #7b8cae;
+            --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-main);
+            color: var(--color-text-white);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 20px;
+            background-image:
+                radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.07) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.07) 0%, transparent 40%);
+        }
+
+        .register-container {
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .register-brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 28px;
+            text-decoration: none;
+        }
+
+        .brand-logo-box {
+            width: 44px;
+            height: 44px;
+            background: #040921;
+            border-radius: 11px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 16px rgba(56, 189, 248, 0.15);
+        }
+
+        .brand-logo-crop {
+            position: absolute;
+            width: 224px;
+            height: 88px;
+            max-width: none;
+            left: -37px;
+            top: -21px;
+            display: block;
+            pointer-events: none;
+        }
+
+        .brand-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            line-height: 1.2;
+            letter-spacing: -0.01em;
+        }
+
+        .brand-title-accent {
+            background: linear-gradient(135deg, #38bdf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: #38bdf8;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            color: #7e8ea6;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+
+        .register-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 36px 32px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+        }
+
+        .register-header {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .register-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 6px;
+        }
+
+        .register-description {
+            font-size: 13.5px;
+            color: var(--color-text-muted);
+            line-height: 1.4;
+        }
+
+        .alert-custom {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.28);
+            color: #fca5a5;
+        }
+
+        .alert-error i {
+            font-size: 16px;
+            color: #ef4444;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 7px;
+        }
+
+        .input-group-custom {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            font-size: 15px;
+            pointer-events: none;
+            transition: color 0.15s ease;
+        }
+
+        .form-control-custom {
+            width: 100%;
+            background: #090e2b;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 14px;
+            padding: 10px 16px 10px 40px;
+            outline: none;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .form-control-custom:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+            background: #070c24;
+        }
+
+        .form-control-custom:focus + .input-icon,
+        .input-group-custom:focus-within .input-icon {
+            color: #38bdf8;
+        }
+
+        .form-control-custom::placeholder {
+            color: #475569;
+        }
+
+        select.form-control-custom {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+            padding-right: 36px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+        }
+
+        select.form-control-custom:focus {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2338bdf8' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3E%3C/svg%3E");
+        }
+
+        select.form-control-custom option {
+            background-color: #0f1535;
+            color: #ffffff;
+            padding: 8px 12px;
+        }
+
+        .label-optional {
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #64748b;
+            margin-left: 4px;
+        }
+
+        .field-help {
+            font-size: 11.5px;
+            color: #64748b;
+            margin-top: 5px;
+            display: block;
+        }
+
+        .btn-register {
+            width: 100%;
+            background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14.5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+            margin-top: 24px;
+        }
+
+        .btn-register:hover {
+            background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-register:active {
+            transform: translateY(0);
+        }
+
+        .login-switch {
+            margin-top: 22px;
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .login-switch a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .login-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .register-footer {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="register-container">
+
+    <!-- MeetSpace Branding -->
+    <div class="register-brand">
+        <div class="brand-logo-box">
+            <img src="<?= base_url('assets/images/meetspace-logo.png') ?>" alt="MeetSpace Logo" class="brand-logo-crop">
+        </div>
+        <div class="brand-info">
+            <div class="brand-title">Meet<span class="brand-title-accent">Space</span></div>
+            <div class="brand-subtitle">Enterprise Suite</div>
+        </div>
+    </div>
+
+    <!-- Register Card -->
+    <div class="register-card">
+
+        <div class="register-header">
+            <h1 class="register-title">Create an Account</h1>
+            <p class="register-description">Register to manage and book meeting spaces across your enterprise.</p>
+        </div>
+
+        <?php if (!empty($error)): ?>
+            <div class="alert-custom alert-error" role="alert">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span><?= esc($error) ?></span>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($errors) && is_array($errors)): ?>
+            <div class="alert-custom alert-error" role="alert">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <div>
+                    <ul class="mb-0 ps-3">
+                        <?php foreach ($errors as $err): ?>
+                            <li><?= esc($err) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <form action="<?= base_url('register') ?>" method="POST" autocomplete="on">
+            <?= csrf_field() ?>
+
+            <!-- Name Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="first_name" class="form-label">First Name</label>
+                    <div class="input-group-custom">
+                        <input
+                            type="text"
+                            id="first_name"
+                            name="first_name"
+                            class="form-control-custom"
+                            placeholder="John"
+                            required
+                            autofocus
+                            value="<?= esc(old('first_name')) ?>"
+                            autocomplete="given-name"
+                        >
+                        <i class="bi bi-person input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="last_name" class="form-label">Last Name</label>
+                    <div class="input-group-custom">
+                        <input
+                            type="text"
+                            id="last_name"
+                            name="last_name"
+                            class="form-control-custom"
+                            placeholder="Doe"
+                            required
+                            value="<?= esc(old('last_name')) ?>"
+                            autocomplete="family-name"
+                        >
+                        <i class="bi bi-person input-icon"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Email Address -->
+            <div class="form-group">
+                <label for="email" class="form-label">Corporate Email Address</label>
+                <div class="input-group-custom">
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        class="form-control-custom"
+                        placeholder="john.doe@enterprise.com"
+                        required
+                        value="<?= esc(old('email')) ?>"
+                        autocomplete="email"
+                    >
+                    <i class="bi bi-envelope input-icon"></i>
+                </div>
+            </div>
+
+            <!-- Phone Number (Optional) -->
+            <div class="form-group">
+                <label for="phone" class="form-label">Phone Number <span class="label-optional">(Optional)</span></label>
+                <div class="input-group-custom">
+                    <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        class="form-control-custom"
+                        placeholder="+1 (555) 000-0000"
+                        value="<?= esc(old('phone')) ?>"
+                        autocomplete="tel"
+                    >
+                    <i class="bi bi-telephone input-icon"></i>
+                </div>
+            </div>
+
+            <!-- Role & Department Row -->
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="role_id" class="form-label">Company Role <span class="text-danger">*</span></label>
+                    <div class="input-group-custom">
+                        <select
+                            id="role_id"
+                            name="role_id"
+                            class="form-control-custom"
+                            required
+                        >
+                            <option value="" disabled <?= old('role_id') ? '' : 'selected' ?>>Select role...</option>
+                            <?php if (!empty($allowedRoles)): ?>
+                                <?php foreach ($allowedRoles as $role): ?>
+                                    <option value="<?= esc($role['id']) ?>" <?= (string) old('role_id') === (string) $role['id'] ? 'selected' : '' ?>>
+                                        <?= esc($role['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="4" selected>Employee</option>
+                            <?php endif; ?>
+                        </select>
+                        <i class="bi bi-briefcase input-icon"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="department_id" class="form-label">Department <span class="label-optional">(Optional)</span></label>
+                    <div class="input-group-custom">
+                        <select
+                            id="department_id"
+                            name="department_id"
+                            class="form-control-custom"
+                        >
+                            <option value="" <?= old('department_id') ? '' : 'selected' ?>>Unassigned</option>
+                            <?php if (!empty($departments)): ?>
+                                <?php foreach ($departments as $dept): ?>
+                                    <option value="<?= esc($dept['id']) ?>" <?= (string) old('department_id') === (string) $dept['id'] ? 'selected' : '' ?>>
+                                        <?= esc($dept['name']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                        <i class="bi bi-building input-icon"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password -->
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group-custom">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        class="form-control-custom"
+                        placeholder="••••••••"
+                        required
+                        autocomplete="new-password"
+                    >
+                    <i class="bi bi-lock input-icon"></i>
+                </div>
+                <span class="field-help">Must be at least 8 characters with 1 uppercase letter and 1 number.</span>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="form-group">
+                <label for="password_confirm" class="form-label">Confirm Password</label>
+                <div class="input-group-custom">
+                    <input
+                        type="password"
+                        id="password_confirm"
+                        name="password_confirm"
+                        class="form-control-custom"
+                        placeholder="••••••••"
+                        required
+                        autocomplete="new-password"
+                    >
+                    <i class="bi bi-shield-check input-icon"></i>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-register" id="submitRegisterBtn">
+                <i class="bi bi-person-plus-fill"></i>
+                Create Account
+            </button>
+        </form>
+
+        <div class="login-switch">
+            Already have an account? <a href="<?= base_url('login') ?>">Sign In</a>
+        </div>
+
+    </div>
+
+    <div class="register-footer">
+        &copy; <?= date('Y') ?> MeetSpace Enterprise Suite &bull; Secure Room & Resource Management
+    </div>
+
+</div>
+
+</body>
+</html>

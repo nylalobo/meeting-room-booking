@@ -20,6 +20,9 @@ class Booking extends Model
         'start_time',
         'end_time',
         'status',
+        'approver_id',
+        'approved_at',
+        'rejection_reason',
     ];
 
     protected $useTimestamps = true;
@@ -27,12 +30,15 @@ class Booking extends Model
     protected $updatedField  = 'updated_at';
 
     protected $validationRules = [
-        'room_id'    => 'required|integer',
-        'user_id'    => 'required|integer',
-        'title'      => 'required|max_length[200]',
-        'start_time' => 'required|valid_date[Y-m-d H:i:s]',
-        'end_time'   => 'required|valid_date[Y-m-d H:i:s]',
-        'status'     => 'required|in_list[pending,approved,rejected,cancelled,completed]',
+        'room_id'          => 'required|integer',
+        'user_id'          => 'required|integer',
+        'title'            => 'required|max_length[200]',
+        'start_time'       => 'required|valid_date[Y-m-d H:i:s]',
+        'end_time'         => 'required|valid_date[Y-m-d H:i:s]',
+        'status'           => 'required|in_list[pending,approved,rejected,cancelled,completed]',
+        'approver_id'      => 'permit_empty|integer',
+        'approved_at'      => 'permit_empty|valid_date',
+        'rejection_reason' => 'permit_empty',
     ];
 
     protected $validationMessages = [
@@ -71,6 +77,29 @@ class Booking extends Model
         $builder
             ->where('room_id', $roomId)
             ->whereIn('status', ['pending', 'approved'])
+            ->where('start_time <', $endTime)
+            ->where('end_time >', $startTime);
+        if ($excludeBookingId !== null) {
+            $builder->where('id !=', $excludeBookingId);
+        }
+
+        return $builder->countAllResults() > 0;
+    }
+
+    /**
+     * Check if another already-approved booking conflicts with this room and time.
+     */
+    public function hasApprovedConflict(
+        int $roomId,
+        string $startTime,
+        string $endTime,
+        ?int $excludeBookingId = null
+    ): bool {
+        $builder = $this->builder();
+
+        $builder
+            ->where('room_id', $roomId)
+            ->where('status', 'approved')
             ->where('start_time <', $endTime)
             ->where('end_time >', $startTime);
         if ($excludeBookingId !== null) {

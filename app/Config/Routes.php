@@ -7,12 +7,36 @@ use CodeIgniter\Router\RouteCollection;
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard
+| Authentication (Public Routes)
 |--------------------------------------------------------------------------
 */
 
-$routes->get('/', 'Home::index');
-$routes->get('dashboard/stats', 'Dashboard::stats');
+$routes->get('login', 'Auth::login');
+$routes->post('login', 'Auth::attemptLogin');
+$routes->get('register', 'Auth::register');
+$routes->post('register', 'Auth::attemptRegister');
+$routes->get('verify-email/(:any)', 'Auth::verifyEmail/$1');
+$routes->get('resend-verification', 'Auth::resendVerificationForm');
+$routes->post('resend-verification', 'Auth::resendVerification');
+$routes->match(['get', 'post'], 'logout', 'Auth::logout');
+
+
+/*
+|--------------------------------------------------------------------------
+| Protected Application Routes (Requires Authentication)
+|--------------------------------------------------------------------------
+*/
+
+$routes->group('', ['filter' => 'auth'], static function ($routes): void {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
+
+    $routes->get('/', 'Home::index');
+    $routes->get('dashboard/stats', 'Dashboard::stats');
 
 
 /*
@@ -140,11 +164,14 @@ $routes->delete('facilities/(:num)', 'Facility::delete/$1');
 
 $routes->get('bookings', 'Home::bookings');
 
+$routes->get('api/bookings/pending-approvals', 'Booking::pendingApprovals');
 $routes->get('api/bookings', 'Booking::apiIndex');
 $routes->get('api/bookings/(:num)', 'Booking::show/$1');
 $routes->post('api/bookings', 'Booking::create');
 $routes->put('api/bookings/(:num)', 'Booking::update/$1');
 $routes->delete('api/bookings/(:num)', 'Booking::delete/$1');
+$routes->post('api/bookings/(:num)/approve', 'Booking::approve/$1');
+$routes->post('api/bookings/(:num)/reject', 'Booking::reject/$1');
 
 // Legacy routes for backward compatibility
 $routes->get('bookings/(:num)', 'Booking::show/$1');
@@ -255,3 +282,5 @@ $routes->get('departments/(:num)', 'Department::show/$1');
 $routes->post('departments', 'Department::create');
 $routes->put('departments/(:num)', 'Department::update/$1');
 $routes->delete('departments/(:num)', 'Department::delete/$1');
+
+});

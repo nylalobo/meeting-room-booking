@@ -21,6 +21,8 @@
             loadBookingsData();
             setupBookingFilters();
             setupBookingModal();
+            setupPendingApprovalsFilter();
+            setupBookingRejectionModal();
         }
     });
 
@@ -34,6 +36,7 @@
     let allUsers = [];
     let roomsMap = new Map();
     let usersMap = new Map();
+    let pendingApprovalsOnly = false;
 
 
     /* ==========================================================================
@@ -141,9 +144,15 @@
                 'd-none'
             );
 
-            renderBookings(
-                allBookings
-            );
+            updatePendingApprovalsCount();
+
+            if (pendingApprovalsOnly) {
+                applyBookingFilters();
+            } else {
+                renderBookings(
+                    allBookings
+                );
+            }
 
         } catch (err) {
 
@@ -403,6 +412,22 @@
                 normalizedStatus.charAt(0).toUpperCase() +
                 normalizedStatus.slice(1);
 
+            let statusSubtext = '';
+            if (normalizedStatus === 'rejected' && booking.rejection_reason) {
+                const shortReason = booking.rejection_reason.length > 28
+                    ? booking.rejection_reason.slice(0, 25) + '...'
+                    : booking.rejection_reason;
+                statusSubtext = `<span class="booking-meta-note booking-meta-rejected" title="${escapeHtml(booking.rejection_reason)}"><i class="bi bi-info-circle"></i> ${escapeHtml(shortReason)}</span>`;
+            } else if (normalizedStatus === 'approved' && booking.approver_name) {
+                statusSubtext = `<span class="booking-meta-note booking-meta-approver" title="Approved by ${escapeHtml(booking.approver_name)}"><i class="bi bi-check2"></i> By ${escapeHtml(booking.approver_name)}</span>`;
+            }
+
+            const canApprove = Boolean(booking.can_approve && normalizedStatus === 'pending');
+
+            const organizerDept = booking.organizer_department_name
+                ? `<div class="booking-description" style="font-size: 10.5px; opacity: 0.85;">${escapeHtml(booking.organizer_department_name)}</div>`
+                : '';
+
             row.innerHTML = `
 
                 <td>
@@ -448,16 +473,42 @@
                             ? `<div class="booking-description">${escapeHtml(organizerEmail)}</div>`
                             : ''
                     }
+                    ${organizerDept}
                 </td>
 
                 <td>
                     <span class="booking-status booking-status-${escapeHtml(normalizedStatus)}">
                         ${escapeHtml(statusLabel)}
                     </span>
+                    ${statusSubtext}
                 </td>
 
                 <td>
                     <div class="booking-actions">
+                        ${canApprove ? `
+                            <button
+                                type="button"
+                                class="booking-action-btn booking-approve-btn"
+                                data-booking-id="${escapeHtml(booking.id)}"
+                                data-booking-title="${escapeHtml(booking.title || 'Untitled Meeting')}"
+                                title="Approve booking"
+                                aria-label="Approve booking"
+                            >
+                                <i class="bi bi-check-lg" style="color: #4ade80;"></i>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="booking-action-btn booking-reject-btn"
+                                data-booking-id="${escapeHtml(booking.id)}"
+                                data-booking-title="${escapeHtml(booking.title || 'Untitled Meeting')}"
+                                title="Reject booking"
+                                aria-label="Reject booking"
+                            >
+                                <i class="bi bi-x-lg" style="color: #f87171;"></i>
+                            </button>
+                        ` : ''}
+
                         <button
                             type="button"
                             class="booking-action-btn booking-edit-btn"
@@ -522,7 +573,13 @@
 
         statusFilter?.addEventListener(
             'change',
-            applyBookingFilters
+            () => {
+                if (pendingApprovalsOnly) {
+                    pendingApprovalsOnly = false;
+                    document.getElementById('pendingApprovalsBtn')?.classList.remove('active');
+                }
+                applyBookingFilters();
+            }
         );
     }
 
@@ -561,6 +618,12 @@
 
         const filtered =
             allBookings.filter((booking) => {
+
+                if (pendingApprovalsOnly) {
+                    if (String(booking.status || '').toLowerCase() !== 'pending' || !booking.can_approve) {
+                        return false;
+                    }
+                }
 
                 const title =
                     String(booking.title || '').toLowerCase();
@@ -789,6 +852,16 @@
                 '.booking-delete-btn'
             );
 
+        const approveButtons =
+            document.querySelectorAll(
+                '.booking-approve-btn'
+            );
+
+        const rejectButtons =
+            document.querySelectorAll(
+                '.booking-reject-btn'
+            );
+
         editButtons.forEach((button) => {
             button.addEventListener(
                 'click',
@@ -805,6 +878,27 @@
                 () => {
                     const bookingId = button.dataset.bookingId;
                     deleteBooking(bookingId);
+                }
+            );
+        });
+
+        approveButtons.forEach((button) => {
+            button.addEventListener(
+                'click',
+                () => {
+                    const bookingId = button.dataset.bookingId;
+                    const bookingTitle = button.dataset.bookingTitle || 'this booking';
+                    confirmApproveBooking(bookingId, bookingTitle);
+                }
+            );
+        });
+
+        rejectButtons.forEach((button) => {
+            button.addEventListener(
+                'click',
+                () => {
+                    const bookingId = button.dataset.bookingId;
+                    openBookingRejectionModal(bookingId);
                 }
             );
         });
@@ -1132,6 +1226,382 @@
                 'Delete Failed'
             );
         }
+    }
+
+
+    /* ==========================================================================
+       APPROVAL WORKFLOW
+       ========================================================================== */
+
+    function confirmApproveBooking(bookingId, titleText) {
+
+        const booking = findBookingById(bookingId);
+
+        if (!booking) {
+            showAppNotification(
+                'Unable to find the selected booking.',
+                'error',
+                'Booking Not Found'
+            );
+            return;
+        }
+
+        const dateText = formatDateForDisplay(booking.start_time);
+        const meetingTitle = titleText || booking.title || 'this meeting';
+
+        showAppConfirm(
+            `Are you sure you want to approve "${meetingTitle}" (${dateText})? Once approved, the room is officially reserved.`,
+            async () => {
+                await performBookingApprove(bookingId, meetingTitle);
+            },
+            'Approve Booking',
+            'Approve Booking'
+        );
+    }
+
+
+    async function performBookingApprove(bookingId, titleText) {
+
+        try {
+
+            const response = await fetch(`/api/bookings/${bookingId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || 'Unable to approve booking.');
+            }
+
+            await loadBookingsData();
+
+            showAppNotification(
+                result.message || `"${titleText}" has been approved successfully.`,
+                'success',
+                'Booking Approved'
+            );
+
+        } catch (error) {
+
+            showAppNotification(
+                error.message || 'Unable to approve booking. Please try again.',
+                'error',
+                'Approval Failed'
+            );
+        }
+    }
+
+
+    /* ==========================================================================
+       REJECTION WORKFLOW
+       ========================================================================== */
+
+    function setupBookingRejectionModal() {
+
+        const modal =
+            document.getElementById('bookingRejectionModal');
+
+        const closeBtn =
+            document.getElementById('closeBookingRejectionModal');
+
+        const cancelBtn =
+            document.getElementById('cancelBookingRejectionBtn');
+
+        const form =
+            document.getElementById('bookingRejectionForm');
+
+        if (!modal || !form) {
+            return;
+        }
+
+        closeBtn?.addEventListener(
+            'click',
+            closeBookingRejectionModalWindow
+        );
+
+        cancelBtn?.addEventListener(
+            'click',
+            closeBookingRejectionModalWindow
+        );
+
+        modal.addEventListener(
+            'click',
+            (event) => {
+                if (event.target === modal) {
+                    closeBookingRejectionModalWindow();
+                }
+            }
+        );
+
+        document.addEventListener(
+            'keydown',
+            (event) => {
+                if (
+                    event.key === 'Escape' &&
+                    !modal.classList.contains('d-none')
+                ) {
+                    closeBookingRejectionModalWindow();
+                }
+            }
+        );
+
+        form.addEventListener(
+            'submit',
+            handleBookingRejectionSubmit
+        );
+    }
+
+
+    function openBookingRejectionModal(bookingId) {
+
+        const booking = findBookingById(bookingId);
+
+        if (!booking) {
+            showAppNotification(
+                'Unable to find the selected booking.',
+                'error',
+                'Booking Not Found'
+            );
+            return;
+        }
+
+        const modal =
+            document.getElementById('bookingRejectionModal');
+
+        const idInput =
+            document.getElementById('rejectionBookingId');
+
+        const reasonInput =
+            document.getElementById('rejectionReasonInput');
+
+        const errorBox =
+            document.getElementById('bookingRejectionError');
+
+        const errorText =
+            document.getElementById('bookingRejectionErrorText');
+
+        const subtitle =
+            document.getElementById('bookingRejectionSubtitle');
+
+        if (!modal) {
+            return;
+        }
+
+        if (idInput) {
+            idInput.value = String(bookingId);
+        }
+
+        if (reasonInput) {
+            reasonInput.value = '';
+        }
+
+        if (subtitle) {
+            subtitle.textContent =
+                `Provide a clear reason for rejecting "${booking.title || 'this meeting'}".`;
+        }
+
+        errorBox?.classList.add('d-none');
+
+        if (errorText) {
+            errorText.textContent = '';
+        }
+
+        modal.classList.remove('d-none');
+        document.body.classList.add('booking-modal-open');
+
+        setTimeout(() => {
+            reasonInput?.focus();
+        }, 50);
+    }
+
+
+    function closeBookingRejectionModalWindow() {
+
+        const modal =
+            document.getElementById('bookingRejectionModal');
+
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.add('d-none');
+        document.body.classList.remove('booking-modal-open');
+
+        const errorBox =
+            document.getElementById('bookingRejectionError');
+
+        errorBox?.classList.add('d-none');
+    }
+
+
+    async function handleBookingRejectionSubmit(event) {
+
+        event.preventDefault();
+
+        const idInput =
+            document.getElementById('rejectionBookingId');
+
+        const reasonInput =
+            document.getElementById('rejectionReasonInput');
+
+        const submitBtn =
+            document.getElementById('submitBookingRejectionBtn');
+
+        const errorBox =
+            document.getElementById('bookingRejectionError');
+
+        const errorText =
+            document.getElementById('bookingRejectionErrorText');
+
+        const bookingId =
+            idInput ? idInput.value : '';
+
+        const reason =
+            reasonInput ? reasonInput.value.trim() : '';
+
+        if (!bookingId) {
+            return;
+        }
+
+        if (!reason || reason.length < 3) {
+            if (errorBox && errorText) {
+                errorText.textContent =
+                    'Please provide a meaningful reason (at least 3 characters).';
+                errorBox.classList.remove('d-none');
+            }
+            reasonInput?.focus();
+            return;
+        }
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML =
+                '<i class="bi bi-arrow-repeat spin"></i> Rejecting...';
+        }
+
+        try {
+
+            const response = await fetch(`/api/bookings/${bookingId}/reject`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ reason })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                const msg =
+                    result.message || 'Unable to reject booking.';
+
+                if (errorBox && errorText) {
+                    errorText.textContent = msg;
+                    errorBox.classList.remove('d-none');
+                }
+
+                showAppNotification(msg, 'error', 'Rejection Failed');
+                return;
+            }
+
+            closeBookingRejectionModalWindow();
+            await loadBookingsData();
+
+            showAppNotification(
+                result.message || 'Booking has been rejected.',
+                'success',
+                'Booking Rejected'
+            );
+
+        } catch (error) {
+
+            const msg =
+                error.message || 'Network error occurred while rejecting.';
+
+            if (errorBox && errorText) {
+                errorText.textContent = msg;
+                errorBox.classList.remove('d-none');
+            }
+
+        } finally {
+
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML =
+                    '<i class="bi bi-x-circle"></i> Confirm Rejection';
+            }
+        }
+    }
+
+
+    /* ==========================================================================
+       PENDING APPROVALS TOOLBAR FILTER
+       ========================================================================== */
+
+    function setupPendingApprovalsFilter() {
+
+        const pendingBtn =
+            document.getElementById('pendingApprovalsBtn');
+
+        if (!pendingBtn) {
+            return;
+        }
+
+        const currentUser =
+            window.MeetSpaceUser || null;
+
+        const isApproverRole =
+            currentUser &&
+            ['Admin', 'Facilities Manager', 'Manager'].includes(
+                currentUser.role_name
+            );
+
+        if (!isApproverRole) {
+            pendingBtn.classList.add('d-none');
+            return;
+        }
+
+        pendingBtn.classList.remove('d-none');
+
+        pendingBtn.addEventListener('click', () => {
+
+            pendingApprovalsOnly = !pendingApprovalsOnly;
+            pendingBtn.classList.toggle('active', pendingApprovalsOnly);
+
+            const statusFilter =
+                document.getElementById('statusFilter');
+
+            if (pendingApprovalsOnly && statusFilter) {
+                statusFilter.value = '';
+            }
+
+            applyBookingFilters();
+        });
+    }
+
+
+    function updatePendingApprovalsCount() {
+
+        const badge =
+            document.getElementById('pendingApprovalsCount');
+
+        if (!badge) {
+            return;
+        }
+
+        const count = allBookings.filter(
+            (b) =>
+                String(b.status || '').toLowerCase() === 'pending' &&
+                b.can_approve
+        ).length;
+
+        badge.textContent = String(count);
     }
 
 

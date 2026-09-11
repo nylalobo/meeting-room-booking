@@ -37,6 +37,12 @@
         <option value="cancelled">Cancelled</option>
         <option value="completed">Completed</option>
     </select>
+
+    <button type="button" class="btn-pending-filter d-none" id="pendingApprovalsBtn" title="Show only pending approvals awaiting review">
+        <i class="bi bi-clock-history"></i>
+        <span>Pending Approvals</span>
+        <span class="badge pending-count-badge" id="pendingApprovalsCount">0</span>
+    </button>
 </div>
 
 <div class="panel-card bookings-panel">
@@ -256,6 +262,87 @@
 
 </div>
 
+
+<!-- ================================================================
+     Booking Rejection Modal
+     ================================================================ -->
+
+<div class="booking-modal-overlay d-none" id="bookingRejectionModal">
+
+    <div class="booking-modal" role="dialog" aria-modal="true" aria-labelledby="bookingRejectionTitle" style="max-width: 480px;">
+
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="bookingRejectionTitle">Reject Booking Request</h2>
+                <p id="bookingRejectionSubtitle">Provide a clear reason for rejecting this booking.</p>
+            </div>
+
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeBookingRejectionModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form id="bookingRejectionForm">
+
+            <input type="hidden" id="rejectionBookingId" name="booking_id">
+
+            <div id="bookingRejectionError" class="booking-form-alert booking-form-error d-none">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="bookingRejectionErrorText"></span>
+            </div>
+
+            <div class="booking-form-grid" style="grid-template-columns: 1fr;">
+
+                <div class="booking-form-group booking-form-full">
+                    <label for="rejectionReasonInput">
+                        Rejection Reason <span>*</span>
+                    </label>
+                    <textarea
+                        id="rejectionReasonInput"
+                        name="reason"
+                        rows="4"
+                        required
+                        minlength="3"
+                        maxlength="500"
+                        placeholder="Please specify why this booking request is being rejected (minimum 3 characters)..."
+                    ></textarea>
+                    <small style="font-size: 11px; color: var(--color-text-muted, #8496b5); margin-top: 4px; display: block;">
+                        Rejection reasons are permanently saved and visible in audit logs.
+                    </small>
+                </div>
+
+            </div>
+
+            <div class="booking-modal-footer">
+                <button
+                    type="button"
+                    class="btn-booking-cancel"
+                    id="cancelBookingRejectionBtn"
+                >
+                    Cancel
+                </button>
+
+                <button
+                    type="submit"
+                    class="btn-booking-reject-submit"
+                    id="submitBookingRejectionBtn"
+                >
+                    <i class="bi bi-x-circle"></i>
+                    Confirm Rejection
+                </button>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
 <style>
 .bookings-panel {
     padding: 0;
@@ -330,6 +417,97 @@
     background-color: rgba(59, 130, 246, 0.12);
     color: #60a5fa;
     border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.btn-pending-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    background-color: rgba(234, 179, 8, 0.08);
+    color: #facc15;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-pending-filter:hover {
+    background-color: rgba(234, 179, 8, 0.16);
+    border-color: rgba(234, 179, 8, 0.6);
+}
+
+.btn-pending-filter.active {
+    background-color: #eab308;
+    color: #0f172a;
+    border-color: #ca8a04;
+    font-weight: 600;
+}
+
+.btn-pending-filter .pending-count-badge {
+    background-color: #eab308;
+    color: #0f172a;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 12px;
+}
+
+.btn-pending-filter.active .pending-count-badge {
+    background-color: #0f172a;
+    color: #facc15;
+}
+
+.booking-approve-btn:hover {
+    background-color: rgba(34, 197, 94, 0.18) !important;
+    border-color: rgba(34, 197, 94, 0.4) !important;
+    color: #4ade80 !important;
+}
+
+.booking-reject-btn:hover {
+    background-color: rgba(239, 68, 68, 0.18) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+    color: #f87171 !important;
+}
+
+.btn-booking-reject-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    background-color: #dc2626;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.btn-booking-reject-submit:hover {
+    background-color: #b91c1c;
+}
+
+.btn-booking-reject-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.booking-meta-note {
+    font-size: 11px;
+    margin-top: 4px;
+    display: block;
+}
+
+.booking-meta-rejected {
+    color: #f87171;
+}
+
+.booking-meta-approver {
+    color: var(--color-text-muted, #8496b5);
 }
 </style>
 

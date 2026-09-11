@@ -67,3 +67,21 @@
 #--------------------------------------------------------------------
 
 # logger.threshold = 4
+
+#--------------------------------------------------------------------
+# EMAIL / GMAIL SMTP CONFIGURATION
+#--------------------------------------------------------------------
+# To enable real email verification via Gmail SMTP:
+# 1. Enable 2-Step Verification in your Google Account (myaccount.google.com/security)
+# 2. Generate a 16-character App Password under Security -> App Passwords
+# 3. Fill in your Gmail address and generated App Password below in your .env file
+#
+# email.protocol = 'smtp'
+# email.SMTPHost = 'smtp.gmail.com'
+# email.SMTPPort = 587
+# email.SMTPCrypto = 'tls'
+# email.SMTPUser = 'your-email@gmail.com'
+# email.SMTPPass = 'your-16-char-app-password'
+# email.fromEmail = 'your-email@gmail.com'
+# email.fromName = 'MeetSpace Enterprise Suite'
+# email.mailType = 'html'

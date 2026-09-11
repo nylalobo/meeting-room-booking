@@ -1,8 +1,9 @@
 /* ==========================================================================
-   MeetSpace Enterprise Suite - Modern Dark Navy Theme
+   MeetSpace Enterprise Suite - Theme Custom Properties
    ========================================================================== */
 
-:root {
+:root,
+[data-theme="dark"] {
     --bg-main: #070b28;
     --bg-sidebar: #10121a;
     --bg-card: #0e1544;
@@ -21,6 +22,62 @@
     --color-purple: #a78bfa;
     --color-teal: #2dd4bf;
     --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+    /* Semantic UI Tokens */
+    --topbar-bg: #070b28;
+    --topbar-border: rgba(255, 255, 255, 0.04);
+    --table-header-color: #5f6f90;
+    --table-border: rgba(255, 255, 255, 0.05);
+    --table-hover-bg: rgba(255, 255, 255, 0.02);
+    --search-bg: #0c1238;
+    --modal-bg: #0e1544;
+    --modal-overlay: rgba(3, 6, 24, 0.78);
+    --modal-border: rgba(255, 255, 255, 0.08);
+    --input-bg: #090e32;
+    --input-border: rgba(255, 255, 255, 0.11);
+    --account-bg: rgba(255, 255, 255, 0.03);
+    --account-avatar-bg: linear-gradient(135deg, #0284c7 0%, #6366f1 100%);
+    --account-avatar-color: #ffffff;
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.25);
+    --btn-toggle-bg: #0e1544;
+}
+
+[data-theme="light"] {
+    --bg-main: #f8fafc;
+    --bg-sidebar: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-inner: #f1f5f9;
+    --bg-active-nav: #e0f2fe;
+    --border-subtle: #e2e8f0;
+    --border-input: #cbd5e1;
+    --color-yellow: #d97706;
+    --color-yellow-hover: #b45309;
+    --color-text-white: #0f172a;
+    --color-text-muted: #64748b;
+    --color-text-nav: #334155;
+    --color-cyan: #0284c7;
+    --color-blue: #2563eb;
+    --color-amber: #b45309;
+    --color-purple: #7c3aed;
+    --color-teal: #0f766e;
+
+    /* Semantic UI Tokens */
+    --topbar-bg: #ffffff;
+    --topbar-border: #e2e8f0;
+    --table-header-color: #64748b;
+    --table-border: #e2e8f0;
+    --table-hover-bg: #f8fafc;
+    --search-bg: #f1f5f9;
+    --modal-bg: #ffffff;
+    --modal-overlay: rgba(15, 23, 42, 0.55);
+    --modal-border: #e2e8f0;
+    --input-bg: #f8fafc;
+    --input-border: #cbd5e1;
+    --account-bg: #f1f5f9;
+    --account-avatar-bg: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    --account-avatar-color: #ffffff;
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --btn-toggle-bg: #f1f5f9;
 }
 
 * {
@@ -34,11 +91,13 @@ body {
     color: var(--color-text-white);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .app-wrapper {
     min-height: 100vh;
     display: flex;
+    position: relative;
 }
 
 /* ==========================================================================
@@ -49,7 +108,7 @@ body {
     width: 240px;
     min-height: 100vh;
     background-color: var(--bg-sidebar);
-    border-right: 1px solid rgba(255, 255, 255, 0.04);
+    border-right: 1px solid var(--border-subtle);
     position: fixed;
     left: 0;
     top: 0;
@@ -57,19 +116,53 @@ body {
     z-index: 1000;
     display: flex;
     flex-direction: column;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.25s ease,
+                border-color 0.25s ease;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 12px;
 }
 
 .sidebar-brand {
-    padding: 22px 20px 18px 20px;
+    flex: 1;
+    padding: 20px 16px 16px 20px;
     display: flex;
     align-items: center;
     gap: 12px;
     text-decoration: none;
     transition: opacity 0.15s ease;
+    overflow: hidden;
 }
 
 .sidebar-brand:hover {
     opacity: 0.92;
+}
+
+.sidebar-close-btn {
+    display: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-close-btn:hover {
+    background-color: var(--btn-ghost-hover);
+    color: var(--color-text-white);
 }
 
 .brand-logo-box {
@@ -115,6 +208,8 @@ body {
 .brand-info {
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .brand-title {
@@ -150,15 +245,18 @@ body {
 }
 
 .sidebar-action {
-    padding: 0 16px 18px 16px;
+    padding: 0 16px 16px 16px;
 }
 
 .btn-new-booking {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     width: 100%;
     text-align: center;
     background-color: var(--color-yellow);
-    color: #0f1118;
+    color: #0f1118 !important;
     font-weight: 700;
     font-size: 13.5px;
     padding: 9px 16px;
@@ -166,11 +264,17 @@ body {
     text-decoration: none;
     transition: background-color 0.15s ease-in-out;
     border: none;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .btn-new-booking:hover {
     background-color: var(--color-yellow-hover);
-    color: #0f1118;
+    color: #0f1118 !important;
+}
+
+.new-booking-icon {
+    font-size: 14px;
 }
 
 .sidebar-nav {
@@ -178,6 +282,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 3px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .nav-item {
@@ -191,17 +297,19 @@ body {
     font-weight: 500;
     border-radius: 6px;
     transition: all 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .nav-item:hover {
     color: var(--color-text-white);
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: var(--btn-ghost-hover);
 }
 
 .nav-item.active {
     color: var(--color-text-white);
     background-color: var(--bg-active-nav);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-subtle);
     font-weight: 600;
 }
 
@@ -211,6 +319,108 @@ body {
     width: 18px;
     display: inline-flex;
     justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Sidebar Bottom Account & Logout Section
+   ========================================================================== */
+
+.sidebar-footer {
+    margin-top: auto;
+    padding: 14px 12px 16px;
+    border-top: 1px solid var(--border-subtle);
+    background-color: var(--bg-sidebar);
+}
+
+.sidebar-account {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.account-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background-color: var(--account-bg);
+    border: 1px solid var(--border-subtle);
+    overflow: hidden;
+}
+
+.account-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--account-avatar-bg);
+    color: var(--account-avatar-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.account-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.account-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+}
+
+.account-role {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    margin-top: 2px;
+}
+
+.btn-sidebar-logout {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--color-text-nav);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.btn-sidebar-logout:hover {
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.28);
+}
+
+.logout-icon {
+    font-size: 14px;
+    flex-shrink: 0;
 }
 
 /* ==========================================================================
@@ -222,13 +432,48 @@ body {
     width: calc(100% - 240px);
     min-height: 100vh;
     background-color: var(--bg-main);
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                background-color 0.25s ease;
 }
 
 .topbar {
-    padding: 20px 32px 10px 32px;
+    padding: 16px 32px 14px 32px;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    background-color: var(--topbar-bg);
+    border-bottom: 1px solid var(--topbar-border);
+    transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.sidebar-toggle-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    background: var(--btn-toggle-bg);
+    color: var(--color-text-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle-btn:hover {
+    background: var(--bg-active-nav);
+    border-color: var(--color-cyan);
+    color: var(--color-cyan);
 }
 
 .topbar-search {
@@ -248,7 +493,7 @@ body {
 
 .search-input {
     width: 100%;
-    background-color: #0c1238;
+    background-color: var(--search-bg);
     border: 1px solid var(--border-input);
     border-radius: 6px;
     padding: 7px 12px 7px 34px;
@@ -265,6 +510,207 @@ body {
 .search-input:focus {
     border-color: rgba(99, 102, 241, 0.5);
     box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.theme-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border-subtle);
+    background: var(--btn-toggle-bg);
+    color: var(--color-text-white);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.theme-toggle-btn:hover {
+    background: var(--bg-active-nav);
+    border-color: var(--color-yellow);
+    transform: translateY(-1px);
+}
+
+.theme-toggle-btn:active {
+    transform: translateY(0);
+}
+
+.theme-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+}
+
+/* Dark mode theme icon visibility */
+:root .theme-icon-light,
+[data-theme="dark"] .theme-icon-light {
+    display: none !important;
+}
+
+:root .theme-icon-dark,
+[data-theme="dark"] .theme-icon-dark {
+    display: inline-block !important;
+    color: #facc15;
+}
+
+/* Light mode theme icon visibility */
+[data-theme="light"] .theme-icon-dark {
+    display: none !important;
+}
+
+[data-theme="light"] .theme-icon-light {
+    display: inline-block !important;
+    color: #d97706;
+}
+
+/* ==========================================================================
+   Desktop Collapsed Sidebar
+   ========================================================================== */
+
+@media (min-width: 992px) {
+    .app-wrapper.sidebar-collapsed .sidebar {
+        width: 72px;
+    }
+
+    .app-wrapper.sidebar-collapsed .main-area {
+        margin-left: 72px;
+        width: calc(100% - 72px);
+    }
+
+    .app-wrapper.sidebar-collapsed .brand-info,
+    .app-wrapper.sidebar-collapsed .new-booking-text,
+    .app-wrapper.sidebar-collapsed .nav-text,
+    .app-wrapper.sidebar-collapsed .account-info,
+    .app-wrapper.sidebar-collapsed .logout-text {
+        display: none !important;
+    }
+
+    .app-wrapper.sidebar-collapsed .sidebar-header {
+        padding-right: 0;
+    }
+
+    .app-wrapper.sidebar-collapsed .sidebar-brand {
+        padding: 18px 0;
+        justify-content: center;
+    }
+
+    .app-wrapper.sidebar-collapsed .sidebar-action {
+        padding: 0 12px 14px;
+    }
+
+    .app-wrapper.sidebar-collapsed .btn-new-booking {
+        padding: 9px 0;
+        justify-content: center;
+    }
+
+    .app-wrapper.sidebar-collapsed .new-booking-icon {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .app-wrapper.sidebar-collapsed .nav-item {
+        padding: 10px 0;
+        justify-content: center;
+        gap: 0;
+    }
+
+    .app-wrapper.sidebar-collapsed .nav-icon {
+        margin: 0;
+        font-size: 18px;
+    }
+
+    .app-wrapper.sidebar-collapsed .sidebar-footer {
+        padding: 12px 8px 14px;
+    }
+
+    .app-wrapper.sidebar-collapsed .account-profile {
+        justify-content: center;
+        padding: 6px 0;
+        background: transparent;
+        border-color: transparent;
+    }
+
+    .app-wrapper.sidebar-collapsed .btn-sidebar-logout {
+        padding: 8px 0;
+        justify-content: center;
+    }
+}
+
+/* ==========================================================================
+   Mobile Responsive Off-Canvas Navigation
+   ========================================================================== */
+
+.sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(3, 6, 24, 0.65);
+    backdrop-filter: blur(3px);
+    z-index: 995;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+@media (max-width: 991px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                    background-color 0.25s ease,
+                    border-color 0.25s ease;
+        box-shadow: none;
+    }
+
+    .main-area {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .sidebar-close-btn {
+        display: flex;
+    }
+
+    .app-wrapper.sidebar-open .sidebar-backdrop {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .app-wrapper.sidebar-open .sidebar {
+        transform: translateX(0);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .topbar {
+        padding: 14px 20px;
+    }
+
+    .content {
+        padding: 14px 20px 32px 20px;
+    }
+}
+
+@media (max-width: 576px) {
+    .topbar-search {
+        width: 170px;
+    }
+
+    .theme-label {
+        display: none;
+    }
+
+    .theme-toggle-btn {
+        padding: 7px 11px;
+    }
 }
 
 /* ==========================================================================
@@ -387,20 +833,25 @@ body {
 
 .custom-dark-table thead th {
     background-color: transparent !important;
-    color: #5f6f90 !important;
+    color: var(--table-header-color) !important;
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.6px;
     text-transform: uppercase;
     padding: 8px 12px 14px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-bottom: 1px solid var(--table-border) !important;
 }
 
 .custom-dark-table tbody td {
     background-color: transparent !important;
     padding: 13px 12px 13px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+    border-bottom: 1px solid var(--table-border) !important;
     font-size: 13px;
+    color: var(--color-text-white) !important;
+}
+
+.custom-dark-table tbody tr:hover td {
+    background-color: var(--table-hover-bg) !important;
 }
 
 .custom-dark-table tbody tr:last-child td {
@@ -611,7 +1062,7 @@ body {
 
 .booking-search input {
     width: 100%;
-    background-color: #0c1238;
+    background-color: var(--search-bg);
     border: 1px solid var(--border-input);
     border-radius: 6px;
     padding: 9px 12px 9px 34px;
@@ -630,13 +1081,18 @@ body {
 
 .booking-filter {
     min-width: 150px;
-    background-color: #0c1238;
+    background-color: var(--search-bg);
     border: 1px solid var(--border-input);
     border-radius: 6px;
     padding: 9px 12px;
     color: var(--color-text-white);
     font-size: 13px;
     outline: none;
+}
+
+.booking-filter option {
+    background-color: var(--bg-card);
+    color: var(--color-text-white);
 }
 
 .bookings-panel {
@@ -804,8 +1260,8 @@ body {
     max-width: 720px;
     max-height: calc(100vh - 48px);
     overflow-y: auto;
-    background-color: #0e1544;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background-color: var(--modal-bg);
+    border: 1px solid var(--modal-border);
     border-radius: 10px;
     box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
 }
@@ -816,19 +1272,19 @@ body {
     justify-content: space-between;
     gap: 20px;
     padding: 24px 26px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 .booking-modal-header h2 {
     margin: 0;
-    color: #ffffff;
+    color: var(--color-text-white);
     font-size: 20px;
     font-weight: 700;
 }
 
 .booking-modal-header p {
     margin: 5px 0 0;
-    color: #7b8cae;
+    color: var(--color-text-muted);
     font-size: 12.5px;
 }
 
@@ -836,10 +1292,10 @@ body {
     width: 34px;
     height: 34px;
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     border-radius: 6px;
     background: transparent;
-    color: #8491a5;
+    color: var(--color-text-nav);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -848,8 +1304,8 @@ body {
 }
 
 .booking-modal-close:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
+    background-color: var(--table-hover-bg);
+    color: var(--color-text-white);
 }
 
 .booking-form-grid {
@@ -870,7 +1326,7 @@ body {
 
 .booking-form-group label {
     margin-bottom: 7px;
-    color: #c4cee0;
+    color: var(--color-text-white);
     font-size: 12px;
     font-weight: 600;
 }
@@ -883,10 +1339,10 @@ body {
 .booking-form-group select,
 .booking-form-group textarea {
     width: 100%;
-    border: 1px solid rgba(255, 255, 255, 0.11);
+    border: 1px solid var(--input-border);
     border-radius: 6px;
-    background-color: #090e32;
-    color: #ffffff;
+    background-color: var(--input-bg);
+    color: var(--color-text-white);
     padding: 10px 12px;
     font-family: var(--font-family);
     font-size: 13px;
@@ -917,8 +1373,8 @@ body {
 }
 
 .booking-form-group select option {
-    background-color: #0e1544;
-    color: #ffffff;
+    background-color: var(--modal-bg);
+    color: var(--color-text-white);
 }
 
 .booking-form-alert {
@@ -950,7 +1406,7 @@ body {
     justify-content: flex-end;
     gap: 10px;
     padding: 18px 26px 22px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--border-subtle);
 }
 
 .btn-booking-cancel,
@@ -966,13 +1422,13 @@ body {
 
 .btn-booking-cancel {
     background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    color: #8491a5;
+    border: 1px solid var(--border-input);
+    color: var(--color-text-muted);
 }
 
 .btn-booking-cancel:hover {
-    background-color: rgba(255, 255, 255, 0.04);
-    color: #ffffff;
+    background-color: var(--table-hover-bg);
+    color: var(--color-text-white);
 }
 
 .btn-booking-submit {
@@ -1040,4 +1496,61 @@ body {
     .btn-booking-submit {
         width: 100%;
     }
+}
+
+/* ==========================================================================
+   Light Mode Dialog & Component Overrides
+   ========================================================================== */
+
+[data-theme="light"] .app-confirm-modal {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 25px 60px rgba(15, 23, 42, 0.16);
+}
+
+[data-theme="light"] .app-confirm-content h3 {
+    color: #0f172a;
+}
+
+[data-theme="light"] .app-confirm-content p {
+    color: #64748b;
+}
+
+[data-theme="light"] .app-confirm-cancel {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .app-confirm-cancel:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+[data-theme="light"] .location-action-btn,
+[data-theme="light"] .room-action-btn,
+[data-theme="light"] .facility-action-btn,
+[data-theme="light"] .booking-action-btn,
+[data-theme="light"] .user-action-btn,
+[data-theme="light"] .participant-action-btn,
+[data-theme="light"] .department-action-btn {
+    border-color: #e2e8f0;
+    color: #64748b;
+}
+
+[data-theme="light"] .location-action-btn:hover,
+[data-theme="light"] .room-action-btn:hover,
+[data-theme="light"] .facility-action-btn:hover,
+[data-theme="light"] .booking-action-btn:hover,
+[data-theme="light"] .user-action-btn:hover,
+[data-theme="light"] .participant-action-btn:hover,
+[data-theme="light"] .department-action-btn:hover {
+    background-color: #f1f5f9;
+    color: #0f172a;
+}
+
+[data-theme="light"] .user-role-badge {
+    background-color: #ede9fe;
+    color: #6366f1;
+    border: 1px solid #c7d2fe;
 }

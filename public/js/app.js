@@ -13,6 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inject notification / confirmation UI
     initializeAppNotifications();
 
+    // UI/UX feature initializations
+    initializeThemeToggle();
+    initializeSidebarToggle();
+    initializeLogoutConfirmation();
+
     // Global search input
     const searchInput = document.querySelector('.search-input');
 
@@ -787,4 +792,159 @@ function escapeHtml(value) {
             "'",
             '&#039;'
         );
+}
+
+
+/* ==========================================================================
+   UI / UX ENHANCEMENTS (THEME, SIDEBAR, LOGOUT)
+   ========================================================================== */
+
+/**
+ * Light / Dark mode theme toggle
+ * Supports instant anti-flash rendering and persists selection in localStorage.
+ */
+function initializeThemeToggle() {
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeLabel = document.getElementById('themeLabel');
+
+    function applyTheme(theme, persist = true) {
+        const activeTheme = theme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', activeTheme);
+        if (themeLabel) {
+            themeLabel.textContent = activeTheme === 'light' ? 'Light' : 'Dark';
+        }
+        if (themeToggleBtn) {
+            const nextMode = activeTheme === 'light' ? 'dark' : 'light';
+            themeToggleBtn.setAttribute('aria-label', `Switch to ${nextMode} theme`);
+            themeToggleBtn.title = `Switch to ${nextMode} theme`;
+        }
+        if (persist) {
+            try {
+                localStorage.setItem('meetspace-theme', activeTheme);
+            } catch (err) {
+                // Ignore localStorage errors (e.g. private mode)
+            }
+        }
+    }
+
+    // Determine initial active theme
+    const currentTheme = document.documentElement.getAttribute('data-theme')
+        || (function() {
+            try { return localStorage.getItem('meetspace-theme'); } catch(e) { return null; }
+        })()
+        || 'dark';
+
+    applyTheme(currentTheme, false);
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const nowTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            const nextTheme = nowTheme === 'light' ? 'dark' : 'light';
+            applyTheme(nextTheme, true);
+        });
+    }
+}
+
+/**
+ * Responsive sidebar navigation & collapse
+ * - On desktop (>= 992px): toggles compact icon-only collapsed state (.sidebar-collapsed on #appWrapper)
+ * - On mobile (< 992px): toggles off-canvas drawer (.sidebar-open on #appWrapper)
+ * - Backdrop click, close button, ESC key, and link navigation dismiss drawer
+ */
+function initializeSidebarToggle() {
+    const appWrapper = document.getElementById('appWrapper');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const closeBtn = document.getElementById('sidebarCloseBtn');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    if (!appWrapper) return;
+
+    // Restore desktop collapsed state if saved
+    try {
+        if (window.innerWidth >= 992 && localStorage.getItem('meetspace-sidebar-collapsed') === '1') {
+            appWrapper.classList.add('sidebar-collapsed');
+        }
+    } catch (err) {}
+
+    function closeMobileSidebar() {
+        appWrapper.classList.remove('sidebar-open');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function toggleSidebar() {
+        if (window.innerWidth >= 992) {
+            // Desktop: toggle compact icon mode
+            const isCollapsed = appWrapper.classList.toggle('sidebar-collapsed');
+            try {
+                localStorage.setItem('meetspace-sidebar-collapsed', isCollapsed ? '1' : '0');
+            } catch (err) {}
+        } else {
+            // Mobile: toggle drawer
+            const isOpen = appWrapper.classList.toggle('sidebar-open');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        }
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleSidebar);
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeMobileSidebar);
+    }
+
+    if (backdrop) {
+        backdrop.addEventListener('click', closeMobileSidebar);
+    }
+
+    // Keyboard ESC dismissal for mobile drawer
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (appWrapper.classList.contains('sidebar-open')) {
+                closeMobileSidebar();
+            }
+        }
+    });
+
+    // Close mobile drawer on navigation link click
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-item');
+    navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) {
+                closeMobileSidebar();
+            }
+        });
+    });
+
+    // Handle responsive resize: remove mobile open state when expanding to desktop
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 992 && appWrapper.classList.contains('sidebar-open')) {
+            closeMobileSidebar();
+        }
+    });
+}
+
+/**
+ * User account section logout confirmation dialog
+ * Intercepts #sidebarLogoutBtn and prompts with custom showAppConfirm
+ */
+function initializeLogoutConfirmation() {
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (!logoutBtn) return;
+
+    logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showAppConfirm(
+            'Are you sure you want to logout of MeetSpace?',
+            () => {
+                window.location.href = '/logout';
+            },
+            'Confirm Logout',
+            'Logout'
+        );
+    });
 }
