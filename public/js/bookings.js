@@ -24,6 +24,7 @@
             setupPendingApprovalsFilter();
             setupBookingRejectionModal();
             setupRoomAvailabilitySearch();
+            setupCalendarControls();
         }
     });
 
@@ -38,6 +39,13 @@
     let roomsMap = new Map();
     let usersMap = new Map();
     let pendingApprovalsOnly = false;
+
+    // Calendar UI State (Milestone 4)
+    let currentCalendarDate = new Date();
+    let currentCalendarView = 'month'; // 'month' | 'week' | 'day'
+    let calendarEvents = [];
+    let activeViewMode = 'list'; // 'list' | 'calendar'
+    let currentSelectedCalendarEvent = null;
 
 
     /* ==========================================================================
@@ -665,6 +673,10 @@
             });
 
         renderBookings(filtered);
+
+        if (activeViewMode === 'calendar') {
+            fetchCalendarEvents();
+        }
     }
 
 
@@ -1731,6 +1743,10 @@
             );
 
             await loadBookingsData();
+
+            if (activeViewMode === 'calendar') {
+                fetchCalendarEvents();
+            }
 
             setTimeout(() => {
                 closeBookingModalWindow();
@@ -2883,6 +2899,973 @@
         const endTime = formatTimeForDisplay(endComp.hours, endComp.minutes);
 
         return `${startTime} - ${endTime}`;
+    }
+
+
+    /* ==========================================================================
+       CALENDAR EXPERIENCE (MILESTONE 4)
+       ========================================================================== */
+
+    function setupCalendarControls() {
+
+        const listViewBtn = document.getElementById('listViewBtn');
+        const calendarViewBtn = document.getElementById('calendarViewBtn');
+
+        const prevBtn = document.getElementById('calendarPrevBtn');
+        const nextBtn = document.getElementById('calendarNextBtn');
+        const todayBtn = document.getElementById('calendarTodayBtn');
+
+        const viewMonthBtn = document.getElementById('calendarViewMonthBtn');
+        const viewWeekBtn = document.getElementById('calendarViewWeekBtn');
+        const viewDayBtn = document.getElementById('calendarViewDayBtn');
+
+        const closeCalDetail = document.getElementById('closeCalDetailModal');
+        const closeCalDetailBtn = document.getElementById('calDetailCloseBtn');
+        const editCalDetailBtn = document.getElementById('calDetailEditBtn');
+        const viewSeriesBtn = document.getElementById('calDetailViewSeriesBtn');
+
+        // View Mode Switcher
+        listViewBtn?.addEventListener('click', () => {
+            switchToListView();
+        });
+
+        calendarViewBtn?.addEventListener('click', () => {
+            switchToCalendarView();
+        });
+
+        // Navigation
+        prevBtn?.addEventListener('click', () => {
+            navigateCalendar(-1);
+        });
+
+        nextBtn?.addEventListener('click', () => {
+            navigateCalendar(1);
+        });
+
+        todayBtn?.addEventListener('click', () => {
+            navigateCalendarToday();
+        });
+
+        // View Selectors
+        viewMonthBtn?.addEventListener('click', () => {
+            setCalendarView('month');
+        });
+
+        viewWeekBtn?.addEventListener('click', () => {
+            setCalendarView('week');
+        });
+
+        viewDayBtn?.addEventListener('click', () => {
+            setCalendarView('day');
+        });
+
+        // Event Detail Modal
+        closeCalDetail?.addEventListener('click', closeCalendarDetailModal);
+        closeCalDetailBtn?.addEventListener('click', closeCalendarDetailModal);
+
+        editCalDetailBtn?.addEventListener('click', () => {
+            closeCalendarDetailModal();
+            if (currentSelectedCalendarEvent) {
+                editBooking(currentSelectedCalendarEvent);
+            }
+        });
+
+        viewSeriesBtn?.addEventListener('click', () => {
+            if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.recurring_group_id) {
+                loadSeriesOccurrences(currentSelectedCalendarEvent.recurring_group_id, currentSelectedCalendarEvent.id);
+            }
+        });
+    }
+
+    function switchToCalendarView() {
+        activeViewMode = 'calendar';
+        document.getElementById('bookingsListPanel')?.classList.add('d-none');
+        document.getElementById('bookingsCalendarContainer')?.classList.remove('d-none');
+
+        document.getElementById('listViewBtn')?.classList.remove('active');
+        document.getElementById('calendarViewBtn')?.classList.add('active');
+
+        fetchCalendarEvents();
+    }
+
+    function switchToListView() {
+        activeViewMode = 'list';
+        document.getElementById('bookingsListPanel')?.classList.remove('d-none');
+        document.getElementById('bookingsCalendarContainer')?.classList.add('d-none');
+
+        document.getElementById('listViewBtn')?.classList.add('active');
+        document.getElementById('calendarViewBtn')?.classList.remove('active');
+
+        applyBookingFilters();
+    }
+
+    function setCalendarView(view) {
+        if (!['month', 'week', 'day'].includes(view)) {
+            return;
+        }
+
+        currentCalendarView = view;
+
+        const viewMonthBtn = document.getElementById('calendarViewMonthBtn');
+        const viewWeekBtn = document.getElementById('calendarViewWeekBtn');
+        const viewDayBtn = document.getElementById('calendarViewDayBtn');
+
+        viewMonthBtn?.classList.toggle('active', view === 'month');
+        viewWeekBtn?.classList.toggle('active', view === 'week');
+        viewDayBtn?.classList.toggle('active', view === 'day');
+
+        document.getElementById('calendarMonthView')?.classList.toggle('d-none', view !== 'month');
+        document.getElementById('calendarWeekView')?.classList.toggle('d-none', view !== 'week');
+        document.getElementById('calendarDayView')?.classList.toggle('d-none', view !== 'day');
+
+        fetchCalendarEvents();
+    }
+
+    function navigateCalendar(delta) {
+        if (currentCalendarView === 'month') {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+        } else if (currentCalendarView === 'week') {
+            currentCalendarDate.setDate(currentCalendarDate.getDate() + (delta * 7));
+        } else if (currentCalendarView === 'day') {
+            currentCalendarDate.setDate(currentCalendarDate.getDate() + delta);
+        }
+        fetchCalendarEvents();
+    }
+
+    function navigateCalendarToday() {
+        currentCalendarDate = new Date();
+        fetchCalendarEvents();
+    }
+
+    function getCalendarDateRange() {
+        const year = currentCalendarDate.getFullYear();
+        const month = currentCalendarDate.getMonth();
+        const day = currentCalendarDate.getDate();
+
+        if (currentCalendarView === 'month') {
+            const monthStart = new Date(year, month, 1);
+            const monthEnd = new Date(year, month + 1, 0);
+
+            const startDow = monthStart.getDay() === 0 ? 7 : monthStart.getDay();
+            const start = new Date(monthStart);
+            start.setDate(monthStart.getDate() - (startDow - 1));
+            start.setHours(0, 0, 0, 0);
+
+            const endDow = monthEnd.getDay() === 0 ? 7 : monthEnd.getDay();
+            const end = new Date(monthEnd);
+            end.setDate(monthEnd.getDate() + (7 - endDow));
+            end.setHours(23, 59, 59, 999);
+
+            const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays < 35) {
+                end.setDate(end.getDate() + 7);
+                end.setHours(23, 59, 59, 999);
+            }
+
+            return {
+                start: start,
+                end: end,
+                startSql: formatDateTimeToSql(start),
+                endSql: formatDateTimeToSql(end)
+            };
+        }
+
+        if (currentCalendarView === 'week') {
+            const currentDow = currentCalendarDate.getDay() === 0 ? 7 : currentCalendarDate.getDay();
+            const start = new Date(year, month, day);
+            start.setDate(day - (currentDow - 1));
+            start.setHours(0, 0, 0, 0);
+
+            const end = new Date(start);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+
+            return {
+                start: start,
+                end: end,
+                startSql: formatDateTimeToSql(start),
+                endSql: formatDateTimeToSql(end)
+            };
+        }
+
+        // Day view
+        const start = new Date(year, month, day, 0, 0, 0, 0);
+        const end = new Date(year, month, day, 23, 59, 59, 999);
+
+        return {
+            start: start,
+            end: end,
+            startSql: formatDateTimeToSql(start),
+            endSql: formatDateTimeToSql(end)
+        };
+    }
+
+    function formatDateTimeToSql(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const h = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const s = String(d.getSeconds()).padStart(2, '0');
+        return `${y}-${m}-${day} ${h}:${min}:${s}`;
+    }
+
+    function formatDateToIso(d) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
+
+    function updateCalendarHeading(range) {
+        const headingEl = document.getElementById('calendarHeading');
+        if (!headingEl) return;
+
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        if (currentCalendarView === 'month') {
+            headingEl.textContent = `${months[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+            return;
+        }
+
+        if (currentCalendarView === 'week') {
+            const s = range.start;
+            const e = range.end;
+
+            if (s.getFullYear() === e.getFullYear()) {
+                if (s.getMonth() === e.getMonth()) {
+                    headingEl.textContent = `${shortMonths[s.getMonth()]} ${s.getDate()} – ${e.getDate()}, ${s.getFullYear()}`;
+                } else {
+                    headingEl.textContent = `${shortMonths[s.getMonth()]} ${s.getDate()} – ${shortMonths[e.getMonth()]} ${e.getDate()}, ${s.getFullYear()}`;
+                }
+            } else {
+                headingEl.textContent = `${shortMonths[s.getMonth()]} ${s.getDate()}, ${s.getFullYear()} – ${shortMonths[e.getMonth()]} ${e.getDate()}, ${e.getFullYear()}`;
+            }
+            return;
+        }
+
+        // Day view
+        const dayName = daysOfWeek[currentCalendarDate.getDay()];
+        headingEl.textContent = `${dayName}, ${months[currentCalendarDate.getMonth()]} ${currentCalendarDate.getDate()}, ${currentCalendarDate.getFullYear()}`;
+    }
+
+    async function fetchCalendarEvents() {
+        if (activeViewMode !== 'calendar') {
+            return;
+        }
+
+        const loadingOverlay = document.getElementById('calendarLoading');
+        const emptyNotice = document.getElementById('calendarEmpty');
+
+        loadingOverlay?.classList.remove('d-none');
+        emptyNotice?.classList.add('d-none');
+
+        const range = getCalendarDateRange();
+        updateCalendarHeading(range);
+
+        const roomFilter = document.getElementById('bookingRoomFilter')?.value || '';
+        let statusFilter = document.getElementById('statusFilter')?.value || '';
+        if (pendingApprovalsOnly) {
+            statusFilter = 'pending';
+        }
+
+        let query = `start=${encodeURIComponent(range.startSql)}&end=${encodeURIComponent(range.endSql)}`;
+        if (roomFilter) {
+            query += `&room_id=${encodeURIComponent(roomFilter)}`;
+        }
+        if (statusFilter) {
+            query += `&status=${encodeURIComponent(statusFilter)}`;
+        }
+
+        try {
+            const response = await fetch(`/api/bookings/calendar?${query}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                const message = result.message || 'Unable to load calendar events.';
+                showAppNotification(message, 'error', 'Calendar Error');
+                calendarEvents = [];
+            } else {
+                calendarEvents = result.data || [];
+            }
+
+            if (calendarEvents.length === 0) {
+                emptyNotice?.classList.remove('d-none');
+            }
+
+            renderCalendar(range);
+
+        } catch (err) {
+            showAppNotification('Network error loading calendar events.', 'error', 'Calendar Error');
+            calendarEvents = [];
+            renderCalendar(range);
+        } finally {
+            loadingOverlay?.classList.add('d-none');
+        }
+    }
+
+    function renderCalendar(range) {
+        if (currentCalendarView === 'month') {
+            renderMonthView(range);
+        } else if (currentCalendarView === 'week') {
+            renderWeekView(range);
+        } else if (currentCalendarView === 'day') {
+            renderDayView(range);
+        }
+    }
+
+    function renderMonthView(range) {
+        const container = document.getElementById('calendarMonthView');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const grid = document.createElement('div');
+        grid.className = 'calendar-month-grid';
+
+        const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        dayHeaders.forEach((name) => {
+            const headerCell = document.createElement('div');
+            headerCell.className = 'calendar-day-header';
+            headerCell.textContent = name;
+            grid.appendChild(headerCell);
+        });
+
+        const todayStr = formatDateToIso(new Date());
+        const currentMonthIdx = currentCalendarDate.getMonth();
+
+        const iterDate = new Date(range.start);
+        while (iterDate <= range.end) {
+            const cellDate = new Date(iterDate);
+            const dateIso = formatDateToIso(cellDate);
+            const isToday = (dateIso === todayStr);
+            const isOtherMonth = (cellDate.getMonth() !== currentMonthIdx);
+
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day-cell' +
+                (isOtherMonth ? ' is-other-month' : '') +
+                (isToday ? ' is-today' : '');
+
+            const cellTop = document.createElement('div');
+            cellTop.className = 'calendar-day-cell-top';
+
+            const numSpan = document.createElement('span');
+            numSpan.className = 'calendar-day-number';
+            numSpan.textContent = cellDate.getDate();
+            cellTop.appendChild(numSpan);
+            cell.appendChild(cellTop);
+
+            const eventsContainer = document.createElement('div');
+            eventsContainer.className = 'calendar-events-container';
+
+            // Find events occurring on this date
+            const dayEvents = calendarEvents.filter((ev) => {
+                const evStartDate = (ev.start_time || ev.start || '').slice(0, 10);
+                const evEndDate = (ev.end_time || ev.end || '').slice(0, 10);
+                return evStartDate <= dateIso && evEndDate >= dateIso;
+            });
+
+            const maxVisible = 3;
+            const visibleEvents = dayEvents.slice(0, maxVisible);
+            const overflowCount = dayEvents.length - maxVisible;
+
+            visibleEvents.forEach((ev) => {
+                const pill = document.createElement('div');
+                pill.className = `calendar-event-pill event-status-${escapeHtml(String(ev.status || 'pending').toLowerCase())}`;
+                pill.setAttribute('role', 'button');
+                pill.setAttribute('tabindex', '0');
+                pill.title = `${ev.title || 'Meeting'} (${formatEventTimeRange(ev.start_time, ev.end_time)})`;
+
+                const timeComp = parseDateTimeComponents(ev.start_time);
+                const timeText = timeComp ? formatTimeForDisplay(timeComp.hours, timeComp.minutes) : '';
+
+                let recurringHtml = '';
+                if (ev.is_recurring) {
+                    recurringHtml = `<i class="bi bi-repeat event-pill-recurring" title="Recurring Series"></i>`;
+                }
+
+                pill.innerHTML = `
+                    <span class="event-pill-time">${escapeHtml(timeText)}</span>
+                    <span class="event-pill-title">${escapeHtml(ev.title || 'Untitled Meeting')}</span>
+                    ${recurringHtml}
+                `;
+
+                pill.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openCalendarEventDetails(ev);
+                });
+                pill.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openCalendarEventDetails(ev);
+                    }
+                });
+
+                eventsContainer.appendChild(pill);
+            });
+
+            if (overflowCount > 0) {
+                const moreBtn = document.createElement('div');
+                moreBtn.className = 'calendar-more-pill';
+                moreBtn.setAttribute('role', 'button');
+                moreBtn.setAttribute('tabindex', '0');
+                moreBtn.textContent = `+${overflowCount} more`;
+                moreBtn.title = `View all ${dayEvents.length} events for ${dateIso}`;
+
+                moreBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    currentCalendarDate = new Date(cellDate);
+                    setCalendarView('day');
+                });
+                moreBtn.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        currentCalendarDate = new Date(cellDate);
+                        setCalendarView('day');
+                    }
+                });
+
+                eventsContainer.appendChild(moreBtn);
+            }
+
+            cell.appendChild(eventsContainer);
+            grid.appendChild(cell);
+
+            iterDate.setDate(iterDate.getDate() + 1);
+        }
+
+        container.appendChild(grid);
+    }
+
+    function renderWeekView(range) {
+        const container = document.getElementById('calendarWeekView');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'calendar-time-grid-wrapper';
+
+        const weekGrid = document.createElement('div');
+        weekGrid.className = 'calendar-week-grid';
+
+        // Week Header Row
+        const headerRow = document.createElement('div');
+        headerRow.className = 'calendar-week-header-row';
+
+        const gutterHeader = document.createElement('div');
+        gutterHeader.className = 'calendar-gutter-header';
+        headerRow.appendChild(gutterHeader);
+
+        const todayStr = formatDateToIso(new Date());
+        const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        const weekDays = [];
+        const iter = new Date(range.start);
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(iter);
+            weekDays.push(d);
+            const dIso = formatDateToIso(d);
+            const isToday = (dIso === todayStr);
+
+            const colHeader = document.createElement('div');
+            colHeader.className = 'calendar-week-col-header' + (isToday ? ' is-today' : '');
+
+            colHeader.innerHTML = `
+                <span class="cal-col-day-name">${dayNames[i]}</span>
+                <span class="cal-col-day-num">${d.getDate()}</span>
+            `;
+
+            headerRow.appendChild(colHeader);
+            iter.setDate(iter.getDate() + 1);
+        }
+        weekGrid.appendChild(headerRow);
+
+        // Time Body
+        const timeBody = document.createElement('div');
+        timeBody.className = 'calendar-time-body';
+
+        // Time Gutter (07:00 to 21:00)
+        const gutter = document.createElement('div');
+        gutter.className = 'calendar-time-gutter';
+
+        for (let h = 7; h <= 21; h++) {
+            const slot = document.createElement('div');
+            slot.className = 'calendar-time-gutter-slot';
+            slot.textContent = formatTimeForDisplay(h, 0);
+            gutter.appendChild(slot);
+        }
+        timeBody.appendChild(gutter);
+
+        // Week Days Columns Container
+        const daysContainer = document.createElement('div');
+        daysContainer.className = 'calendar-week-days-container';
+
+        weekDays.forEach((d) => {
+            const dIso = formatDateToIso(d);
+            const isToday = (dIso === todayStr);
+
+            const dayCol = document.createElement('div');
+            dayCol.className = 'calendar-day-col' + (isToday ? ' is-today' : '');
+
+            // Background hour lines
+            for (let h = 7; h <= 21; h++) {
+                const hourLine = document.createElement('div');
+                hourLine.className = 'calendar-hour-line';
+                hourLine.innerHTML = `<div class="calendar-half-hour-line"></div>`;
+                dayCol.appendChild(hourLine);
+            }
+
+            // Events on this day
+            const colEvents = calendarEvents.filter((ev) => {
+                const evStart = (ev.start_time || ev.start || '').slice(0, 10);
+                return evStart === dIso;
+            });
+
+            // Layout overlapping events
+            const positionedEvents = calculateEventPositions(colEvents);
+            positionedEvents.forEach((item) => {
+                const ev = item.event;
+                const evCard = document.createElement('div');
+                evCard.className = `calendar-grid-event event-status-${escapeHtml(String(ev.status || 'pending').toLowerCase())}`;
+                evCard.setAttribute('role', 'button');
+                evCard.setAttribute('tabindex', '0');
+
+                evCard.style.top = `${item.top}px`;
+                evCard.style.height = `${item.height}px`;
+                evCard.style.left = `${item.left}%`;
+                evCard.style.width = `${item.width}%`;
+
+                const timeStr = formatEventTimeRange(ev.start_time, ev.end_time);
+
+                let recurringBadge = '';
+                if (ev.is_recurring) {
+                    recurringBadge = `<i class="bi bi-repeat" title="Recurring Series"></i>`;
+                }
+
+                evCard.innerHTML = `
+                    <div class="calendar-grid-event-title">${escapeHtml(ev.title || 'Meeting')}</div>
+                    <div class="calendar-grid-event-meta">
+                        <span>${escapeHtml(timeStr)}</span>
+                        ${recurringBadge}
+                    </div>
+                `;
+
+                evCard.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openCalendarEventDetails(ev);
+                });
+                evCard.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openCalendarEventDetails(ev);
+                    }
+                });
+
+                dayCol.appendChild(evCard);
+            });
+
+            daysContainer.appendChild(dayCol);
+        });
+
+        timeBody.appendChild(daysContainer);
+        weekGrid.appendChild(timeBody);
+        wrapper.appendChild(weekGrid);
+        container.appendChild(wrapper);
+    }
+
+    function renderDayView(range) {
+        const container = document.getElementById('calendarDayView');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'calendar-time-grid-wrapper';
+
+        const dayGrid = document.createElement('div');
+        dayGrid.className = 'calendar-day-grid';
+
+        const d = currentCalendarDate;
+        const dIso = formatDateToIso(d);
+        const todayStr = formatDateToIso(new Date());
+        const isToday = (dIso === todayStr);
+
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+        // Header Row
+        const headerRow = document.createElement('div');
+        headerRow.className = 'calendar-day-header-row';
+
+        const gutterHeader = document.createElement('div');
+        gutterHeader.className = 'calendar-gutter-header';
+        headerRow.appendChild(gutterHeader);
+
+        const colHeader = document.createElement('div');
+        colHeader.className = 'calendar-day-col-header-single';
+        colHeader.innerHTML = `
+            <span class="cal-single-day-name">${daysOfWeek[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}</span>
+            ${isToday ? '<span class="cal-single-day-badge">Today</span>' : ''}
+        `;
+        headerRow.appendChild(colHeader);
+        dayGrid.appendChild(headerRow);
+
+        // Body
+        const timeBody = document.createElement('div');
+        timeBody.className = 'calendar-time-body';
+
+        const gutter = document.createElement('div');
+        gutter.className = 'calendar-time-gutter';
+
+        for (let h = 7; h <= 21; h++) {
+            const slot = document.createElement('div');
+            slot.className = 'calendar-time-gutter-slot';
+            slot.textContent = formatTimeForDisplay(h, 0);
+            gutter.appendChild(slot);
+        }
+        timeBody.appendChild(gutter);
+
+        const daysContainer = document.createElement('div');
+        daysContainer.className = 'calendar-week-days-container';
+
+        const dayCol = document.createElement('div');
+        dayCol.className = 'calendar-day-col' + (isToday ? ' is-today' : '');
+
+        for (let h = 7; h <= 21; h++) {
+            const hourLine = document.createElement('div');
+            hourLine.className = 'calendar-hour-line';
+            hourLine.innerHTML = `<div class="calendar-half-hour-line"></div>`;
+            dayCol.appendChild(hourLine);
+        }
+
+        const dayEvents = calendarEvents.filter((ev) => {
+            const evStart = (ev.start_time || ev.start || '').slice(0, 10);
+            return evStart === dIso;
+        });
+
+        const positionedEvents = calculateEventPositions(dayEvents);
+        positionedEvents.forEach((item) => {
+            const ev = item.event;
+            const evCard = document.createElement('div');
+            evCard.className = `calendar-grid-event event-status-${escapeHtml(String(ev.status || 'pending').toLowerCase())}`;
+            evCard.setAttribute('role', 'button');
+            evCard.setAttribute('tabindex', '0');
+
+            evCard.style.top = `${item.top}px`;
+            evCard.style.height = `${item.height}px`;
+            evCard.style.left = `${item.left}%`;
+            evCard.style.width = `${item.width}%`;
+
+            const timeStr = formatEventTimeRange(ev.start_time, ev.end_time);
+
+            let recurringBadge = '';
+            if (ev.is_recurring) {
+                recurringBadge = `<span class="badge bg-indigo-subtle text-indigo" style="font-size: 10px; margin-left: 5px;"><i class="bi bi-repeat"></i> Recurring</span>`;
+            }
+
+            evCard.innerHTML = `
+                <div class="calendar-grid-event-title">${escapeHtml(ev.title || 'Meeting')}</div>
+                <div class="calendar-grid-event-meta">
+                    <span><i class="bi bi-clock"></i> ${escapeHtml(timeStr)}</span>
+                    <span><i class="bi bi-door-open"></i> ${escapeHtml(ev.room_name || '')}</span>
+                    ${recurringBadge}
+                </div>
+            `;
+
+            evCard.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openCalendarEventDetails(ev);
+            });
+            evCard.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openCalendarEventDetails(ev);
+                }
+            });
+
+            dayCol.appendChild(evCard);
+        });
+
+        daysContainer.appendChild(dayCol);
+        timeBody.appendChild(daysContainer);
+        dayGrid.appendChild(timeBody);
+        wrapper.appendChild(dayGrid);
+        container.appendChild(wrapper);
+    }
+
+    function calculateEventPositions(events) {
+        if (!events || events.length === 0) {
+            return [];
+        }
+
+        const slotHeight = 50; // 50px per hour
+        const startHourOfDay = 7; // Grid starts at 07:00
+
+        const items = events.map((ev) => {
+            const sComp = parseDateTimeComponents(ev.start_time);
+            const eComp = parseDateTimeComponents(ev.end_time);
+
+            const sHours = sComp ? (sComp.hours + sComp.minutes / 60) : 9;
+            const eHours = eComp ? (eComp.hours + eComp.minutes / 60) : (sHours + 1);
+
+            const clampedStart = Math.max(7, Math.min(21, sHours));
+            const clampedEnd = Math.max(clampedStart + 0.33, Math.min(22, eHours));
+
+            const top = (clampedStart - startHourOfDay) * slotHeight;
+            const height = Math.max(26, (clampedEnd - clampedStart) * slotHeight);
+
+            return {
+                event: ev,
+                top: top,
+                height: height,
+                bottom: top + height,
+                startVal: clampedStart,
+                endVal: clampedEnd,
+                colIndex: 0,
+                totalCols: 1
+            };
+        });
+
+        // Sort by startVal ASC, then by duration DESC
+        items.sort((a, b) => a.startVal - b.startVal || (b.endVal - b.startVal) - (a.endVal - a.startVal));
+
+        // Group into clusters of overlapping events
+        const clusters = [];
+        let currentCluster = [];
+        let clusterEnd = -1;
+
+        items.forEach((item) => {
+            if (currentCluster.length === 0) {
+                currentCluster.push(item);
+                clusterEnd = item.endVal;
+            } else if (item.startVal < clusterEnd) {
+                currentCluster.push(item);
+                clusterEnd = Math.max(clusterEnd, item.endVal);
+            } else {
+                clusters.push(currentCluster);
+                currentCluster = [item];
+                clusterEnd = item.endVal;
+            }
+        });
+        if (currentCluster.length > 0) {
+            clusters.push(currentCluster);
+        }
+
+        // For each cluster, assign columns
+        clusters.forEach((cluster) => {
+            const columns = [];
+            cluster.forEach((item) => {
+                let placed = false;
+                for (let c = 0; c < columns.length; c++) {
+                    if (item.startVal >= columns[c]) {
+                        item.colIndex = c;
+                        columns[c] = item.endVal;
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    item.colIndex = columns.length;
+                    columns.push(item.endVal);
+                }
+            });
+
+            const numCols = Math.max(1, columns.length);
+            cluster.forEach((item) => {
+                item.totalCols = numCols;
+                item.left = (item.colIndex / numCols) * 100;
+                item.width = (100 / numCols) - 1.5;
+            });
+        });
+
+        return items;
+    }
+
+    function openCalendarEventDetails(ev) {
+        currentSelectedCalendarEvent = ev;
+
+        const modal = document.getElementById('calendarEventDetailModal');
+        if (!modal) return;
+
+        // Title
+        const titleEl = document.getElementById('calDetailTitle');
+        if (titleEl) {
+            titleEl.textContent = ev.title || 'Untitled Meeting';
+        }
+
+        // Status Badge
+        const statusBadge = document.getElementById('calDetailStatusBadge');
+        if (statusBadge) {
+            const normStatus = String(ev.status || 'pending').toLowerCase();
+            statusBadge.className = `booking-status booking-status-${normStatus}`;
+            statusBadge.textContent = normStatus.charAt(0).toUpperCase() + normStatus.slice(1);
+        }
+
+        // Date & Time
+        const dateText = formatDateForDisplay(ev.start_time);
+        const timeText = formatTimeRangeForDisplay(ev.start_time, ev.end_time);
+        const dtEl = document.getElementById('calDetailDateTime');
+        if (dtEl) {
+            dtEl.textContent = `${dateText} • ${timeText}`;
+        }
+
+        // Duration calculation
+        const sTime = new Date(ev.start_time).getTime();
+        const eTime = new Date(ev.end_time).getTime();
+        const durEl = document.getElementById('calDetailDuration');
+        if (durEl) {
+            if (!isNaN(sTime) && !isNaN(eTime) && eTime > sTime) {
+                const diffMins = Math.round((eTime - sTime) / 60000);
+                const hrs = Math.floor(diffMins / 60);
+                const mins = diffMins % 60;
+                let durStr = '';
+                if (hrs > 0) durStr += `${hrs} hr${hrs > 1 ? 's' : ''} `;
+                if (mins > 0 || hrs === 0) durStr += `${mins} min${mins !== 1 ? 's' : ''}`;
+                durEl.textContent = `Duration: ${durStr}`;
+            } else {
+                durEl.textContent = '';
+            }
+        }
+
+        // Room & Location
+        const roomName = ev.room_name || `Room #${ev.room_id}`;
+        const roomCode = ev.room_code ? `(${ev.room_code})` : '';
+        const roomEl = document.getElementById('calDetailRoom');
+        if (roomEl) {
+            roomEl.textContent = `${roomName} ${roomCode}`.trim();
+        }
+        const locEl = document.getElementById('calDetailLocation');
+        if (locEl) {
+            locEl.textContent = ev.location_name || 'Location unassigned';
+        }
+
+        // Organizer
+        const orgEl = document.getElementById('calDetailOrganizer');
+        if (orgEl) {
+            orgEl.textContent = ev.organizer_name || `User #${ev.user_id}`;
+        }
+        const orgEmailEl = document.getElementById('calDetailOrganizerEmail');
+        if (orgEmailEl) {
+            orgEmailEl.textContent = ev.organizer_email || '';
+        }
+
+        // Description
+        const descEl = document.getElementById('calDetailDescription');
+        if (descEl) {
+            descEl.textContent = ev.description || 'No meeting description provided.';
+        }
+
+        // Recurrence Section
+        const recSection = document.getElementById('calDetailRecurrenceSection');
+        const seriesList = document.getElementById('calDetailSeriesList');
+        const seriesContent = document.getElementById('calSeriesListContent');
+        if (seriesList) seriesList.classList.add('d-none');
+        if (seriesContent) seriesContent.innerHTML = '';
+
+        if (ev.is_recurring && ev.recurring_group_id) {
+            recSection?.classList.remove('d-none');
+            const pattern = (ev.recurrence_pattern || 'Recurring').charAt(0).toUpperCase() + (ev.recurrence_pattern || '').slice(1);
+            const index = ev.recurrence_index || 1;
+            const total = ev.recurrence_total || '—';
+            const metaEl = document.getElementById('calDetailRecurrenceMeta');
+            if (metaEl) {
+                metaEl.textContent = `${pattern} • Occurrence ${index} of ${total}`;
+            }
+        } else {
+            recSection?.classList.add('d-none');
+        }
+
+        modal.classList.remove('d-none');
+    }
+
+    function closeCalendarDetailModal() {
+        document.getElementById('calendarEventDetailModal')?.classList.add('d-none');
+        const seriesList = document.getElementById('calDetailSeriesList');
+        if (seriesList) seriesList.classList.add('d-none');
+        const seriesContent = document.getElementById('calSeriesListContent');
+        if (seriesContent) seriesContent.innerHTML = '';
+    }
+
+    async function loadSeriesOccurrences(recurringGroupId, currentEventId) {
+        const seriesList = document.getElementById('calDetailSeriesList');
+        const seriesLoading = document.getElementById('calSeriesLoading');
+        const seriesContent = document.getElementById('calSeriesListContent');
+
+        if (!seriesList || !seriesContent) return;
+
+        seriesList.classList.remove('d-none');
+        seriesLoading?.classList.remove('d-none');
+        seriesContent.innerHTML = '';
+
+        try {
+            const res = await fetch(`/api/bookings/series/${encodeURIComponent(recurringGroupId)}`, {
+                headers: { 'Accept': 'application/json' }
+            });
+            const json = await res.json();
+
+            if (!res.ok || json.status !== 'success') {
+                seriesContent.innerHTML = `<div class="cal-series-loading" style="color: #f87171;">Failed to load series details.</div>`;
+                return;
+            }
+
+            const occurrences = json.data?.occurrences || [];
+            if (occurrences.length === 0) {
+                seriesContent.innerHTML = `<div class="cal-series-loading">No occurrences found.</div>`;
+                return;
+            }
+
+            let html = '';
+            occurrences.forEach((occ) => {
+                const isCurrent = (Number(occ.id) === Number(currentEventId));
+                const dateStr = formatDateForDisplay(occ.start_time);
+                const timeStr = formatTimeRangeForDisplay(occ.start_time, occ.end_time);
+                const statusNorm = String(occ.status || 'pending').toLowerCase();
+                const statusLabel = statusNorm.charAt(0).toUpperCase() + statusNorm.slice(1);
+
+                html += `
+                    <div class="cal-series-occurrence-row ${isCurrent ? 'is-current' : ''}">
+                        <div>
+                            <strong>#${occ.recurrence_index}</strong>
+                            <span>${escapeHtml(dateStr)} (${escapeHtml(timeStr)})</span>
+                            ${isCurrent ? '<span class="badge bg-primary" style="font-size: 9.5px; margin-left: 4px;">Current</span>' : ''}
+                        </div>
+                        <span class="booking-status booking-status-${escapeHtml(statusNorm)}" style="font-size: 10px; padding: 2px 6px;">
+                            ${escapeHtml(statusLabel)}
+                        </span>
+                    </div>
+                `;
+            });
+
+            seriesContent.innerHTML = html;
+
+        } catch (err) {
+            seriesContent.innerHTML = `<div class="cal-series-loading" style="color: #f87171;">Network error loading series.</div>`;
+        } finally {
+            seriesLoading?.classList.add('d-none');
+        }
+    }
+
+    function formatEventTimeRange(startStr, endStr) {
+        const sComp = parseDateTimeComponents(startStr);
+        const eComp = parseDateTimeComponents(endStr);
+        if (!sComp || !eComp) return '';
+        const s = formatTimeForDisplay(sComp.hours, sComp.minutes);
+        const e = formatTimeForDisplay(eComp.hours, eComp.minutes);
+        return `${s} - ${e}`;
     }
 
 })();

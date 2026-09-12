@@ -8,7 +8,17 @@
         <p class="page-subtitle">Manage and monitor meeting room bookings.</p>
     </div>
 
-    <div class="page-header-actions" style="display: flex; gap: 10px; align-items: center;">
+    <div class="page-header-actions" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <div class="view-mode-toggle" role="group" aria-label="View mode">
+            <button type="button" class="btn-view-toggle active" id="listViewBtn" data-view="list" title="List view">
+                <i class="bi bi-list-ul"></i>
+                <span>List</span>
+            </button>
+            <button type="button" class="btn-view-toggle" id="calendarViewBtn" data-view="calendar" title="Calendar view">
+                <i class="bi bi-calendar3"></i>
+                <span>Calendar</span>
+            </button>
+        </div>
         <button type="button" class="btn-secondary-action" id="findAvailableRoomBtn">
             <i class="bi bi-search"></i>
             Find Available Room
@@ -51,7 +61,7 @@
     </button>
 </div>
 
-<div class="panel-card bookings-panel">
+<div class="panel-card bookings-panel" id="bookingsListPanel">
 
     <div id="bookingsLoading" class="bookings-state">
         <i class="bi bi-arrow-repeat spin"></i>
@@ -85,6 +95,60 @@
             <tbody id="bookingsTableBody"></tbody>
         </table>
     </div>
+
+</div>
+
+<!-- ================================================================
+     Calendar View Panel (Milestone 4)
+     ================================================================ -->
+<div class="panel-card bookings-calendar-panel d-none" id="bookingsCalendarContainer">
+
+    <!-- Calendar Toolbar: Navigation & View Selectors -->
+    <div class="calendar-toolbar">
+        <div class="calendar-nav-group">
+            <button type="button" class="btn-cal-nav" id="calendarPrevBtn" title="Previous" aria-label="Previous">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <button type="button" class="btn-cal-today" id="calendarTodayBtn" title="Jump to today">
+                Today
+            </button>
+            <button type="button" class="btn-cal-nav" id="calendarNextBtn" title="Next" aria-label="Next">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+            <h2 class="calendar-heading" id="calendarHeading">September 2026</h2>
+        </div>
+
+        <div class="calendar-views-group" role="group" aria-label="Calendar view switcher">
+            <button type="button" class="btn-cal-view active" id="calendarViewMonthBtn" data-cal-view="month">
+                Month
+            </button>
+            <button type="button" class="btn-cal-view" id="calendarViewWeekBtn" data-cal-view="week">
+                Week
+            </button>
+            <button type="button" class="btn-cal-view" id="calendarViewDayBtn" data-cal-view="day">
+                Day
+            </button>
+        </div>
+    </div>
+
+    <!-- Calendar Loading Indicator -->
+    <div id="calendarLoading" class="calendar-loading-overlay d-none">
+        <div class="calendar-loading-spinner">
+            <i class="bi bi-arrow-repeat spin"></i>
+            <span>Loading calendar events...</span>
+        </div>
+    </div>
+
+    <!-- Calendar Empty Notice -->
+    <div id="calendarEmpty" class="calendar-empty-notice d-none">
+        <i class="bi bi-calendar-x"></i>
+        <span>No scheduled bookings in this timeframe.</span>
+    </div>
+
+    <!-- Calendar Views -->
+    <div id="calendarMonthView" class="calendar-view-pane calendar-month-view"></div>
+    <div id="calendarWeekView" class="calendar-view-pane calendar-week-view d-none"></div>
+    <div id="calendarDayView" class="calendar-view-pane calendar-day-view d-none"></div>
 
 </div>
 
@@ -710,6 +774,81 @@
 
     </div>
 
+</div>
+
+<!-- ================================================================
+     Calendar Event Detail & Series Modal (Milestone 4)
+     ================================================================ -->
+<div class="booking-modal-overlay d-none" id="calendarEventDetailModal">
+    <div class="booking-modal calendar-detail-modal" role="dialog" aria-modal="true" aria-labelledby="calDetailTitle">
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="calDetailTitle">Meeting Details</h2>
+                <span id="calDetailStatusBadge" class="booking-status booking-status-pending">Pending</span>
+            </div>
+            <button type="button" class="booking-modal-close" id="closeCalDetailModal" aria-label="Close">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="calendar-detail-body">
+            <div class="cal-detail-meta-grid">
+                <div class="cal-detail-item">
+                    <span class="cal-detail-label"><i class="bi bi-clock"></i> Date & Time</span>
+                    <span class="cal-detail-value" id="calDetailDateTime">—</span>
+                    <small class="cal-detail-sub" id="calDetailDuration">—</small>
+                </div>
+                <div class="cal-detail-item">
+                    <span class="cal-detail-label"><i class="bi bi-door-open"></i> Room & Location</span>
+                    <span class="cal-detail-value" id="calDetailRoom">—</span>
+                    <small class="cal-detail-sub" id="calDetailLocation">—</small>
+                </div>
+                <div class="cal-detail-item">
+                    <span class="cal-detail-label"><i class="bi bi-person"></i> Organizer</span>
+                    <span class="cal-detail-value" id="calDetailOrganizer">—</span>
+                    <small class="cal-detail-sub" id="calDetailOrganizerEmail">—</small>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="cal-detail-section" id="calDetailDescriptionSection">
+                <span class="cal-detail-label"><i class="bi bi-card-text"></i> Description</span>
+                <p class="cal-detail-desc" id="calDetailDescription">No description provided.</p>
+            </div>
+
+            <!-- Recurrence Series Information -->
+            <div class="cal-detail-recurrence-card d-none" id="calDetailRecurrenceSection">
+                <div class="cal-recurrence-header">
+                    <div class="cal-recurrence-badge">
+                        <i class="bi bi-repeat"></i> Recurring Meeting Series
+                    </div>
+                    <span class="cal-recurrence-meta" id="calDetailRecurrenceMeta">Weekly • Occurrence 1 of 5</span>
+                </div>
+                <div class="cal-recurrence-actions">
+                    <button type="button" class="btn-cal-view-series" id="calDetailViewSeriesBtn">
+                        <i class="bi bi-collection"></i>
+                        <span>View Series Occurrences</span>
+                    </button>
+                </div>
+                <!-- Series Occurrences Expanded List -->
+                <div class="cal-series-occurrences-container d-none" id="calDetailSeriesList">
+                    <div class="cal-series-loading d-none" id="calSeriesLoading">
+                        <i class="bi bi-arrow-repeat spin"></i> Loading series occurrences...
+                    </div>
+                    <div class="cal-series-list-content" id="calSeriesListContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-modal-actions" style="border-top: 1px solid var(--border-subtle); padding-top: 14px;">
+            <button type="button" class="btn-booking-cancel" id="calDetailCloseBtn">
+                Close
+            </button>
+            <button type="button" class="btn-booking-submit" id="calDetailEditBtn">
+                <i class="bi bi-pencil"></i> Edit Booking
+            </button>
+        </div>
+    </div>
 </div>
 
 <style>
