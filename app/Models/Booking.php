@@ -15,6 +15,10 @@ class Booking extends Model
     protected $allowedFields = [
         'room_id',
         'user_id',
+        'recurring_group_id',
+        'recurrence_pattern',
+        'recurrence_index',
+        'recurrence_total',
         'title',
         'description',
         'start_time',
@@ -30,15 +34,19 @@ class Booking extends Model
     protected $updatedField  = 'updated_at';
 
     protected $validationRules = [
-        'room_id'          => 'required|integer',
-        'user_id'          => 'required|integer',
-        'title'            => 'required|max_length[200]',
-        'start_time'       => 'required|valid_date[Y-m-d H:i:s]',
-        'end_time'         => 'required|valid_date[Y-m-d H:i:s]',
-        'status'           => 'required|in_list[pending,approved,rejected,cancelled,completed]',
-        'approver_id'      => 'permit_empty|integer',
-        'approved_at'      => 'permit_empty|valid_date',
-        'rejection_reason' => 'permit_empty',
+        'room_id'            => 'required|integer',
+        'user_id'            => 'required|integer',
+        'recurring_group_id' => 'permit_empty|max_length[36]',
+        'recurrence_pattern' => 'permit_empty|in_list[daily,weekly,biweekly,monthly,weekdays]',
+        'recurrence_index'   => 'permit_empty|is_natural_no_zero',
+        'recurrence_total'   => 'permit_empty|is_natural_no_zero',
+        'title'              => 'required|max_length[200]',
+        'start_time'         => 'required|valid_date[Y-m-d H:i:s]',
+        'end_time'           => 'required|valid_date[Y-m-d H:i:s]',
+        'status'             => 'required|in_list[pending,approved,rejected,cancelled,completed]',
+        'approver_id'        => 'permit_empty|integer',
+        'approved_at'        => 'permit_empty|valid_date',
+        'rejection_reason'   => 'permit_empty',
     ];
 
     protected $validationMessages = [
@@ -107,5 +115,398 @@ class Booking extends Model
         }
 
         return $builder->countAllResults() > 0;
+    }
+
+    /**
+     * Generate a cryptographically secure UUIDv4 string.
+     */
+    public static function generateUuid(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+    }
+
+    /**
+     * Validate recurrence configuration parameters.
+     *
+     * @param string $startTime Initial booking start time (Y-m-d H:i:s)
+     * @param string $endTime Initial booking end time (Y-m-d H:i:s)
+     * @param array $recurrence User-supplied recurrence parameters
+     * @return array ['valid' => bool, 'errors' => array, 'cleaned' => array]
+     */
+    public function validateRecurrenceConfig(string $startTime, string $endTime, array $recurrence): array
+    {
+        $errors = [];
+        $cleaned = [];
+
+        $startTs = strtotime($startTime);
+        $endTs = strtotime($endTime);
+
+        if ($startTs === false || $endTs === false) {
+            $errors['time'] = 'Invalid start_time or end_time format.';
+            return ['valid' => false, 'errors' => $errors, 'cleaned' => []];
+        }
+
+        if ($endTs <= $startTs) {
+            $errors['time'] = 'End time must be after start time.';
+            return ['valid' => false, 'errors' => $errors, 'cleaned' => []];
+        }
+
+        // 1. Frequency
+        $freqRaw = strtolower(trim((string) ($recurrence['frequency'] ?? '')));
+        $validFrequencies = ['daily', 'weekly', 'biweekly', 'monthly', 'weekdays'];
+        if (!in_array($freqRaw, $validFrequencies, true)) {
+            $errors['frequency'] = 'Invalid frequency. Supported: daily, weekly, biweekly, monthly, weekdays.';
+        } else {
+            $cleaned['frequency'] = $freqRaw;
+        }
+
+        // 2. Interval
+        $interval = isset($recurrence['interval']) ? (int) $recurrence['interval'] : 1;
+        if ($interval < 1) {
+            $errors['interval'] = 'Interval must be a positive integer.';
+        } elseif ($interval > 365) {
+            $errors['interval'] = 'Interval is too large.';
+        } else {
+            $cleaned['interval'] = $interval;
+        }
+
+        // 3. Days of week (for weekly)
+        $cleaned['days_of_week'] = [];
+        if (!empty($recurrence['days_of_week'])) {
+            $dow = is_array($recurrence['days_of_week']) ? $recurrence['days_of_week'] : explode(',', (string) $recurrence['days_of_week']);
+            $dowClean = [];
+            foreach ($dow as $d) {
+                $dInt = (int) trim((string) $d);
+                if ($dInt === 0) {
+                    $dInt = 7;
+                }
+                if ($dInt >= 1 && $dInt <= 7) {
+                    $dowClean[] = $dInt;
+                }
+            }
+            $cleaned['days_of_week'] = array_values(array_unique($dowClean));
+            sort($cleaned['days_of_week']);
+        }
+        if (empty($cleaned['days_of_week'])) {
+            $startDow = (int) date('N', $startTs);
+            $cleaned['days_of_week'] = [$startDow];
+        }
+
+        // 4. End Condition (bounded end condition required)
+        $endType = strtolower(trim((string) ($recurrence['end_type'] ?? '')));
+        $hasOccurrences = isset($recurrence['occurrences']) && $recurrence['occurrences'] !== '';
+        $hasUntilDate = !empty($recurrence['until_date']);
+
+        if ($endType === '' || !in_array($endType, ['occurrences', 'date'], true)) {
+            if ($hasUntilDate) {
+                $endType = 'date';
+            } elseif ($hasOccurrences) {
+                $endType = 'occurrences';
+            } else {
+                $errors['end_condition'] = 'Recurrence must specify a bounded end condition (occurrences or until_date).';
+            }
+        }
+        $cleaned['end_type'] = $endType;
+
+        $maxAllowedOccurrences = 52;
+        $maxSpanSeconds = 366 * 86400; // 1 calendar year
+
+        if ($endType === 'occurrences') {
+            $occurrences = (int) ($recurrence['occurrences'] ?? 0);
+            if ($occurrences < 1) {
+                $errors['occurrences'] = 'Occurrences must be a positive integer greater than zero.';
+            } elseif ($occurrences > $maxAllowedOccurrences) {
+                $errors['occurrences'] = "Occurrences cannot exceed {$maxAllowedOccurrences}.";
+            } else {
+                $cleaned['occurrences'] = $occurrences;
+            }
+        } elseif ($endType === 'date') {
+            $untilDateRaw = trim((string) ($recurrence['until_date'] ?? ''));
+            $untilTs = strtotime($untilDateRaw . ' 23:59:59');
+            if ($untilTs === false) {
+                $errors['until_date'] = 'Invalid until_date format. Expected YYYY-MM-DD.';
+            } elseif ($untilTs < $startTs) {
+                $errors['until_date'] = 'Recurrence until_date cannot be earlier than start date.';
+            } elseif (($untilTs - $startTs) > $maxSpanSeconds) {
+                $errors['until_date'] = 'Recurrence span cannot exceed 1 calendar year from start date.';
+            } else {
+                $cleaned['until_date'] = date('Y-m-d', $untilTs);
+            }
+            $cleaned['occurrences'] = $maxAllowedOccurrences;
+        }
+
+        return [
+            'valid'   => empty($errors),
+            'errors'  => $errors,
+            'cleaned' => $cleaned,
+        ];
+    }
+
+    /**
+     * Deterministically generate occurrences for a validated recurrence pattern.
+     *
+     * @param string $startTime Initial booking start time (Y-m-d H:i:s)
+     * @param string $endTime Initial booking end time (Y-m-d H:i:s)
+     * @param array $cleaned Validated recurrence config from validateRecurrenceConfig()
+     * @return array Array of occurrences with start_time, end_time, occurrence_index
+     */
+    public function generateOccurrences(string $startTime, string $endTime, array $cleaned): array
+    {
+        $startTs = strtotime($startTime);
+        $endTs   = strtotime($endTime);
+        $durationSeconds = $endTs - $startTs;
+        $timeOfDay = date('H:i:s', $startTs);
+
+        $frequency = $cleaned['frequency'];
+        $interval  = max(1, (int) ($cleaned['interval'] ?? 1));
+        if ($frequency === 'biweekly') {
+            $frequency = 'weekly';
+            $interval = 2;
+        }
+
+        $endType = $cleaned['end_type'] ?? 'occurrences';
+        $maxOccurrences = min(52, max(1, (int) ($cleaned['occurrences'] ?? 52)));
+        $maxSpanLimitTs = strtotime('+1 year', $startTs);
+
+        $untilDateTs = null;
+        if ($endType === 'date' && !empty($cleaned['until_date'])) {
+            $untilDateTs = strtotime($cleaned['until_date'] . ' 23:59:59');
+        }
+
+        $occurrences = [];
+        $initialDateStr = date('Y-m-d', $startTs);
+
+        if ($frequency === 'daily') {
+            $curr = new \DateTime($initialDateStr);
+            while (count($occurrences) < $maxOccurrences) {
+                $occStart = $curr->format('Y-m-d') . ' ' . $timeOfDay;
+                $occStartTs = strtotime($occStart);
+
+                if ($occStartTs > $maxSpanLimitTs) {
+                    break;
+                }
+                if ($untilDateTs !== null && $occStartTs > $untilDateTs) {
+                    break;
+                }
+
+                $occEnd = date('Y-m-d H:i:s', $occStartTs + $durationSeconds);
+                $occurrences[] = [
+                    'start_time' => $occStart,
+                    'end_time'   => $occEnd,
+                ];
+
+                $curr->modify("+{$interval} days");
+            }
+
+        } elseif ($frequency === 'weekdays') {
+            $curr = new \DateTime($initialDateStr);
+            while (count($occurrences) < $maxOccurrences) {
+                $dayOfWeek = (int) $curr->format('N');
+
+                if ($dayOfWeek <= 5) {
+                    $occStart = $curr->format('Y-m-d') . ' ' . $timeOfDay;
+                    $occStartTs = strtotime($occStart);
+
+                    if ($occStartTs > $maxSpanLimitTs) {
+                        break;
+                    }
+                    if ($untilDateTs !== null && $occStartTs > $untilDateTs) {
+                        break;
+                    }
+
+                    $occEnd = date('Y-m-d H:i:s', $occStartTs + $durationSeconds);
+                    $occurrences[] = [
+                        'start_time' => $occStart,
+                        'end_time'   => $occEnd,
+                    ];
+                }
+
+                for ($step = 0; $step < $interval; $step++) {
+                    $curr->modify('+1 day');
+                    while ((int) $curr->format('N') > 5) {
+                        $curr->modify('+1 day');
+                    }
+                }
+            }
+
+        } elseif ($frequency === 'weekly') {
+            $daysOfWeek = $cleaned['days_of_week'] ?? [(int) date('N', $startTs)];
+            sort($daysOfWeek);
+
+            $startDt = new \DateTime($initialDateStr);
+            $startDow = (int) $startDt->format('N');
+            $weekMonday = clone $startDt;
+            $weekMonday->modify('-' . ($startDow - 1) . ' days');
+
+            $currentWeekMonday = clone $weekMonday;
+
+            while (count($occurrences) < $maxOccurrences) {
+                foreach ($daysOfWeek as $dow) {
+                    $dayDt = clone $currentWeekMonday;
+                    $dayDt->modify('+' . ($dow - 1) . ' days');
+
+                    if ($dayDt->format('Y-m-d') < $initialDateStr) {
+                        continue;
+                    }
+
+                    $occStart = $dayDt->format('Y-m-d') . ' ' . $timeOfDay;
+                    $occStartTs = strtotime($occStart);
+
+                    if ($occStartTs > $maxSpanLimitTs) {
+                        break 2;
+                    }
+                    if ($untilDateTs !== null && $occStartTs > $untilDateTs) {
+                        break 2;
+                    }
+
+                    $occEnd = date('Y-m-d H:i:s', $occStartTs + $durationSeconds);
+                    $occurrences[] = [
+                        'start_time' => $occStart,
+                        'end_time'   => $occEnd,
+                    ];
+
+                    if (count($occurrences) >= $maxOccurrences) {
+                        break 2;
+                    }
+                }
+
+                $currentWeekMonday->modify("+{$interval} weeks");
+            }
+
+        } elseif ($frequency === 'monthly') {
+            $originalDay = (int) date('d', $startTs);
+            $startYear   = (int) date('Y', $startTs);
+            $startMonth  = (int) date('m', $startTs);
+
+            for ($k = 0; count($occurrences) < $maxOccurrences; $k++) {
+                $totalMonths = ($startYear * 12) + ($startMonth - 1) + ($k * $interval);
+                $targetYear  = (int) floor($totalMonths / 12);
+                $targetMonth = ($totalMonths % 12) + 1;
+
+                $firstDayOfMonth = new \DateTime(sprintf('%04d-%02d-01', $targetYear, $targetMonth));
+                $daysInMonth     = (int) $firstDayOfMonth->format('t');
+                $targetDay       = min($originalDay, $daysInMonth);
+
+                $occDateStr = sprintf('%04d-%02d-%02d', $targetYear, $targetMonth, $targetDay);
+                $occStart   = $occDateStr . ' ' . $timeOfDay;
+                $occStartTs = strtotime($occStart);
+
+                if ($occStartTs > $maxSpanLimitTs) {
+                    break;
+                }
+                if ($untilDateTs !== null && $occStartTs > $untilDateTs) {
+                    break;
+                }
+
+                $occEnd = date('Y-m-d H:i:s', $occStartTs + $durationSeconds);
+                $occurrences[] = [
+                    'start_time' => $occStart,
+                    'end_time'   => $occEnd,
+                ];
+            }
+        }
+
+        usort($occurrences, function ($a, $b) {
+            return strcmp($a['start_time'], $b['start_time']);
+        });
+
+        $total = count($occurrences);
+        foreach ($occurrences as $idx => &$occ) {
+            $occ['occurrence_index'] = $idx + 1;
+            $occ['recurrence_total'] = $total;
+        }
+        unset($occ);
+
+        return $occurrences;
+    }
+
+    /**
+     * Check if occurrences within the proposed series overlap with each other.
+     */
+    public function hasSelfOverlap(array $occurrences): bool
+    {
+        $count = count($occurrences);
+        for ($i = 0; $i < $count - 1; $i++) {
+            $currentEnd = strtotime($occurrences[$i]['end_time']);
+            $nextStart  = strtotime($occurrences[$i + 1]['start_time']);
+            if ($currentEnd > $nextStart) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Validate an occurrence list against existing bookings in the database.
+     *
+     * @param int $roomId Room to check
+     * @param array $occurrences List of occurrences
+     * @param int|null $excludeBookingId Optional booking ID to exclude
+     * @return array Itemized conflict results
+     */
+    public function checkOccurrencesConflicts(int $roomId, array $occurrences, ?int $excludeBookingId = null): array
+    {
+        $results = [];
+        $conflicts = [];
+        $conflictCount = 0;
+
+        foreach ($occurrences as $occ) {
+            $builder = $this->builder();
+            $builder->select('id, title, start_time, end_time, status')
+                ->where('room_id', $roomId)
+                ->whereIn('status', ['pending', 'approved'])
+                ->where('start_time <', $occ['end_time'])
+                ->where('end_time >', $occ['start_time']);
+
+            if ($excludeBookingId !== null) {
+                $builder->where('id !=', $excludeBookingId);
+            }
+
+            $conflictingRows = $builder->get()->getResultArray();
+            $hasConflict = !empty($conflictingRows);
+
+            $occItem = [
+                'occurrence_index' => $occ['occurrence_index'],
+                'start_time'       => $occ['start_time'],
+                'end_time'         => $occ['end_time'],
+                'is_available'     => !$hasConflict,
+            ];
+
+            if ($hasConflict) {
+                $conflictCount++;
+                $occItem['conflicts'] = array_map(function ($row) {
+                    return [
+                        'booking_id' => (int) $row['id'],
+                        'title'      => $row['title'],
+                        'start_time' => $row['start_time'],
+                        'end_time'   => $row['end_time'],
+                        'status'     => $row['status'],
+                    ];
+                }, $conflictingRows);
+
+                $conflicts[] = [
+                    'occurrence_index' => $occ['occurrence_index'],
+                    'start_time'       => $occ['start_time'],
+                    'end_time'         => $occ['end_time'],
+                    'reason'           => 'Room is already booked during this time interval.',
+                    'conflicting_with' => $occItem['conflicts'],
+                ];
+            }
+
+            $results[] = $occItem;
+        }
+
+        return [
+            'has_conflicts'         => $conflictCount > 0,
+            'total_occurrences'     => count($occurrences),
+            'available_occurrences' => count($occurrences) - $conflictCount,
+            'conflicts_count'       => $conflictCount,
+            'occurrences'           => $results,
+            'conflicts'             => $conflicts,
+        ];
     }
 }

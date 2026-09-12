@@ -133,7 +133,107 @@ class Booking extends BaseController
     }
 
     /**
-     * Create a new booking.
+     * Preview recurrence dates and check conflicts without creating records.
+     *
+     * POST /api/bookings/recurring-preview
+     */
+    public function recurringPreview(): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $data = $this->request->getJSON(true) ?? $this->request->getPost() ?? [];
+
+        $roomId = (int) ($data['room_id'] ?? 0);
+        $startTime = trim((string) ($data['start_time'] ?? ''));
+        $endTime = trim((string) ($data['end_time'] ?? ''));
+        $recurrence = is_array($data['recurrence'] ?? null) ? $data['recurrence'] : [];
+        $excludeBookingId = !empty($data['exclude_booking_id']) ? (int) $data['exclude_booking_id'] : null;
+
+        $errors = [];
+        if ($roomId <= 0) {
+            $errors['room_id'] = 'Room is required.';
+        }
+        if ($startTime === '') {
+            $errors['start_time'] = 'Start time is required.';
+        }
+        if ($endTime === '') {
+            $errors['end_time'] = 'End time is required.';
+        }
+
+        if (!empty($errors)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => $errors,
+            ]);
+        }
+
+        if (strtotime($endTime) <= strtotime($startTime)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => [
+                    'end_time' => 'End time must be after start time.',
+                ],
+            ]);
+        }
+
+        $room = $this->roomModel->find($roomId);
+        if ($room === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Room not found.',
+            ]);
+        }
+
+        $validation = $this->bookingModel->validateRecurrenceConfig($startTime, $endTime, $recurrence);
+        if (!$validation['valid']) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => $validation['errors'],
+            ]);
+        }
+
+        $occurrences = $this->bookingModel->generateOccurrences($startTime, $endTime, $validation['cleaned']);
+        if (empty($occurrences)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => [
+                    'recurrence' => 'No occurrences could be generated for the specified pattern.',
+                ],
+            ]);
+        }
+
+        if ($this->bookingModel->hasSelfOverlap($occurrences)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => [
+                    'recurrence' => 'Occurrences within the recurring series overlap each other.',
+                ],
+            ]);
+        }
+
+        $conflictCheck = $this->bookingModel->checkOccurrencesConflicts($roomId, $occurrences, $excludeBookingId);
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => [
+                'total_occurrences'     => $conflictCheck['total_occurrences'],
+                'available_occurrences' => $conflictCheck['available_occurrences'],
+                'conflicts_count'       => $conflictCheck['conflicts_count'],
+                'occurrences'           => $conflictCheck['occurrences'],
+                'conflicts'             => $conflictCheck['conflicts'],
+            ],
+        ]);
+    }
+
+    /**
+     * Create a new booking (single or recurring series).
      */
     public function create(): ResponseInterface
     {
@@ -142,6 +242,11 @@ class Booking extends BaseController
         $session = service('session');
         $currentUserId = (int) $session->get('user_id');
         $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+
+        $isRecurring = !empty($data['is_recurring']) || !empty($data['recurrence']);
+        if ($isRecurring) {
+            return $this->createRecurringSeries($data, $currentUserId, $currentUserRoleName);
+        }
 
         // Standard requesters always start as 'pending'; only Admin / Facilities Manager may create as directly approved
         if (!in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true) || empty($data['status'])) {
@@ -784,5 +889,216 @@ class Booking extends BaseController
         }
 
         return false;
+    }
+
+    /**
+     * Create a recurring booking series atomically.
+     */
+    protected function createRecurringSeries(array $data, int $currentUserId, string $currentUserRoleName): ResponseInterface
+    {
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        // Basic presence validation
+        $title = trim((string) ($data['title'] ?? ''));
+        $roomId = (int) ($data['room_id'] ?? 0);
+        $userId = (int) ($data['user_id'] ?? $currentUserId);
+        $startTime = trim((string) ($data['start_time'] ?? ''));
+        $endTime = trim((string) ($data['end_time'] ?? ''));
+        $recurrence = is_array($data['recurrence'] ?? null) ? $data['recurrence'] : [];
+
+        $errors = [];
+        if ($title === '') {
+            $errors['title'] = 'Booking title is required.';
+        } elseif (mb_strlen($title) > 200) {
+            $errors['title'] = 'Booking title cannot exceed 200 characters.';
+        }
+        if ($roomId <= 0) {
+            $errors['room_id'] = 'Room is required.';
+        }
+        if ($userId <= 0) {
+            $errors['user_id'] = 'User is required.';
+        }
+        if ($startTime === '') {
+            $errors['start_time'] = 'Start time is required.';
+        }
+        if ($endTime === '') {
+            $errors['end_time'] = 'End time must be after start time.';
+        }
+
+        if (!empty($errors)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => $errors,
+            ]);
+        }
+
+        if (strtotime($endTime) <= strtotime($startTime)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => [
+                    'end_time' => 'End time must be after start time.',
+                ],
+            ]);
+        }
+
+        // Verify room and user exist
+        $room = $this->roomModel->find($roomId);
+        if ($room === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Room not found.',
+            ]);
+        }
+
+        $user = $this->userModel->find($userId);
+        if ($user === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'User not found.',
+            ]);
+        }
+
+        // Validate recurrence config
+        $validation = $this->bookingModel->validateRecurrenceConfig($startTime, $endTime, $recurrence);
+        if (!$validation['valid']) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => $validation['errors'],
+            ]);
+        }
+
+        // Generate occurrences
+        $occurrences = $this->bookingModel->generateOccurrences($startTime, $endTime, $validation['cleaned']);
+        if (empty($occurrences)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => [
+                    'recurrence' => 'No occurrences could be generated for the specified pattern.',
+                ],
+            ]);
+        }
+
+        // Check self-overlap within series
+        if ($this->bookingModel->hasSelfOverlap($occurrences)) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status' => 'error',
+                'errors' => [
+                    'recurrence' => 'Occurrences within the recurring series overlap each other.',
+                ],
+            ]);
+        }
+
+        // Validate conflicts across all occurrences (STRICT mode: all or nothing)
+        $conflictCheck = $this->bookingModel->checkOccurrencesConflicts($roomId, $occurrences);
+        if ($conflictCheck['has_conflicts']) {
+            return $this->response->setStatusCode(409)->setJSON([
+                'status'          => 'error',
+                'message'         => 'One or more recurring occurrences conflict with existing bookings.',
+                'conflicts_count' => $conflictCheck['conflicts_count'],
+                'conflicts'       => $conflictCheck['conflicts'],
+                'data'            => $conflictCheck,
+            ]);
+        }
+
+        // Determine status and approver
+        $status = 'pending';
+        $approverId = null;
+        $approvedAt = null;
+
+        if (in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true) && ($data['status'] ?? '') === 'approved') {
+            $status = 'approved';
+            $approverId = $currentUserId ?: null;
+            $approvedAt = date('Y-m-d H:i:s');
+        }
+
+        $db = \Config\Database::connect();
+        $db->transBegin();
+
+        $recurringGroupId = BookingModel::generateUuid();
+        $recurrencePattern = $validation['cleaned']['frequency'];
+        $totalOccurrences = count($occurrences);
+
+        $createdBookings = [];
+        $createdIds = [];
+
+        foreach ($occurrences as $occ) {
+            $bookingRecord = [
+                'room_id'            => $roomId,
+                'user_id'            => $userId,
+                'recurring_group_id' => $recurringGroupId,
+                'recurrence_pattern' => $recurrencePattern,
+                'recurrence_index'   => $occ['occurrence_index'],
+                'recurrence_total'   => $totalOccurrences,
+                'title'              => $title,
+                'description'        => $data['description'] ?? null,
+                'start_time'         => $occ['start_time'],
+                'end_time'           => $occ['end_time'],
+                'status'             => $status,
+                'approver_id'        => $approverId,
+                'approved_at'        => $approvedAt,
+                'rejection_reason'   => null,
+            ];
+
+            if (!$this->bookingModel->insert($bookingRecord, false)) {
+                $db->transRollback();
+                return $this->response->setStatusCode(422)->setJSON([
+                    'status' => 'error',
+                    'errors' => $this->bookingModel->errors(),
+                ]);
+            }
+
+            $newId = (int) $this->bookingModel->getInsertID();
+            $bookingRecord['id'] = $newId;
+            $createdBookings[] = $bookingRecord;
+            $createdIds[] = $newId;
+        }
+
+        // Audit log for recurring series
+        $this->auditLogModel->insert([
+            'user_id'    => $currentUserId ?: $userId,
+            'action'     => 'recurring_booking_created',
+            'table_name' => 'bookings',
+            'record_id'  => $createdIds[0],
+            'old_values' => null,
+            'new_values' => json_encode([
+                'recurring_group_id' => $recurringGroupId,
+                'recurrence_pattern' => $recurrencePattern,
+                'total_occurrences'  => $totalOccurrences,
+                'room_id'            => $roomId,
+                'title'              => $title,
+                'status'             => $status,
+                'created_ids'        => $createdIds,
+            ]),
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => (string) $this->request->getUserAgent(),
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        if ($db->transStatus() === false) {
+            $db->transRollback();
+            return $this->response->setStatusCode(500)->setJSON([
+                'status'  => 'error',
+                'message' => 'Failed to create recurring booking series.',
+            ]);
+        }
+
+        $db->transCommit();
+
+        return $this->response->setStatusCode(201)->setJSON([
+            'status'  => 'success',
+            'message' => "Recurring booking series of {$totalOccurrences} meetings created successfully.",
+            'data'    => [
+                'recurring_group_id' => $recurringGroupId,
+                'recurrence_pattern' => $recurrencePattern,
+                'total_occurrences'  => $totalOccurrences,
+                'created_ids'        => $createdIds,
+                'created_bookings'   => $createdBookings,
+            ],
+        ]);
     }
 }
