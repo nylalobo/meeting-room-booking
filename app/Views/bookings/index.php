@@ -8,10 +8,16 @@
         <p class="page-subtitle">Manage and monitor meeting room bookings.</p>
     </div>
 
-    <button type="button" class="btn-primary-action" id="newBookingBtn">
-        <i class="bi bi-calendar-plus"></i>
-        New Booking
-    </button>
+    <div class="page-header-actions" style="display: flex; gap: 10px; align-items: center;">
+        <button type="button" class="btn-secondary-action" id="findAvailableRoomBtn">
+            <i class="bi bi-search"></i>
+            Find Available Room
+        </button>
+        <button type="button" class="btn-primary-action" id="newBookingBtn">
+            <i class="bi bi-calendar-plus"></i>
+            New Booking
+        </button>
+    </div>
 </div>
 
 <div class="booking-toolbar">
@@ -338,6 +344,202 @@
             </div>
 
         </form>
+
+    </div>
+
+</div>
+
+<!-- ================================================================
+     Room Availability & Search Modal
+     ================================================================ -->
+
+<div class="booking-modal-overlay d-none" id="availabilityModal">
+
+    <div class="booking-modal availability-modal" role="dialog" aria-modal="true" aria-labelledby="availabilityModalTitle">
+
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="availabilityModalTitle">Find Available Room</h2>
+                <p id="availabilityModalSubtitle">Search real-time room availability across locations, capacities, and facilities.</p>
+            </div>
+
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeAvailabilityModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form id="availabilityForm">
+
+            <div id="availabilityError" class="booking-form-alert booking-form-error d-none">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="availabilityErrorText"></span>
+            </div>
+
+            <div class="availability-search-grid">
+
+                <!-- Start Time -->
+                <div class="booking-form-group">
+                    <label for="availStart">
+                        Start Time <span>*</span>
+                    </label>
+                    <input
+                        type="datetime-local"
+                        id="availStart"
+                        name="start_time"
+                        required
+                    >
+                </div>
+
+                <!-- End Time -->
+                <div class="booking-form-group">
+                    <label for="availEnd">
+                        End Time <span>*</span>
+                    </label>
+                    <input
+                        type="datetime-local"
+                        id="availEnd"
+                        name="end_time"
+                        required
+                    >
+                </div>
+
+                <!-- Location Filter -->
+                <div class="booking-form-group">
+                    <label for="availLocation">
+                        Location
+                    </label>
+                    <select id="availLocation" name="location_id">
+                        <option value="">All Locations</option>
+                    </select>
+                </div>
+
+                <!-- Minimum Capacity -->
+                <div class="booking-form-group">
+                    <label for="availCapacity">
+                        Min Capacity
+                    </label>
+                    <input
+                        type="number"
+                        id="availCapacity"
+                        name="capacity"
+                        min="1"
+                        placeholder="e.g. 10"
+                    >
+                </div>
+
+                <!-- Specific Room Filter (Optional) -->
+                <div class="booking-form-group booking-form-full">
+                    <label for="availSpecificRoom">
+                        Specific Room <span style="font-size: 11px; font-weight: normal; color: var(--color-text-muted, #8496b5);">(Optional — check if a specific room is free)</span>
+                    </label>
+                    <select id="availSpecificRoom" name="room_id">
+                        <option value="">Any Room</option>
+                    </select>
+                </div>
+
+                <!-- Facilities Filter (Optional) -->
+                <div class="booking-form-group booking-form-full">
+                    <label>
+                        Required Facilities
+                    </label>
+                    <div class="facilities-checkbox-grid" id="availFacilitiesList">
+                        <!-- Populated dynamically via JS from /api/facilities -->
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="availability-search-actions">
+                <button
+                    type="submit"
+                    class="btn-availability-search"
+                    id="submitAvailabilitySearchBtn"
+                >
+                    <i class="bi bi-search"></i>
+                    Search Available Rooms
+                </button>
+            </div>
+
+        </form>
+
+        <!-- Availability Results Container -->
+        <div id="availabilityResultsContainer" class="availability-results-section d-none">
+
+            <div id="availabilityLoading" class="availability-state d-none">
+                <i class="bi bi-arrow-repeat spin"></i>
+                Checking real-time room availability...
+            </div>
+
+            <!-- Requested Room Conflict Banner (when a specific room is booked) -->
+            <div id="requestedRoomUnavailableAlert" class="requested-room-alert d-none">
+                <div class="requested-room-alert-icon">
+                    <i class="bi bi-calendar-x"></i>
+                </div>
+                <div class="requested-room-alert-content">
+                    <h4 id="unavailableRoomName">Conference Room is Unavailable</h4>
+                    <p id="unavailableRoomReason">This room has conflicting bookings during the requested timeframe.</p>
+                    <div id="unavailableRoomConflicts" class="conflict-intervals"></div>
+                </div>
+            </div>
+
+            <!-- Requested Room Available Banner -->
+            <div id="requestedRoomAvailableAlert" class="requested-room-success d-none">
+                <div class="requested-room-alert-icon">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="requested-room-alert-content">
+                    <h4 id="availableRoomName">Room is Available!</h4>
+                    <p>The requested room is completely free during this period.</p>
+                </div>
+                <button type="button" class="btn-book-room-now" id="bookRequestedRoomBtn">
+                    <i class="bi bi-calendar-check"></i> Book Now
+                </button>
+            </div>
+
+            <!-- Alternative Room Suggestions Header -->
+            <div id="alternativeSuggestionsWrapper" class="alternatives-section d-none">
+                <div class="alternatives-header">
+                    <div class="alternatives-title-group">
+                        <i class="bi bi-lightbulb"></i>
+                        <h3>Recommended Alternative Rooms</h3>
+                    </div>
+                    <span class="badge alternatives-count-badge" id="alternativesCount">0</span>
+                </div>
+                <p class="alternatives-subtitle">These available rooms match your meeting's location, capacity, and facility requirements.</p>
+
+                <div class="available-rooms-grid" id="alternativeRoomsList">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Available Rooms Section -->
+            <div id="availableRoomsWrapper" class="available-section d-none">
+                <div class="available-header">
+                    <div class="available-title-group">
+                        <i class="bi bi-door-open"></i>
+                        <h3>Available Rooms</h3>
+                    </div>
+                    <span class="badge available-count-badge" id="availableCount">0</span>
+                </div>
+
+                <div class="available-rooms-grid" id="availableRoomsList">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="availabilityEmptyState" class="availability-empty d-none">
+                <i class="bi bi-building-x"></i>
+                <h4>No Available Rooms Found</h4>
+                <p>No active rooms match all of your selected time, capacity, location, and facility criteria. Try expanding your search criteria or choosing a different time.</p>
+            </div>
+
+        </div>
 
     </div>
 

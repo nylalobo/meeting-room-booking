@@ -23,6 +23,7 @@
             setupBookingModal();
             setupPendingApprovalsFilter();
             setupBookingRejectionModal();
+            setupRoomAvailabilitySearch();
         }
     });
 
@@ -1602,6 +1603,457 @@
         ).length;
 
         badge.textContent = String(count);
+    }
+
+
+    /* ==========================================================================
+       ROOM AVAILABILITY & SEARCH WORKFLOW
+       ========================================================================== */
+
+    let cachedLocations = null;
+    let cachedFacilities = null;
+
+    function setupRoomAvailabilitySearch() {
+
+        const modal = document.getElementById('availabilityModal');
+        const findBtn = document.getElementById('findAvailableRoomBtn');
+        const closeBtn = document.getElementById('closeAvailabilityModal');
+        const form = document.getElementById('availabilityForm');
+
+        if (!modal || !form) {
+            return;
+        }
+
+        findBtn?.addEventListener('click', () => {
+            openAvailabilityModal();
+        });
+
+        closeBtn?.addEventListener('click', closeAvailabilityModalWindow);
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeAvailabilityModalWindow();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.classList.contains('d-none')) {
+                closeAvailabilityModalWindow();
+            }
+        });
+
+        form.addEventListener('submit', handleAvailabilitySearchSubmit);
+    }
+
+    async function openAvailabilityModal() {
+
+        const modal = document.getElementById('availabilityModal');
+        const startInput = document.getElementById('availStart');
+        const endInput = document.getElementById('availEnd');
+        const locationSelect = document.getElementById('availLocation');
+        const specificRoomSelect = document.getElementById('availSpecificRoom');
+        const facilitiesList = document.getElementById('availFacilitiesList');
+        const resultsContainer = document.getElementById('availabilityResultsContainer');
+        const errorBox = document.getElementById('availabilityError');
+
+        if (!modal) {
+            return;
+        }
+
+        errorBox?.classList.add('d-none');
+        resultsContainer?.classList.add('d-none');
+
+        // Set default dates if empty (next top of the hour, duration 1 hour)
+        if (startInput && !startInput.value) {
+            const now = new Date();
+            now.setHours(now.getHours() + 1, 0, 0, 0);
+            const nextHour = new Date(now);
+            nextHour.setHours(nextHour.getHours() + 1);
+
+            const pad = (n) => String(n).padStart(2, '0');
+            const formatForInput = (d) =>
+                `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+            startInput.value = formatForInput(now);
+            if (endInput && !endInput.value) {
+                endInput.value = formatForInput(nextHour);
+            }
+        }
+
+        // Populate specific room dropdown from allRooms
+        if (specificRoomSelect) {
+            const currentRoomVal = specificRoomSelect.value;
+            specificRoomSelect.innerHTML = '<option value="">Any Room</option>';
+            allRooms
+                .filter((r) => String(r.is_active) === '1')
+                .forEach((r) => {
+                    const opt = document.createElement('option');
+                    opt.value = String(r.id);
+                    opt.textContent = `${r.name} (${r.room_code || 'No code'}) - Cap: ${r.capacity}`;
+                    specificRoomSelect.appendChild(opt);
+                });
+            if (currentRoomVal) {
+                specificRoomSelect.value = currentRoomVal;
+            }
+        }
+
+        // Load locations if not loaded
+        if (locationSelect && !cachedLocations) {
+            try {
+                const res = await fetch('/api/locations');
+                if (res.ok) {
+                    const data = await res.json();
+                    cachedLocations = data.data || [];
+                    locationSelect.innerHTML = '<option value="">All Locations</option>';
+                    cachedLocations
+                        .filter((loc) => String(loc.is_active) === '1')
+                        .forEach((loc) => {
+                            const opt = document.createElement('option');
+                            opt.value = String(loc.id);
+                            opt.textContent = loc.name;
+                            locationSelect.appendChild(opt);
+                        });
+                }
+            } catch (err) {
+                // Ignore network error on location pre-fetch
+            }
+        }
+
+        // Load facilities if not loaded
+        if (facilitiesList && !cachedFacilities) {
+            try {
+                const res = await fetch('/api/facilities');
+                if (res.ok) {
+                    const data = await res.json();
+                    cachedFacilities = data.data || [];
+                    facilitiesList.innerHTML = '';
+                    cachedFacilities
+                        .filter((f) => String(f.is_active) === '1')
+                        .forEach((f) => {
+                            const label = document.createElement('label');
+                            label.className = 'facility-checkbox-item';
+                            label.innerHTML = `
+                                <input type="checkbox" name="facilities[]" value="${escapeHtml(f.id)}">
+                                <span>${escapeHtml(f.name)}</span>
+                            `;
+                            facilitiesList.appendChild(label);
+                        });
+                }
+            } catch (err) {
+                // Ignore network error on facilities pre-fetch
+            }
+        }
+
+        modal.classList.remove('d-none');
+        document.body.classList.add('booking-modal-open');
+    }
+
+    function closeAvailabilityModalWindow() {
+
+        const modal = document.getElementById('availabilityModal');
+        if (!modal) {
+            return;
+        }
+
+        modal.classList.add('d-none');
+        document.body.classList.remove('booking-modal-open');
+    }
+
+    async function handleAvailabilitySearchSubmit(event) {
+
+        event.preventDefault();
+
+        const startInput = document.getElementById('availStart');
+        const endInput = document.getElementById('availEnd');
+        const locationSelect = document.getElementById('availLocation');
+        const capacityInput = document.getElementById('availCapacity');
+        const specificRoomSelect = document.getElementById('availSpecificRoom');
+        const facilitiesList = document.getElementById('availFacilitiesList');
+        const submitBtn = document.getElementById('submitAvailabilitySearchBtn');
+        const errorBox = document.getElementById('availabilityError');
+        const errorText = document.getElementById('availabilityErrorText');
+        const resultsContainer = document.getElementById('availabilityResultsContainer');
+        const loading = document.getElementById('availabilityLoading');
+        const unavailableAlert = document.getElementById('requestedRoomUnavailableAlert');
+        const availableAlert = document.getElementById('requestedRoomAvailableAlert');
+        const alternativesSection = document.getElementById('alternativeSuggestionsWrapper');
+        const availableSection = document.getElementById('availableRoomsWrapper');
+        const emptyState = document.getElementById('availabilityEmptyState');
+
+        errorBox?.classList.add('d-none');
+
+        const startVal = startInput?.value;
+        const endVal = endInput?.value;
+
+        if (!startVal || !endVal) {
+            if (errorBox && errorText) {
+                errorText.textContent = 'Please select both start time and end time.';
+                errorBox.classList.remove('d-none');
+            }
+            return;
+        }
+
+        if (endVal <= startVal) {
+            if (errorBox && errorText) {
+                errorText.textContent = 'End time must be strictly after start time.';
+                errorBox.classList.remove('d-none');
+            }
+            return;
+        }
+
+        const payload = {
+            start_time: formatDateTimeForApi(startVal),
+            end_time: formatDateTimeForApi(endVal)
+        };
+
+        if (locationSelect && locationSelect.value) {
+            payload.location_id = Number(locationSelect.value);
+        }
+
+        if (capacityInput && capacityInput.value && Number(capacityInput.value) > 0) {
+            payload.capacity = Number(capacityInput.value);
+        }
+
+        const specificRoomId = specificRoomSelect && specificRoomSelect.value ? Number(specificRoomSelect.value) : null;
+        if (specificRoomId) {
+            payload.room_id = specificRoomId;
+        }
+
+        if (facilitiesList) {
+            const checkedBoxes = Array.from(facilitiesList.querySelectorAll('input[type="checkbox"]:checked'));
+            if (checkedBoxes.length > 0) {
+                payload.facilities = checkedBoxes.map((cb) => Number(cb.value));
+            }
+        }
+
+        resultsContainer?.classList.remove('d-none');
+        loading?.classList.remove('d-none');
+        unavailableAlert?.classList.add('d-none');
+        availableAlert?.classList.add('d-none');
+        alternativesSection?.classList.add('d-none');
+        availableSection?.classList.add('d-none');
+        emptyState?.classList.add('d-none');
+
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Searching...';
+        }
+
+        try {
+            const res = await fetch('/api/rooms/availability', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await res.json();
+
+            loading?.classList.add('d-none');
+
+            if (!res.ok || result.status !== 'success') {
+                if (errorBox && errorText) {
+                    errorText.textContent = result.message || 'Error checking availability.';
+                    errorBox.classList.remove('d-none');
+                }
+                return;
+            }
+
+            renderAvailabilitySearchResults(result.data, {
+                startInputVal: startVal,
+                endInputVal: endVal,
+                specificRoomId: specificRoomId
+            });
+
+        } catch (err) {
+            loading?.classList.add('d-none');
+            if (errorBox && errorText) {
+                errorText.textContent = err.message || 'Network error checking availability.';
+                errorBox.classList.remove('d-none');
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-search"></i> Search Available Rooms';
+            }
+        }
+    }
+
+    function renderAvailabilitySearchResults(data, params) {
+
+        const unavailableAlert = document.getElementById('requestedRoomUnavailableAlert');
+        const unavailableRoomName = document.getElementById('unavailableRoomName');
+        const unavailableConflicts = document.getElementById('unavailableRoomConflicts');
+        const availableAlert = document.getElementById('requestedRoomAvailableAlert');
+        const availableRoomName = document.getElementById('availableRoomName');
+        const bookRequestedRoomBtn = document.getElementById('bookRequestedRoomBtn');
+        const alternativesSection = document.getElementById('alternativeSuggestionsWrapper');
+        const alternativesCount = document.getElementById('alternativesCount');
+        const alternativeRoomsList = document.getElementById('alternativeRoomsList');
+        const availableSection = document.getElementById('availableRoomsWrapper');
+        const availableCount = document.getElementById('availableCount');
+        const availableRoomsList = document.getElementById('availableRoomsList');
+        const emptyState = document.getElementById('availabilityEmptyState');
+
+        unavailableAlert?.classList.add('d-none');
+        availableAlert?.classList.add('d-none');
+        alternativesSection?.classList.add('d-none');
+        availableSection?.classList.add('d-none');
+        emptyState?.classList.add('d-none');
+
+        if (params.specificRoomId) {
+            if (data.is_available === false) {
+                if (unavailableAlert) {
+                    unavailableAlert.classList.remove('d-none');
+                    if (unavailableRoomName) {
+                        unavailableRoomName.textContent = data.room
+                            ? `${data.room.name} (${data.room.room_code || 'No Code'}) is Unavailable`
+                            : 'Selected Room is Unavailable';
+                    }
+                    if (unavailableConflicts) {
+                        unavailableConflicts.innerHTML = '';
+                        if (Array.isArray(data.conflicts) && data.conflicts.length > 0) {
+                            data.conflicts.forEach((c) => {
+                                const item = document.createElement('div');
+                                item.className = 'conflict-interval-item';
+                                item.innerHTML = `
+                                    <i class="bi bi-clock-history"></i>
+                                    <span>Conflict: <strong>${formatDateForDisplay(c.start_time)} ${formatTimeRangeForDisplay(c.start_time, c.end_time)}</strong> (Status: <em>${escapeHtml(c.status || '')}</em>)</span>
+                                `;
+                                unavailableConflicts.appendChild(item);
+                            });
+                        }
+                    }
+                }
+
+                const alts = Array.isArray(data.alternatives) ? data.alternatives : [];
+                if (alts.length > 0) {
+                    if (alternativesSection && alternativeRoomsList && alternativesCount) {
+                        alternativesSection.classList.remove('d-none');
+                        alternativesCount.textContent = String(alts.length);
+                        alternativeRoomsList.innerHTML = alts
+                            .map((room) => buildAvailabilityRoomCard(room, true))
+                            .join('');
+                    }
+                } else {
+                    emptyState?.classList.remove('d-none');
+                }
+
+            } else {
+                if (availableAlert) {
+                    availableAlert.classList.remove('d-none');
+                    if (availableRoomName) {
+                        availableRoomName.textContent = data.room
+                            ? `${data.room.name} is Available!`
+                            : 'Room is Available!';
+                    }
+                    if (bookRequestedRoomBtn && data.room) {
+                        bookRequestedRoomBtn.onclick = () => {
+                            selectRoomAndOpenBooking(data.room.id, data.room.name, params.startInputVal, params.endInputVal);
+                        };
+                    }
+                }
+            }
+
+        } else {
+            const rooms = Array.isArray(data.available_rooms) ? data.available_rooms : [];
+            if (rooms.length > 0) {
+                if (availableSection && availableRoomsList && availableCount) {
+                    availableSection.classList.remove('d-none');
+                    availableCount.textContent = String(rooms.length);
+                    availableRoomsList.innerHTML = rooms
+                        .map((room) => buildAvailabilityRoomCard(room, false))
+                        .join('');
+                }
+            } else {
+                emptyState?.classList.remove('d-none');
+            }
+        }
+
+        document.querySelectorAll('.btn-select-room-for-booking').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const roomId = btn.getAttribute('data-room-id');
+                const roomName = btn.getAttribute('data-room-name');
+                selectRoomAndOpenBooking(roomId, roomName, params.startInputVal, params.endInputVal);
+            });
+        });
+    }
+
+    function buildAvailabilityRoomCard(room, isAlternative) {
+
+        const facilities = Array.isArray(room.facilities) ? room.facilities : [];
+        const facilitiesHtml = facilities
+            .map((f) => {
+                const fName = typeof f === 'object' ? (f.name || '') : String(f);
+                return `<span class="room-facility-pill"><i class="bi bi-check2"></i> ${escapeHtml(fName)}</span>`;
+            })
+            .join('');
+
+        const matchScoreHtml = isAlternative && room.match_score !== undefined
+            ? `<span class="badge match-score-badge"><i class="bi bi-award-fill"></i> Score: ${escapeHtml(room.match_score)}</span>`
+            : '';
+
+        const matchReasons = isAlternative && Array.isArray(room.match_reasons)
+            ? room.match_reasons
+            : [];
+
+        const reasonsHtml = matchReasons.length > 0
+            ? `<div class="room-match-reasons">${matchReasons.map((r) => `<span class="match-reason-pill"><i class="bi bi-star-fill"></i> ${escapeHtml(r)}</span>`).join('')}</div>`
+            : '';
+
+        return `
+            <div class="room-card ${isAlternative ? 'room-card-alternative' : ''}">
+                <div class="room-card-header">
+                    <div>
+                        <h4 class="room-card-title">${escapeHtml(room.name || 'Unnamed Room')}</h4>
+                        <span class="room-card-code">${escapeHtml(room.room_code || '')}</span>
+                    </div>
+                    ${matchScoreHtml}
+                </div>
+                <div class="room-card-meta">
+                    <span class="room-meta-item"><i class="bi bi-geo-alt"></i> ${escapeHtml(room.location_name || 'Main Campus')}</span>
+                    ${room.floor ? `<span class="room-meta-item"><i class="bi bi-layers"></i> Floor ${escapeHtml(room.floor)}</span>` : ''}
+                    <span class="room-meta-item"><i class="bi bi-people"></i> Cap: <strong>${escapeHtml(room.capacity || 0)}</strong></span>
+                </div>
+                ${facilitiesHtml ? `<div class="room-card-facilities">${facilitiesHtml}</div>` : ''}
+                ${reasonsHtml}
+                <div class="room-card-actions">
+                    <button type="button" class="btn-select-room-for-booking" data-room-id="${escapeHtml(room.id)}" data-room-name="${escapeHtml(room.name || '')}">
+                        <i class="bi bi-calendar-plus"></i> Book This Room
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    function selectRoomAndOpenBooking(roomId, roomName, startInputVal, endInputVal) {
+
+        closeAvailabilityModalWindow();
+        resetBookingForm();
+
+        const roomSelect = document.getElementById('bookingRoom');
+        const startInput = document.getElementById('bookingStart');
+        const endInput = document.getElementById('bookingEnd');
+
+        if (roomSelect && roomId) {
+            roomSelect.value = String(roomId);
+        }
+        if (startInput && startInputVal) {
+            startInput.value = startInputVal;
+        }
+        if (endInput && endInputVal) {
+            endInput.value = endInputVal;
+        }
+
+        openBookingModal();
+
+        showAppNotification(
+            `Selected ${roomName || 'room'} for booking. Complete the meeting details to proceed.`,
+            'success',
+            'Room Selected'
+        );
     }
 
 

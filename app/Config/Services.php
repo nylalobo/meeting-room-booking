@@ -3,6 +3,9 @@
 namespace Config;
 
 use CodeIgniter\Config\BaseService;
+use CodeIgniter\Email\Email;
+use CodeIgniter\Test\Mock\MockEmail;
+use Config\Email as EmailConfig;
 
 /**
  * Services Configuration file.
@@ -19,14 +22,94 @@ use CodeIgniter\Config\BaseService;
  */
 class Services extends BaseService
 {
-    /*
-     * public static function example($getShared = true)
-     * {
-     *     if ($getShared) {
-     *         return static::getSharedInstance('example');
-     *     }
+    /**
+     * The Email class provides email delivery capabilities.
      *
-     *     return new \CodeIgniter\Example();
-     * }
+     * In test execution mode (authorized strictly via an ephemeral server-side
+     * secret token file in WRITEPATH and matching request secret), a safe mock
+     * transport is returned to prevent live external SMTP relay during automated
+     * regression testing.
+     *
+     * In production (ENVIRONMENT === 'production') or normal client HTTP usage,
+     * the mock transport can NEVER be activated by external headers alone;
+     * standard Email with Gmail SMTP is always returned.
+     *
+     * @param EmailConfig|array|null $config
      */
+    public static function email($config = null, bool $getShared = true)
+    {
+        // 1. Strictly forbid mock transport in production environment
+        if (defined('ENVIRONMENT') && ENVIRONMENT === 'production') {
+            if ($getShared) {
+                return static::getSharedInstance('email', $config);
+            }
+            if (empty($config) || (! is_array($config) && ! $config instanceof EmailConfig)) {
+                $config = config(EmailConfig::class);
+            }
+            return new Email($config);
+        }
+
+        // 2. Determine whether safe test mock is legitimately authorized.
+        // Requires a server-side flag file containing a dynamic secret token
+        // created by a local test runner with filesystem access.
+        $isMockAuthorized = false;
+        $flagFile = defined('WRITEPATH') ? rtrim(WRITEPATH, '/\\') . DIRECTORY_SEPARATOR . '.test_email_mock' : null;
+
+        if ($flagFile && is_file($flagFile)) {
+            $flagMtime = @filemtime($flagFile);
+            // Flag file must have been generated recently (< 300 seconds TTL)
+            if ($flagMtime && (time() - $flagMtime) < 300) {
+                $expectedSecret = trim((string) @file_get_contents($flagFile));
+                if ($expectedSecret !== '') {
+                    try {
+                        $request = service('request');
+                        if ($request && method_exists($request, 'getHeaderLine')) {
+                            $providedSecret = trim($request->getHeaderLine('X-MeetSpace-Test-Secret'));
+                            if ($providedSecret !== '' && hash_equals($expectedSecret, $providedSecret)) {
+                                $isMockAuthorized = true;
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        $isMockAuthorized = false;
+                    }
+                }
+            }
+        }
+
+        if ($isMockAuthorized) {
+            if (empty($config) || (! is_array($config) && ! $config instanceof EmailConfig)) {
+                $config = config(EmailConfig::class);
+            }
+
+            return new class($config) extends MockEmail {
+                public function send($autoClear = true)
+                {
+                    $result = parent::send($autoClear);
+
+                    // Record delivery attempt metadata for automated test assertions
+                    $deliveryRecord = [
+                        'to'      => $this->recipients,
+                        'subject' => $this->archive['subject'] ?? '',
+                        'time'    => date('Y-m-d H:i:s'),
+                    ];
+
+                    if (defined('WRITEPATH')) {
+                        @file_put_contents(WRITEPATH . 'test_email_delivery.json', json_encode($deliveryRecord));
+                    }
+
+                    return $result;
+                }
+            };
+        }
+
+        if ($getShared) {
+            return static::getSharedInstance('email', $config);
+        }
+
+        if (empty($config) || (! is_array($config) && ! $config instanceof EmailConfig)) {
+            $config = config(EmailConfig::class);
+        }
+
+        return new Email($config);
+    }
 }

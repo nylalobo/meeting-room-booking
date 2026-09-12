@@ -112,6 +112,9 @@ $routes->delete('api/locations/(:num)', 'Location::delete/$1');
 
 $routes->get('rooms', 'Home::rooms');
 
+$routes->get('api/rooms/availability', 'Room::availability');
+$routes->post('api/rooms/availability', 'Room::availability');
+$routes->get('api/rooms/(:num)/availability', 'Room::roomAvailability/$1');
 $routes->get('api/rooms', 'Room::index');
 $routes->get('api/rooms/(:num)', 'Room::show/$1');
 $routes->post('api/rooms', 'Room::create');
