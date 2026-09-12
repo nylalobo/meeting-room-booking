@@ -141,8 +141,26 @@
 
     <!-- Calendar Empty Notice -->
     <div id="calendarEmpty" class="calendar-empty-notice d-none">
-        <i class="bi bi-calendar-x"></i>
-        <span>No scheduled bookings in this timeframe.</span>
+        <div class="calendar-empty-content">
+            <i class="bi bi-calendar-x"></i>
+            <span id="calendarEmptyMessage">No scheduled bookings in this timeframe.</span>
+        </div>
+        <button type="button" class="btn-cal-empty-action" id="calendarEmptyActionBtn">
+            <i class="bi bi-calendar-plus"></i>
+            <span>Book Meeting</span>
+        </button>
+    </div>
+
+    <!-- Calendar Error Notice -->
+    <div id="calendarError" class="calendar-error-notice d-none">
+        <div class="calendar-error-content">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span id="calendarErrorMessage">Unable to load calendar bookings. Please try again.</span>
+        </div>
+        <button type="button" class="btn-cal-retry" id="calendarRetryBtn">
+            <i class="bi bi-arrow-clockwise"></i>
+            <span>Retry</span>
+        </button>
     </div>
 
     <!-- Calendar Views -->
@@ -792,7 +810,13 @@
         </div>
 
         <div class="calendar-detail-body">
-            <div class="cal-detail-meta-grid">
+            <!-- Cancelled Notice Banner -->
+            <div class="cal-cancelled-banner d-none" id="calDetailCancelledBanner">
+                <i class="bi bi-x-circle-fill"></i>
+                <span>This meeting has been cancelled and its room reservation is released.</span>
+            </div>
+
+            <div class="cal-detail-meta-grid" id="calDetailMetaGrid">
                 <div class="cal-detail-item">
                     <span class="cal-detail-label"><i class="bi bi-clock"></i> Date & Time</span>
                     <span class="cal-detail-value" id="calDetailDateTime">—</span>
@@ -814,6 +838,12 @@
             <div class="cal-detail-section" id="calDetailDescriptionSection">
                 <span class="cal-detail-label"><i class="bi bi-card-text"></i> Description</span>
                 <p class="cal-detail-desc" id="calDetailDescription">No description provided.</p>
+            </div>
+
+            <!-- Rejection Reason Section -->
+            <div class="cal-rejection-card d-none" id="calDetailRejectionSection">
+                <span class="cal-rejection-label"><i class="bi bi-exclamation-octagon"></i> Rejection Reason</span>
+                <p class="cal-rejection-text" id="calDetailRejectionReason">—</p>
             </div>
 
             <!-- Recurrence Series Information -->

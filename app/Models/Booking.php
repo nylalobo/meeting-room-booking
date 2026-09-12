@@ -608,6 +608,7 @@ class Booking extends Model
                 'recurrence_index'   => !empty($row['recurrence_index']) ? (int) $row['recurrence_index'] : null,
                 'recurrence_total'   => !empty($row['recurrence_total']) ? (int) $row['recurrence_total'] : null,
                 'is_recurring'       => $isRecurring,
+                'rejection_reason'   => $row['rejection_reason'] ?? null,
             ];
         }
 

@@ -163,6 +163,10 @@
                 );
             }
 
+            if (activeViewMode === 'calendar') {
+                fetchCalendarEvents();
+            }
+
         } catch (err) {
 
             loading?.classList.add(
@@ -759,6 +763,7 @@
         );
 
         setupRecurrenceControls();
+        setupSafeTimeSelection();
     }
 
 
@@ -849,6 +854,68 @@
         populateModalDropdowns();
         hideBookingFormMessages();
         resetRecurrenceForm();
+    }
+
+
+    function setupSafeTimeSelection() {
+        const startInput = document.getElementById('bookingStart');
+        const endInput = document.getElementById('bookingEnd');
+        if (!startInput || !endInput) return;
+
+        startInput.addEventListener('change', () => {
+            if (!startInput.value) return;
+            const sDate = new Date(startInput.value);
+            if (isNaN(sDate.getTime())) return;
+
+            const eDate = endInput.value ? new Date(endInput.value) : null;
+            if (!eDate || isNaN(eDate.getTime()) || eDate <= sDate) {
+                const autoEnd = new Date(sDate.getTime() + 60 * 60 * 1000);
+                endInput.value = formatDateTimeForInput(autoEnd);
+            }
+        });
+
+        endInput.addEventListener('change', () => {
+            if (!startInput.value || !endInput.value) return;
+            const sDate = new Date(startInput.value);
+            const eDate = new Date(endInput.value);
+            if (!isNaN(sDate.getTime()) && !isNaN(eDate.getTime()) && eDate <= sDate) {
+                showBookingFormError('End time must be after start time.');
+            } else {
+                hideBookingFormMessages();
+            }
+        });
+    }
+
+
+    function openCreateBookingFromCalendar(options = {}) {
+        resetBookingForm();
+
+        const startInput = document.getElementById('bookingStart');
+        const endInput = document.getElementById('bookingEnd');
+        const roomSelect = document.getElementById('bookingRoom');
+        const roomFilter = document.getElementById('bookingRoomFilter');
+
+        if (options.startDate && startInput) {
+            const sStr = formatDateTimeForInput(options.startDate);
+            startInput.value = sStr;
+
+            if (options.endDate && endInput) {
+                endInput.value = formatDateTimeForInput(options.endDate);
+            } else if (endInput) {
+                const sDate = new Date(options.startDate);
+                if (!isNaN(sDate.getTime())) {
+                    const eDate = new Date(sDate.getTime() + 60 * 60 * 1000);
+                    endInput.value = formatDateTimeForInput(eDate);
+                }
+            }
+        }
+
+        const targetRoomId = options.roomId || (roomFilter ? roomFilter.value : '');
+        if (targetRoomId && roomSelect) {
+            roomSelect.value = String(targetRoomId);
+        }
+
+        openBookingModal();
     }
 
 
@@ -1443,9 +1510,25 @@
 
     function findBookingById(id) {
 
-        return allBookings.find(
-            (b) => String(b.id) === String(id)
+        if (!id) return null;
+
+        if (typeof id === 'object' && id.id) {
+            return id;
+        }
+
+        let b = allBookings.find(
+            (item) => String(item.id) === String(id)
         );
+        if (b) return b;
+
+        if (Array.isArray(calendarEvents)) {
+            b = calendarEvents.find(
+                (item) => String(item.id) === String(id)
+            );
+            if (b) return b;
+        }
+
+        return null;
     }
 
 
@@ -1453,9 +1536,11 @@
        EDIT BOOKING
        ========================================================================== */
 
-    function editBooking(bookingId) {
+    function editBooking(bookingOrId) {
 
-        const booking = findBookingById(bookingId);
+        const booking = (typeof bookingOrId === 'object' && bookingOrId !== null && bookingOrId.id)
+            ? bookingOrId
+            : findBookingById(bookingOrId);
 
         if (!booking) {
             showAppNotification(
@@ -1535,8 +1620,9 @@
             document.getElementById('bookingModalSubtitle');
 
         if (modalSubtitle) {
-            modalSubtitle.textContent =
-                'Update meeting room booking details.';
+            modalSubtitle.textContent = booking.is_recurring
+                ? 'Update this recurring meeting occurrence.'
+                : 'Update meeting room booking details.';
         }
 
         const submitButton =
@@ -2275,8 +2361,19 @@
         errorBox?.classList.add('d-none');
         resultsContainer?.classList.add('d-none');
 
-        // Set default dates if empty (next top of the hour, duration 1 hour)
-        if (startInput && !startInput.value) {
+        // Context handover from booking modal or calendar
+        const bookingStartVal = document.getElementById('bookingStart')?.value;
+        const bookingEndVal = document.getElementById('bookingEnd')?.value;
+        const bookingRoomVal = document.getElementById('bookingRoom')?.value;
+        const calRoomFilterVal = document.getElementById('bookingRoomFilter')?.value;
+
+        if (bookingStartVal && startInput) {
+            startInput.value = bookingStartVal;
+            if (bookingEndVal && endInput) {
+                endInput.value = bookingEndVal;
+            }
+        } else if (startInput && !startInput.value) {
+            // Set default dates if empty (next top of the hour, duration 1 hour)
             const now = new Date();
             now.setHours(now.getHours() + 1, 0, 0, 0);
             const nextHour = new Date(now);
@@ -2304,8 +2401,10 @@
                     opt.textContent = `${r.name} (${r.room_code || 'No code'}) - Cap: ${r.capacity}`;
                     specificRoomSelect.appendChild(opt);
                 });
-            if (currentRoomVal) {
-                specificRoomSelect.value = currentRoomVal;
+
+            const roomToSelect = bookingRoomVal || calRoomFilterVal || currentRoomVal;
+            if (roomToSelect) {
+                specificRoomSelect.value = String(roomToSelect);
             }
         }
 
@@ -2809,6 +2908,11 @@
             return '';
         }
 
+        if (apiDateTime instanceof Date) {
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${apiDateTime.getFullYear()}-${pad(apiDateTime.getMonth() + 1)}-${pad(apiDateTime.getDate())}T${pad(apiDateTime.getHours())}:${pad(apiDateTime.getMinutes())}`;
+        }
+
         return String(apiDateTime)
             .replace(' ', 'T')
             .slice(0, 16);
@@ -2974,6 +3078,22 @@
             if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.recurring_group_id) {
                 loadSeriesOccurrences(currentSelectedCalendarEvent.recurring_group_id, currentSelectedCalendarEvent.id);
             }
+        });
+
+        // Calendar Empty State & Error Retry
+        const retryBtn = document.getElementById('calendarRetryBtn');
+        retryBtn?.addEventListener('click', () => {
+            fetchCalendarEvents();
+        });
+
+        const emptyActionBtn = document.getElementById('calendarEmptyActionBtn');
+        emptyActionBtn?.addEventListener('click', () => {
+            const d = currentCalendarDate || new Date();
+            const dIso = formatDateToIso(d);
+            openCreateBookingFromCalendar({
+                startDate: `${dIso} 09:00:00`,
+                endDate: `${dIso} 10:00:00`
+            });
         });
     }
 
@@ -3158,9 +3278,11 @@
 
         const loadingOverlay = document.getElementById('calendarLoading');
         const emptyNotice = document.getElementById('calendarEmpty');
+        const errorNotice = document.getElementById('calendarError');
 
         loadingOverlay?.classList.remove('d-none');
         emptyNotice?.classList.add('d-none');
+        errorNotice?.classList.add('d-none');
 
         const range = getCalendarDateRange();
         updateCalendarHeading(range);
@@ -3195,22 +3317,45 @@
             const result = await response.json();
 
             if (!response.ok || result.status !== 'success') {
-                const message = result.message || 'Unable to load calendar events.';
-                showAppNotification(message, 'error', 'Calendar Error');
+                const userErrMsg = 'Unable to load calendar bookings. Please try again.';
+                showAppNotification(userErrMsg, 'error', 'Calendar Error');
                 calendarEvents = [];
+
+                emptyNotice?.classList.add('d-none');
+                if (errorNotice) {
+                    const errorMsgEl = document.getElementById('calendarErrorMessage');
+                    if (errorMsgEl) errorMsgEl.textContent = userErrMsg;
+                    errorNotice.classList.remove('d-none');
+                }
             } else {
                 calendarEvents = result.data || [];
-            }
+                errorNotice?.classList.add('d-none');
 
-            if (calendarEvents.length === 0) {
-                emptyNotice?.classList.remove('d-none');
+                if (calendarEvents.length === 0 && emptyNotice) {
+                    const hasActiveFilter = Boolean(roomFilter || (statusFilter && statusFilter !== '') || pendingApprovalsOnly);
+                    const emptyMsgEl = document.getElementById('calendarEmptyMessage');
+                    if (emptyMsgEl) {
+                        emptyMsgEl.textContent = hasActiveFilter
+                            ? 'No bookings match your current filters.'
+                            : 'No bookings scheduled in this timeframe.';
+                    }
+                    emptyNotice.classList.remove('d-none');
+                }
             }
 
             renderCalendar(range);
 
         } catch (err) {
-            showAppNotification('Network error loading calendar events.', 'error', 'Calendar Error');
+            const userErrMsg = 'Unable to load calendar bookings. Please try again.';
+            showAppNotification(userErrMsg, 'error', 'Calendar Error');
             calendarEvents = [];
+
+            emptyNotice?.classList.add('d-none');
+            if (errorNotice) {
+                const errorMsgEl = document.getElementById('calendarErrorMessage');
+                if (errorMsgEl) errorMsgEl.textContent = userErrMsg;
+                errorNotice.classList.remove('d-none');
+            }
             renderCalendar(range);
         } finally {
             loadingOverlay?.classList.add('d-none');
@@ -3258,6 +3403,26 @@
             cell.className = 'calendar-day-cell' +
                 (isOtherMonth ? ' is-other-month' : '') +
                 (isToday ? ' is-today' : '');
+            cell.setAttribute('role', 'button');
+            cell.setAttribute('tabindex', '0');
+            cell.title = `Click to book meeting on ${dateIso}`;
+
+            cell.addEventListener('click', () => {
+                openCreateBookingFromCalendar({
+                    startDate: `${dateIso} 09:00:00`,
+                    endDate: `${dateIso} 10:00:00`
+                });
+            });
+
+            cell.addEventListener('keydown', (e) => {
+                if (e.target === cell && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    openCreateBookingFromCalendar({
+                        startDate: `${dateIso} 09:00:00`,
+                        endDate: `${dateIso} 10:00:00`
+                    });
+                }
+            });
 
             const cellTop = document.createElement('div');
             cellTop.className = 'calendar-day-cell-top';
@@ -3426,6 +3591,28 @@
                 const hourLine = document.createElement('div');
                 hourLine.className = 'calendar-hour-line';
                 hourLine.innerHTML = `<div class="calendar-half-hour-line"></div>`;
+                hourLine.setAttribute('role', 'button');
+                hourLine.setAttribute('tabindex', '0');
+                const padH = String(h).padStart(2, '0');
+                const nextH = String(h + 1).padStart(2, '0');
+                hourLine.title = `Click to book meeting at ${padH}:00`;
+                hourLine.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openCreateBookingFromCalendar({
+                        startDate: `${dIso} ${padH}:00:00`,
+                        endDate: `${dIso} ${nextH}:00:00`
+                    });
+                });
+                hourLine.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openCreateBookingFromCalendar({
+                            startDate: `${dIso} ${padH}:00:00`,
+                            endDate: `${dIso} ${nextH}:00:00`
+                        });
+                    }
+                });
                 dayCol.appendChild(hourLine);
             }
 
@@ -3549,6 +3736,28 @@
             const hourLine = document.createElement('div');
             hourLine.className = 'calendar-hour-line';
             hourLine.innerHTML = `<div class="calendar-half-hour-line"></div>`;
+            hourLine.setAttribute('role', 'button');
+            hourLine.setAttribute('tabindex', '0');
+            const padH = String(h).padStart(2, '0');
+            const nextH = String(h + 1).padStart(2, '0');
+            hourLine.title = `Click to book meeting at ${padH}:00`;
+            hourLine.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openCreateBookingFromCalendar({
+                    startDate: `${dIso} ${padH}:00:00`,
+                    endDate: `${dIso} ${nextH}:00:00`
+                });
+            });
+            hourLine.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openCreateBookingFromCalendar({
+                        startDate: `${dIso} ${padH}:00:00`,
+                        endDate: `${dIso} ${nextH}:00:00`
+                    });
+                }
+            });
             dayCol.appendChild(hourLine);
         }
 
@@ -3769,8 +3978,33 @@
             descEl.textContent = ev.description || 'No meeting description provided.';
         }
 
+        // Cancelled Notice Banner
+        const cancelledBanner = document.getElementById('calDetailCancelledBanner');
+        if (cancelledBanner) {
+            if (normStatus === 'cancelled') {
+                cancelledBanner.classList.remove('d-none');
+            } else {
+                cancelledBanner.classList.add('d-none');
+            }
+        }
+
+        // Rejection Reason Section
+        const rejSection = document.getElementById('calDetailRejectionSection');
+        const rejReasonEl = document.getElementById('calDetailRejectionReason');
+        if (rejSection && rejReasonEl) {
+            const reason = (ev.rejection_reason || '').trim();
+            if (normStatus === 'rejected' && reason) {
+                rejReasonEl.textContent = reason;
+                rejSection.classList.remove('d-none');
+            } else {
+                rejReasonEl.textContent = '';
+                rejSection.classList.add('d-none');
+            }
+        }
+
         // Recurrence Section
         const recSection = document.getElementById('calDetailRecurrenceSection');
+        const metaEl = document.getElementById('calDetailRecurrenceMeta');
         const seriesList = document.getElementById('calDetailSeriesList');
         const seriesContent = document.getElementById('calSeriesListContent');
         if (seriesList) seriesList.classList.add('d-none');
@@ -3781,12 +4015,14 @@
             const pattern = (ev.recurrence_pattern || 'Recurring').charAt(0).toUpperCase() + (ev.recurrence_pattern || '').slice(1);
             const index = ev.recurrence_index || 1;
             const total = ev.recurrence_total || '—';
-            const metaEl = document.getElementById('calDetailRecurrenceMeta');
             if (metaEl) {
                 metaEl.textContent = `${pattern} • Occurrence ${index} of ${total}`;
             }
         } else {
             recSection?.classList.add('d-none');
+            if (metaEl) {
+                metaEl.textContent = '';
+            }
         }
 
         modal.classList.remove('d-none');
@@ -3794,10 +4030,18 @@
 
     function closeCalendarDetailModal() {
         document.getElementById('calendarEventDetailModal')?.classList.add('d-none');
+        document.getElementById('calDetailCancelledBanner')?.classList.add('d-none');
+        document.getElementById('calDetailRejectionSection')?.classList.add('d-none');
+        const rejReasonEl = document.getElementById('calDetailRejectionReason');
+        if (rejReasonEl) rejReasonEl.textContent = '';
+        document.getElementById('calDetailRecurrenceSection')?.classList.add('d-none');
+        const metaEl = document.getElementById('calDetailRecurrenceMeta');
+        if (metaEl) metaEl.textContent = '';
         const seriesList = document.getElementById('calDetailSeriesList');
         if (seriesList) seriesList.classList.add('d-none');
         const seriesContent = document.getElementById('calSeriesListContent');
         if (seriesContent) seriesContent.innerHTML = '';
+        currentSelectedCalendarEvent = null;
     }
 
     async function loadSeriesOccurrences(recurringGroupId, currentEventId) {

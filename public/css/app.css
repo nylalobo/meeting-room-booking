@@ -2831,14 +2831,80 @@ input#recurrenceUntilDate {
 }
 
 .calendar-empty-notice {
-    padding: 10px 18px;
+    padding: 11px 18px;
     background: rgba(99, 102, 241, 0.08);
     border-bottom: 1px solid var(--border-subtle);
     color: #93c5fd;
-    font-size: 12px;
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.calendar-empty-content {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.btn-cal-empty-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    background: #6366f1;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-cal-empty-action:hover {
+    background: #4f46e5;
+    box-shadow: 0 2px 6px rgba(99, 102, 241, 0.35);
+}
+
+.calendar-error-notice {
+    padding: 11px 18px;
+    background: rgba(239, 68, 68, 0.12);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    font-size: 12.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.calendar-error-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-cal-retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-cal-retry:hover {
+    background: rgba(239, 68, 68, 0.35);
 }
 
 /* View Pane Container */
@@ -2881,6 +2947,11 @@ input#recurrenceUntilDate {
     position: relative;
     background: var(--bg-card);
     transition: background-color 0.12s ease;
+    cursor: pointer;
+}
+
+.calendar-day-cell:hover:not(.is-other-month) {
+    background: rgba(99, 102, 241, 0.05);
 }
 
 .calendar-day-cell:nth-child(7n) {
@@ -2901,6 +2972,30 @@ input#recurrenceUntilDate {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 4px;
+}
+
+.cal-cell-add-btn {
+    opacity: 0;
+    font-size: 11px;
+    color: #a5b4fc;
+    background: rgba(99, 102, 241, 0.15);
+    border: none;
+    border-radius: 4px;
+    padding: 1px 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+    cursor: pointer;
+}
+
+.calendar-day-cell:hover .cal-cell-add-btn {
+    opacity: 1;
+}
+
+.cal-cell-add-btn:hover {
+    background: rgba(99, 102, 241, 0.3);
+    color: #ffffff;
 }
 
 .calendar-day-number {
@@ -3110,6 +3205,13 @@ input#recurrenceUntilDate {
     height: 50px;
     border-bottom: 1px solid var(--border-subtle);
     box-sizing: border-box;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.12s ease;
+}
+
+.calendar-hour-line:hover {
+    background-color: rgba(99, 102, 241, 0.08);
 }
 
 .calendar-half-hour-line {
@@ -3232,6 +3334,12 @@ input#recurrenceUntilDate {
     opacity: 0.75;
 }
 
+.event-status-cancelled .event-pill-title,
+.calendar-grid-event.event-status-cancelled .calendar-grid-event-title {
+    text-decoration: line-through;
+    opacity: 0.85;
+}
+
 /* Completed */
 .event-status-completed {
     background: rgba(59, 130, 246, 0.16);
@@ -3308,6 +3416,52 @@ input#recurrenceUntilDate {
     border-radius: 6px;
     border: 1px solid var(--border-subtle);
     margin: 6px 0 0 0;
+}
+
+.cal-cancelled-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 6px;
+    color: #cbd5e1;
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.cal-cancelled-banner i {
+    color: #94a3b8;
+    font-size: 15px;
+}
+
+.cal-rejection-card {
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    border-radius: 6px;
+}
+
+.cal-rejection-label {
+    font-size: 11px;
+    color: #f87171;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 4px;
+}
+
+.cal-rejection-text {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #fca5a5;
+    margin: 0;
 }
 
 .cal-detail-recurrence-card {
@@ -3561,6 +3715,62 @@ input#recurrenceUntilDate {
 
 [data-theme="light"] .cal-series-occurrence-row.is-current {
     background: #e0e7ff;
+}
+
+[data-theme="light"] .calendar-error-notice {
+    background: #fee2e2;
+    border-bottom-color: #fca5a5;
+    color: #991b1b;
+}
+
+[data-theme="light"] .btn-cal-retry {
+    background: #fecaca;
+    color: #991b1b;
+    border-color: #f87171;
+}
+
+[data-theme="light"] .btn-cal-retry:hover {
+    background: #fca5a5;
+}
+
+[data-theme="light"] .btn-cal-empty-action {
+    background: #4f46e5;
+    color: #ffffff;
+}
+
+[data-theme="light"] .btn-cal-empty-action:hover {
+    background: #4338ca;
+}
+
+[data-theme="light"] .calendar-day-cell:hover:not(.is-other-month) {
+    background: #f8fafc;
+}
+
+[data-theme="light"] .calendar-hour-line:hover {
+    background-color: rgba(99, 102, 241, 0.06);
+}
+
+[data-theme="light"] .cal-cancelled-banner {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+[data-theme="light"] .cal-cancelled-banner i {
+    color: #64748b;
+}
+
+[data-theme="light"] .cal-rejection-card {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+[data-theme="light"] .cal-rejection-label {
+    color: #dc2626;
+}
+
+[data-theme="light"] .cal-rejection-text {
+    color: #991b1b;
 }
 
 /* Responsive Calendar Rules */
