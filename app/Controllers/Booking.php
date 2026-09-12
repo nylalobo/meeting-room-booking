@@ -233,6 +233,254 @@ class Booking extends BaseController
     }
 
     /**
+     * Calendar events feed endpoint.
+     *
+     * GET /api/bookings/calendar
+     */
+    public function calendar(): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $startRaw = trim((string) ($this->request->getGet('start') ?? ''));
+        $endRaw   = trim((string) ($this->request->getGet('end') ?? ''));
+
+        $errors = [];
+        if ($startRaw === '') {
+            $errors['start'] = 'start is required.';
+        }
+        if ($endRaw === '') {
+            $errors['end'] = 'end is required.';
+        }
+
+        if (!empty($errors)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => implode(' ', $errors),
+                'errors'  => $errors,
+            ]);
+        }
+
+        $startTimeStamp = strtotime($startRaw);
+        $endTimeStamp   = strtotime($endRaw);
+
+        if ($startTimeStamp === false) {
+            $errors['start'] = 'Invalid start format.';
+        }
+        if ($endTimeStamp === false) {
+            $errors['end'] = 'Invalid end format.';
+        }
+
+        if (!empty($errors)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => implode(' ', $errors),
+                'errors'  => $errors,
+            ]);
+        }
+
+        if ($endTimeStamp <= $startTimeStamp) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'End time must be after start time.',
+                'errors'  => [
+                    'end' => 'End time must be after start time.',
+                ],
+            ]);
+        }
+
+        $filters = [];
+
+        $roomId = $this->request->getGet('room_id');
+        if ($roomId !== null && $roomId !== '') {
+            if (!ctype_digit((string) $roomId) || (int) $roomId <= 0) {
+                $errors['room_id'] = 'room_id must be a positive integer.';
+            } else {
+                $filters['room_id'] = (int) $roomId;
+            }
+        }
+
+        $locationId = $this->request->getGet('location_id');
+        if ($locationId !== null && $locationId !== '') {
+            if (!ctype_digit((string) $locationId) || (int) $locationId <= 0) {
+                $errors['location_id'] = 'location_id must be a positive integer.';
+            } else {
+                $filters['location_id'] = (int) $locationId;
+            }
+        }
+
+        $userId = $this->request->getGet('user_id');
+        if ($userId !== null && $userId !== '') {
+            if (!ctype_digit((string) $userId) || (int) $userId <= 0) {
+                $errors['user_id'] = 'user_id must be a positive integer.';
+            } else {
+                $filters['user_id'] = (int) $userId;
+            }
+        }
+
+        $status = $this->request->getGet('status');
+        if ($status !== null && $status !== '') {
+            $validStatuses = ['pending', 'approved', 'rejected', 'cancelled', 'completed'];
+            if (!in_array($status, $validStatuses, true)) {
+                $errors['status'] = 'Invalid booking status.';
+            } else {
+                $filters['status'] = $status;
+            }
+        }
+
+        if (!empty($errors)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => implode(' ', $errors),
+                'errors'  => $errors,
+            ]);
+        }
+
+        $startHasTime = (strpos($startRaw, 'T') !== false || strpos($startRaw, ' ') !== false || strpos($startRaw, ':') !== false);
+        $endHasTime   = (strpos($endRaw, 'T') !== false || strpos($endRaw, ' ') !== false || strpos($endRaw, ':') !== false);
+
+        $rangeStart = $startHasTime ? date('Y-m-d H:i:s', $startTimeStamp) : date('Y-m-d 00:00:00', $startTimeStamp);
+        $rangeEnd   = $endHasTime ? date('Y-m-d H:i:s', $endTimeStamp) : date('Y-m-d 23:59:59', $endTimeStamp);
+
+        $events = $this->bookingModel->getCalendarFeed($rangeStart, $rangeEnd, $filters);
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => $events,
+        ]);
+    }
+
+    /**
+     * Inspect all occurrences of a recurring booking series.
+     *
+     * GET /api/bookings/series/(:segment)
+     */
+    public function series(string $groupId): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $groupId = trim($groupId);
+
+        if (!BookingModel::isValidUuid($groupId)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'Invalid recurring group ID format. Expected UUIDv4.',
+            ]);
+        }
+
+        $rawOccurrences = $this->bookingModel->getSeriesOccurrences($groupId);
+
+        if (empty($rawOccurrences)) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Recurring booking series not found.',
+            ]);
+        }
+
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
+
+        $pattern = $rawOccurrences[0]['recurrence_pattern'] ?? null;
+        $totalOccurrences = !empty($rawOccurrences[0]['recurrence_total']) ? (int) $rawOccurrences[0]['recurrence_total'] : count($rawOccurrences);
+
+        $statusCounts = [
+            'count_pending'   => 0,
+            'count_approved'  => 0,
+            'count_rejected'  => 0,
+            'count_cancelled' => 0,
+            'count_completed' => 0,
+        ];
+
+        $occurrences = [];
+
+        foreach ($rawOccurrences as $row) {
+            $st = $row['status'] ?? 'pending';
+            $countKey = 'count_' . $st;
+            if (isset($statusCounts[$countKey])) {
+                $statusCounts[$countKey]++;
+            }
+
+            $organizer = [
+                'id'            => (int) $row['user_id'],
+                'first_name'    => $row['user_first_name'],
+                'last_name'     => $row['user_last_name'],
+                'email'         => $row['user_email'],
+                'department_id' => $row['user_department_id'],
+            ];
+
+            $canApprove = $this->canUserApproveBooking(
+                $currentUserId,
+                $currentUserRoleName,
+                $currentUserDeptId,
+                $row,
+                $organizer
+            );
+
+            $organizerName = trim(($row['user_first_name'] ?? '') . ' ' . ($row['user_last_name'] ?? ''));
+            if ($organizerName === '') {
+                $organizerName = 'Unknown User';
+            }
+
+            $approverName = null;
+            if (!empty($row['approver_id'])) {
+                $approverName = trim(($row['approver_first_name'] ?? '') . ' ' . ($row['approver_last_name'] ?? '')) ?: null;
+            }
+
+            $occurrences[] = [
+                'id'                        => (int) $row['id'],
+                'recurrence_index'          => !empty($row['recurrence_index']) ? (int) $row['recurrence_index'] : null,
+                'recurrence_total'          => !empty($row['recurrence_total']) ? (int) $row['recurrence_total'] : $totalOccurrences,
+                'start_time'                => $row['start_time'],
+                'end_time'                  => $row['end_time'],
+                'title'                     => $row['title'],
+                'description'               => $row['description'],
+                'status'                    => $row['status'],
+                'room_id'                   => (int) $row['room_id'],
+                'room_name'                 => $row['room_name'] ?? 'Unknown Room',
+                'room_code'                 => $row['room_code'] ?? null,
+                'location_id'               => !empty($row['location_id']) ? (int) $row['location_id'] : null,
+                'location_name'             => $row['location_name'] ?? 'Unknown Location',
+                'user_id'                   => (int) $row['user_id'],
+                'organizer_name'            => $organizerName,
+                'organizer_email'           => $row['user_email'] ?? null,
+                'organizer_department_name' => $row['user_department_name'] ?? null,
+                'organizer_department_id'   => !empty($row['user_department_id']) ? (int) $row['user_department_id'] : null,
+                'approver_id'               => !empty($row['approver_id']) ? (int) $row['approver_id'] : null,
+                'approver_name'             => $approverName,
+                'approver_email'            => $row['approver_email'] ?? null,
+                'approved_at'               => $row['approved_at'] ?? null,
+                'rejection_reason'          => $row['rejection_reason'] ?? null,
+                'can_approve'               => $canApprove,
+            ];
+        }
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => array_merge([
+                'recurring_group_id' => $groupId,
+                'recurrence_pattern' => $pattern,
+                'total_occurrences'  => $totalOccurrences,
+            ], $statusCounts, [
+                'occurrences'        => $occurrences,
+            ]),
+        ]);
+    }
+
+    /**
      * Create a new booking (single or recurring series).
      */
     public function create(): ResponseInterface

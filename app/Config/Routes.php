@@ -169,6 +169,8 @@ $routes->get('bookings', 'Home::bookings');
 
 $routes->get('api/bookings/pending-approvals', 'Booking::pendingApprovals');
 $routes->post('api/bookings/recurring-preview', 'Booking::recurringPreview');
+$routes->get('api/bookings/calendar', 'Booking::calendar');
+$routes->get('api/bookings/series/(:segment)', 'Booking::series/$1');
 $routes->get('api/bookings', 'Booking::apiIndex');
 $routes->get('api/bookings/(:num)', 'Booking::show/$1');
 $routes->post('api/bookings', 'Booking::create');

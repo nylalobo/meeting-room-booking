@@ -130,6 +130,14 @@ class Booking extends Model
     }
 
     /**
+     * Validate if a string is a valid UUIDv4.
+     */
+    public static function isValidUuid(string $uuid): bool
+    {
+        return (bool) preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $uuid);
+    }
+
+    /**
      * Validate recurrence configuration parameters.
      *
      * @param string $startTime Initial booking start time (Y-m-d H:i:s)
@@ -508,5 +516,130 @@ class Booking extends Model
             'occurrences'           => $results,
             'conflicts'             => $conflicts,
         ];
+    }
+
+    /**
+     * Get enriched booking records overlapping a calendar date range.
+     *
+     * Range overlap logic:
+     * booking.start_time < range_end AND booking.end_time > range_start
+     *
+     * @param string $rangeStart Range start datetime (Y-m-d H:i:s)
+     * @param string $rangeEnd Range end datetime (Y-m-d H:i:s)
+     * @param array $filters Optional filters: room_id, location_id, user_id, status
+     * @return array Enriched calendar events list
+     */
+    public function getCalendarFeed(string $rangeStart, string $rangeEnd, array $filters = []): array
+    {
+        $builder = $this->builder();
+        $builder->select(
+            'bookings.id, bookings.room_id, bookings.user_id, bookings.recurring_group_id, ' .
+            'bookings.recurrence_pattern, bookings.recurrence_index, bookings.recurrence_total, ' .
+            'bookings.title, bookings.description, bookings.start_time, bookings.end_time, bookings.status, ' .
+            'bookings.approver_id, bookings.approved_at, bookings.rejection_reason, bookings.created_at, bookings.updated_at, ' .
+            'rooms.name as room_name, rooms.room_code, rooms.location_id, ' .
+            'locations.name as location_name, ' .
+            'users.first_name as user_first_name, users.last_name as user_last_name, users.email as user_email'
+        )
+        ->join('rooms', 'rooms.id = bookings.room_id', 'left')
+        ->join('locations', 'locations.id = rooms.location_id', 'left')
+        ->join('users', 'users.id = bookings.user_id', 'left')
+        ->where('bookings.start_time <', $rangeEnd)
+        ->where('bookings.end_time >', $rangeStart);
+
+        if (!empty($filters['room_id'])) {
+            $builder->where('bookings.room_id', (int) $filters['room_id']);
+        }
+
+        if (!empty($filters['location_id'])) {
+            $builder->where('rooms.location_id', (int) $filters['location_id']);
+        }
+
+        if (!empty($filters['user_id'])) {
+            $builder->where('bookings.user_id', (int) $filters['user_id']);
+        }
+
+        if (!empty($filters['status'])) {
+            $builder->where('bookings.status', $filters['status']);
+        }
+
+        $rows = $builder
+            ->orderBy('bookings.start_time', 'ASC')
+            ->orderBy('bookings.id', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        $events = [];
+        foreach ($rows as $row) {
+            $organizerName = trim(($row['user_first_name'] ?? '') . ' ' . ($row['user_last_name'] ?? ''));
+            if ($organizerName === '') {
+                $organizerName = 'Unknown User';
+            }
+
+            $isRecurring = !empty($row['recurring_group_id']);
+
+            $events[] = [
+                'id'                 => (int) $row['id'],
+                'title'              => $row['title'],
+                'description'        => $row['description'],
+                'start'              => date('Y-m-d\TH:i:s', strtotime($row['start_time'])),
+                'end'                => date('Y-m-d\TH:i:s', strtotime($row['end_time'])),
+                'start_time'         => $row['start_time'],
+                'end_time'           => $row['end_time'],
+                'status'             => $row['status'],
+                'status_class'       => match ($row['status']) {
+                    'approved'  => 'badge-success',
+                    'pending'   => 'badge-warning',
+                    'rejected'  => 'badge-danger',
+                    'cancelled' => 'badge-secondary',
+                    'completed' => 'badge-info',
+                    default     => 'badge-secondary',
+                },
+                'room_id'            => (int) $row['room_id'],
+                'room_name'          => $row['room_name'] ?? 'Unknown Room',
+                'room_code'          => $row['room_code'] ?? null,
+                'location_id'        => !empty($row['location_id']) ? (int) $row['location_id'] : null,
+                'location_name'      => $row['location_name'] ?? 'Unknown Location',
+                'user_id'            => (int) $row['user_id'],
+                'organizer_name'     => $organizerName,
+                'organizer_email'    => $row['user_email'] ?? null,
+                'recurring_group_id' => $row['recurring_group_id'] ?: null,
+                'recurrence_pattern' => $row['recurrence_pattern'] ?: null,
+                'recurrence_index'   => !empty($row['recurrence_index']) ? (int) $row['recurrence_index'] : null,
+                'recurrence_total'   => !empty($row['recurrence_total']) ? (int) $row['recurrence_total'] : null,
+                'is_recurring'       => $isRecurring,
+            ];
+        }
+
+        return $events;
+    }
+
+    /**
+     * Fetch all occurrences for a recurring series with full room, organizer, and approver details.
+     *
+     * @param string $recurringGroupId
+     * @return array Raw enriched occurrence rows ordered by recurrence_index ASC
+     */
+    public function getSeriesOccurrences(string $recurringGroupId): array
+    {
+        $builder = $this->builder();
+        return $builder->select(
+            'bookings.*, ' .
+            'rooms.name as room_name, rooms.room_code, rooms.location_id, ' .
+            'locations.name as location_name, ' .
+            'users.first_name as user_first_name, users.last_name as user_last_name, users.email as user_email, users.department_id as user_department_id, ' .
+            'departments.name as user_department_name, ' .
+            'approvers.first_name as approver_first_name, approvers.last_name as approver_last_name, approvers.email as approver_email'
+        )
+        ->join('rooms', 'rooms.id = bookings.room_id', 'left')
+        ->join('locations', 'locations.id = rooms.location_id', 'left')
+        ->join('users', 'users.id = bookings.user_id', 'left')
+        ->join('departments', 'departments.id = users.department_id', 'left')
+        ->join('users as approvers', 'approvers.id = bookings.approver_id', 'left')
+        ->where('bookings.recurring_group_id', $recurringGroupId)
+        ->orderBy('bookings.recurrence_index', 'ASC')
+        ->orderBy('bookings.start_time', 'ASC')
+        ->get()
+        ->getResultArray();
     }
 }
