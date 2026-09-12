@@ -745,6 +745,8 @@
             'submit',
             handleBookingFormSubmit
         );
+
+        setupRecurrenceControls();
     }
 
 
@@ -834,6 +836,527 @@
 
         populateModalDropdowns();
         hideBookingFormMessages();
+        resetRecurrenceForm();
+    }
+
+
+    /* ==========================================================================
+       RECURRENCE CONTROLS (MILESTONE 3)
+       ========================================================================== */
+
+    function setupRecurrenceControls() {
+
+        const isRecurringCheckbox =
+            document.getElementById('bookingIsRecurring');
+
+        const recurrenceContainer =
+            document.getElementById('recurrenceFieldsContainer');
+
+        const frequencySelect =
+            document.getElementById('recurrenceFrequency');
+
+        const intervalUnit =
+            document.getElementById('recurrenceIntervalUnit');
+
+        const daysOfWeekGroup =
+            document.getElementById('recurrenceDaysOfWeekGroup');
+
+        const monthlyNote =
+            document.getElementById('recurrenceMonthlyNote');
+
+        const weekdayButtons =
+            document.querySelectorAll('.weekday-btn');
+
+        const endTypeOccurrences =
+            document.getElementById('recurrenceEndTypeOccurrences');
+
+        const endTypeDate =
+            document.getElementById('recurrenceEndTypeDate');
+
+        const occurrencesInput =
+            document.getElementById('recurrenceOccurrences');
+
+        const untilDateInput =
+            document.getElementById('recurrenceUntilDate');
+
+        const previewBtn =
+            document.getElementById('previewRecurrenceBtn');
+
+        const startInput =
+            document.getElementById('bookingStart');
+
+        if (!isRecurringCheckbox || !recurrenceContainer) {
+            return;
+        }
+
+        // Toggle recurrence container
+        isRecurringCheckbox.addEventListener('change', () => {
+            if (isRecurringCheckbox.checked) {
+                recurrenceContainer.classList.remove('d-none');
+                autoSelectInitialWeekday();
+            } else {
+                recurrenceContainer.classList.add('d-none');
+                hideRecurrencePreview();
+            }
+        });
+
+        // Frequency change handler
+        frequencySelect?.addEventListener('change', () => {
+            const freq = frequencySelect.value;
+
+            if (intervalUnit) {
+                switch (freq) {
+                    case 'daily':
+                        intervalUnit.textContent = 'day(s)';
+                        break;
+                    case 'weekly':
+                        intervalUnit.textContent = 'week(s)';
+                        break;
+                    case 'biweekly':
+                        intervalUnit.textContent = 'two-week period(s)';
+                        break;
+                    case 'monthly':
+                        intervalUnit.textContent = 'month(s)';
+                        break;
+                    case 'weekdays':
+                        intervalUnit.textContent = 'weekday cycle(s)';
+                        break;
+                    default:
+                        intervalUnit.textContent = 'period(s)';
+                }
+            }
+
+            if (daysOfWeekGroup) {
+                if (freq === 'weekly' || freq === 'biweekly') {
+                    daysOfWeekGroup.classList.remove('d-none');
+                    autoSelectInitialWeekday();
+                } else {
+                    daysOfWeekGroup.classList.add('d-none');
+                }
+            }
+
+            if (monthlyNote) {
+                if (freq === 'monthly') {
+                    monthlyNote.classList.remove('d-none');
+                } else {
+                    monthlyNote.classList.add('d-none');
+                }
+            }
+
+            hideRecurrencePreview();
+        });
+
+        // Weekday buttons toggle
+        weekdayButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+                hideRecurrencePreview();
+            });
+        });
+
+        // End condition radios
+        endTypeOccurrences?.addEventListener('change', () => {
+            if (endTypeOccurrences.checked) {
+                if (occurrencesInput) occurrencesInput.disabled = false;
+                if (untilDateInput) {
+                    untilDateInput.disabled = true;
+                    untilDateInput.value = '';
+                }
+                hideRecurrencePreview();
+            }
+        });
+
+        endTypeDate?.addEventListener('change', () => {
+            if (endTypeDate.checked) {
+                if (untilDateInput) untilDateInput.disabled = false;
+                if (occurrencesInput) occurrencesInput.disabled = true;
+                hideRecurrencePreview();
+            }
+        });
+
+        // Start time input updates default weekday and min date
+        startInput?.addEventListener('change', () => {
+            autoSelectInitialWeekday();
+            if (untilDateInput && startInput.value) {
+                const startDateStr = startInput.value.split('T')[0];
+                untilDateInput.min = startDateStr;
+            }
+        });
+
+        // Preview button click
+        previewBtn?.addEventListener('click', handleRecurrencePreview);
+    }
+
+
+    function autoSelectInitialWeekday() {
+
+        const startInput =
+            document.getElementById('bookingStart');
+
+        const weekdayButtons =
+            document.querySelectorAll('.weekday-btn');
+
+        const hasActive =
+            Array.from(weekdayButtons).some((b) => b.classList.contains('active'));
+
+        if (hasActive) {
+            return;
+        }
+
+        if (startInput && startInput.value) {
+            const startDate = new Date(startInput.value);
+            if (!isNaN(startDate.getTime())) {
+                const day = startDate.getDay();
+                const isoDay = day === 0 ? 7 : day;
+                const targetBtn = document.querySelector(`.weekday-btn[data-dow="${isoDay}"]`);
+                targetBtn?.classList.add('active');
+            }
+        }
+    }
+
+
+    function getSelectedWeekdays() {
+
+        const activeBtns =
+            document.querySelectorAll('.weekday-btn.active');
+
+        const days = Array.from(activeBtns)
+            .map((b) => Number(b.dataset.dow))
+            .filter((n) => n >= 1 && n <= 7);
+
+        days.sort((a, b) => a - b);
+        return days;
+    }
+
+
+    function hideRecurrencePreview() {
+
+        const previewContainer =
+            document.getElementById('recurrencePreviewContainer');
+
+        if (previewContainer) {
+            previewContainer.classList.add('d-none');
+            previewContainer.innerHTML = '';
+        }
+    }
+
+
+    function resetRecurrenceForm() {
+
+        const isRecurringCheckbox =
+            document.getElementById('bookingIsRecurring');
+
+        const recurrenceContainer =
+            document.getElementById('recurrenceFieldsContainer');
+
+        const frequencySelect =
+            document.getElementById('recurrenceFrequency');
+
+        const intervalInput =
+            document.getElementById('recurrenceInterval');
+
+        const intervalUnit =
+            document.getElementById('recurrenceIntervalUnit');
+
+        const daysOfWeekGroup =
+            document.getElementById('recurrenceDaysOfWeekGroup');
+
+        const monthlyNote =
+            document.getElementById('recurrenceMonthlyNote');
+
+        const weekdayButtons =
+            document.querySelectorAll('.weekday-btn');
+
+        const endTypeOccurrences =
+            document.getElementById('recurrenceEndTypeOccurrences');
+
+        const endTypeDate =
+            document.getElementById('recurrenceEndTypeDate');
+
+        const occurrencesInput =
+            document.getElementById('recurrenceOccurrences');
+
+        const untilDateInput =
+            document.getElementById('recurrenceUntilDate');
+
+        const previewBtn =
+            document.getElementById('previewRecurrenceBtn');
+
+        const recurrenceToggleSection =
+            document.querySelector('.recurrence-toggle-section');
+
+        if (recurrenceToggleSection) {
+            recurrenceToggleSection.classList.remove('d-none');
+        }
+
+        if (isRecurringCheckbox) {
+            isRecurringCheckbox.checked = false;
+        }
+
+        if (recurrenceContainer) {
+            recurrenceContainer.classList.add('d-none');
+        }
+
+        if (frequencySelect) {
+            frequencySelect.value = 'weekly';
+        }
+
+        if (intervalInput) {
+            intervalInput.value = '1';
+        }
+
+        if (intervalUnit) {
+            intervalUnit.textContent = 'week(s)';
+        }
+
+        if (daysOfWeekGroup) {
+            daysOfWeekGroup.classList.remove('d-none');
+        }
+
+        if (monthlyNote) {
+            monthlyNote.classList.add('d-none');
+        }
+
+        weekdayButtons.forEach((btn) => btn.classList.remove('active'));
+
+        if (endTypeOccurrences) {
+            endTypeOccurrences.checked = true;
+        }
+
+        if (occurrencesInput) {
+            occurrencesInput.disabled = false;
+            occurrencesInput.value = '5';
+        }
+
+        if (endTypeDate) {
+            endTypeDate.checked = false;
+        }
+
+        if (untilDateInput) {
+            untilDateInput.disabled = true;
+            untilDateInput.value = '';
+        }
+
+        if (previewBtn) {
+            previewBtn.disabled = false;
+            previewBtn.innerHTML = `
+                <i class="bi bi-eye"></i>
+                Preview Occurrences & Check Conflicts
+            `;
+        }
+
+        hideRecurrencePreview();
+    }
+
+
+    async function handleRecurrencePreview() {
+
+        hideBookingFormMessages();
+
+        const roomId =
+            document.getElementById('bookingRoom')?.value;
+
+        const startTimeLocal =
+            document.getElementById('bookingStart')?.value;
+
+        const endTimeLocal =
+            document.getElementById('bookingEnd')?.value;
+
+        if (!roomId || !startTimeLocal || !endTimeLocal) {
+            showBookingFormError('Please select Room, Start Time, and End Time before previewing recurrence.');
+            return;
+        }
+
+        if (new Date(startTimeLocal) >= new Date(endTimeLocal)) {
+            showBookingFormError('End time must be after start time.');
+            return;
+        }
+
+        const frequency =
+            document.getElementById('recurrenceFrequency')?.value || 'weekly';
+
+        const interval =
+            Number(document.getElementById('recurrenceInterval')?.value) || 1;
+
+        const endType =
+            document.querySelector('input[name="recurrence_end_type"]:checked')?.value || 'occurrences';
+
+        const recurrenceConfig = {
+            frequency: frequency,
+            interval: interval,
+            end_type: endType
+        };
+
+        if (frequency === 'weekly' || frequency === 'biweekly') {
+            const days = getSelectedWeekdays();
+            if (days.length > 0) {
+                recurrenceConfig.days_of_week = days;
+            }
+        }
+
+        if (endType === 'occurrences') {
+            const occ = Number(document.getElementById('recurrenceOccurrences')?.value);
+            if (!occ || occ < 1) {
+                showBookingFormError('Number of occurrences must be at least 1.');
+                return;
+            }
+            if (occ > 52) {
+                showBookingFormError('Number of occurrences cannot exceed 52.');
+                return;
+            }
+            recurrenceConfig.occurrences = occ;
+        } else if (endType === 'date') {
+            const untilDate = document.getElementById('recurrenceUntilDate')?.value;
+            if (!untilDate) {
+                showBookingFormError('Please select a valid end date for the recurrence.');
+                return;
+            }
+            const startDateStr = startTimeLocal.split('T')[0];
+            if (untilDate < startDateStr) {
+                showBookingFormError('End date cannot be earlier than start date.');
+                return;
+            }
+            recurrenceConfig.until_date = untilDate;
+        }
+
+        const previewBtn =
+            document.getElementById('previewRecurrenceBtn');
+
+        if (previewBtn) {
+            previewBtn.disabled = true;
+            previewBtn.innerHTML = `
+                <i class="bi bi-arrow-repeat spin"></i>
+                Checking Preview...
+            `;
+        }
+
+        const startTimeApi = formatDateTimeForApi(startTimeLocal);
+        const endTimeApi = formatDateTimeForApi(endTimeLocal);
+
+        try {
+
+            const response = await fetch('/api/bookings/recurring-preview', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    room_id: Number(roomId),
+                    start_time: startTimeApi,
+                    end_time: endTimeApi,
+                    recurrence: recurrenceConfig
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                const errorMsg = result.errors
+                    ? Object.values(result.errors).join(' ')
+                    : (result.message || 'Failed to preview recurring bookings.');
+                showBookingFormError(errorMsg);
+                hideRecurrencePreview();
+                return;
+            }
+
+            renderRecurrencePreview(result.data);
+
+        } catch (error) {
+
+            showBookingFormError('Network error while checking recurrence preview. Please try again.');
+            hideRecurrencePreview();
+
+        } finally {
+
+            if (previewBtn) {
+                previewBtn.disabled = false;
+                previewBtn.innerHTML = `
+                    <i class="bi bi-eye"></i>
+                    Preview Occurrences & Check Conflicts
+                `;
+            }
+        }
+    }
+
+
+    function renderRecurrencePreview(data) {
+
+        const previewContainer =
+            document.getElementById('recurrencePreviewContainer');
+
+        if (!previewContainer) {
+            return;
+        }
+
+        const total = data.total_occurrences || 0;
+        const available = data.available_occurrences || 0;
+        const conflicts = data.conflicts_count || 0;
+        const occurrences = data.occurrences || [];
+
+        let html = `
+            <div class="recurrence-preview-stats">
+                <span class="preview-stat-pill preview-stat-total">
+                    <i class="bi bi-calendar3"></i> Total: ${total}
+                </span>
+                <span class="preview-stat-pill preview-stat-available">
+                    <i class="bi bi-check-circle"></i> Available: ${available}
+                </span>
+                <span class="preview-stat-pill preview-stat-conflicts">
+                    <i class="bi bi-exclamation-triangle"></i> Conflicts: ${conflicts}
+                </span>
+            </div>
+        `;
+
+        if (conflicts > 0) {
+            html += `
+                <div class="recurrence-conflict-alert" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                        <strong>Room Conflict Detected:</strong> ${conflicts} occurrence(s) conflict with existing bookings. Adjust dates or select an alternative room before submitting.
+                    </div>
+                </div>
+            `;
+        }
+
+        html += `<div class="recurrence-occurrences-list">`;
+
+        occurrences.forEach((occ) => {
+            const isConflict = Boolean(occ.is_conflict);
+            const startFormatted = formatDateForDisplay(occ.start_time);
+            const timeRange = formatTimeRangeForDisplay(occ.start_time, occ.end_time);
+
+            let conflictDetails = '';
+            if (isConflict && occ.conflicts && occ.conflicts.length > 0) {
+                conflictDetails = occ.conflicts.map((c) => `
+                    <span class="occurrence-conflict-info">
+                        Conflict with: "${escapeHtml(c.conflicting_title || 'Booked')}" (${formatTimeRangeForDisplay(c.conflicting_start, c.conflicting_end)})
+                    </span>
+                `).join('');
+            }
+
+            html += `
+                <div class="occurrence-item-row ${isConflict ? 'is-conflict' : ''}">
+                    <div class="occurrence-meta">
+                        <span class="occurrence-num">#${occ.occurrence_index}</span>
+                        <div>
+                            <span class="occurrence-date-time">
+                                ${startFormatted} (${timeRange})
+                            </span>
+                            ${conflictDetails}
+                        </div>
+                    </div>
+                    <span class="occurrence-badge-status ${isConflict ? 'occurrence-badge-conflict' : 'occurrence-badge-available'}">
+                        ${isConflict ? '<i class="bi bi-x-circle"></i> Conflict' : '<i class="bi bi-check-circle"></i> Available'}
+                    </span>
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+
+        previewContainer.innerHTML = html;
+        previewContainer.classList.remove('d-none');
     }
 
 
@@ -1015,6 +1538,15 @@
             `;
         }
 
+        const recurrenceToggleSection =
+            document.querySelector('.recurrence-toggle-section');
+
+        if (recurrenceToggleSection) {
+            recurrenceToggleSection.classList.add('d-none');
+        }
+
+        resetRecurrenceForm();
+
         hideBookingFormMessages();
         openBookingModal();
     }
@@ -1066,6 +1598,7 @@
             document.getElementById('bookingDescription')?.value.trim() || '';
 
         const isEditing = Boolean(bookingId);
+        const isRecurring = !isEditing && Boolean(document.getElementById('bookingIsRecurring')?.checked);
 
         if (!title || !roomId || !userId || !startTimeLocal || !endTimeLocal) {
             showBookingFormError('Please fill in all required fields.');
@@ -1090,6 +1623,58 @@
             status: status
         };
 
+        if (isRecurring) {
+            const frequency =
+                document.getElementById('recurrenceFrequency')?.value || 'weekly';
+
+            const interval =
+                Number(document.getElementById('recurrenceInterval')?.value) || 1;
+
+            const endType =
+                document.querySelector('input[name="recurrence_end_type"]:checked')?.value || 'occurrences';
+
+            const recurrenceConfig = {
+                frequency: frequency,
+                interval: interval,
+                end_type: endType
+            };
+
+            if (frequency === 'weekly' || frequency === 'biweekly') {
+                const days = getSelectedWeekdays();
+                if (days.length > 0) {
+                    recurrenceConfig.days_of_week = days;
+                }
+            }
+
+            if (endType === 'occurrences') {
+                const occ = Number(document.getElementById('recurrenceOccurrences')?.value);
+                if (!occ || occ < 1) {
+                    showBookingFormError('Number of occurrences must be at least 1.');
+                    return;
+                }
+                if (occ > 52) {
+                    showBookingFormError('Number of occurrences cannot exceed 52.');
+                    return;
+                }
+                recurrenceConfig.occurrences = occ;
+            } else if (endType === 'date') {
+                const untilDate = document.getElementById('recurrenceUntilDate')?.value;
+                if (!untilDate) {
+                    showBookingFormError('Please select a valid end date for the recurrence.');
+                    return;
+                }
+                const startDateStr = startTimeLocal.split('T')[0];
+                if (untilDate < startDateStr) {
+                    showBookingFormError('End date cannot be earlier than start date.');
+                    return;
+                }
+                recurrenceConfig.until_date = untilDate;
+            }
+
+            payload.is_recurring = true;
+            payload.recurrence = recurrenceConfig;
+        }
+
         const url = isEditing
             ? `/api/bookings/${bookingId}`
             : '/api/bookings';
@@ -1101,7 +1686,7 @@
             submitButton.disabled = true;
             submitButton.innerHTML = `
                 <i class="bi bi-arrow-repeat spin"></i>
-                ${isEditing ? 'Updating...' : 'Creating...'}
+                ${isEditing ? 'Updating...' : (isRecurring ? 'Creating Series...' : 'Creating...')}
             `;
 
             const response = await fetch(url, {
@@ -1116,22 +1701,33 @@
             const result = await response.json();
 
             if (!response.ok || result.status !== 'success') {
+                if (isRecurring && response.status === 409 && result.data) {
+                    renderRecurrencePreview(result.data);
+                }
                 handleBookingApiError(response.status, result);
                 return;
             }
 
-            const successMessage =
-                result.message ||
-                (isEditing
-                    ? 'Booking updated successfully.'
-                    : 'Booking created successfully.');
+            let successMessage = result.message;
+            if (!successMessage) {
+                if (isEditing) {
+                    successMessage = 'Booking updated successfully.';
+                } else if (isRecurring) {
+                    const count = result.data?.total_occurrences || result.data?.created_ids?.length;
+                    successMessage = count
+                        ? `Recurring booking series created successfully — ${count} occurrences.`
+                        : 'Recurring booking series created successfully.';
+                } else {
+                    successMessage = 'Booking created successfully.';
+                }
+            }
 
             showBookingFormSuccess(successMessage);
 
             showAppNotification(
                 successMessage,
                 'success',
-                isEditing ? 'Booking Updated' : 'Booking Created'
+                isEditing ? 'Booking Updated' : (isRecurring ? 'Recurring Series Created' : 'Booking Created')
             );
 
             await loadBookingsData();
@@ -2065,9 +2661,13 @@
 
         if (status === 409) {
 
-            const message =
+            let message =
                 result.message ||
                 'Room is already booked during this time.';
+
+            if (result.conflicts_count && result.conflicts_count > 0) {
+                message = `${result.conflicts_count} recurring occurrence(s) conflict with existing bookings.`;
+            }
 
             showBookingFormError(message);
 

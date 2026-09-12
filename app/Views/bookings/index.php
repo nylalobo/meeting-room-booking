@@ -238,6 +238,173 @@
                     ></textarea>
                 </div>
 
+                <!-- Recurrence Toggle Section -->
+                <div class="booking-form-group booking-form-full recurrence-toggle-section">
+                    <div class="recurrence-toggle-wrapper">
+                        <label class="recurrence-toggle-label" for="bookingIsRecurring">
+                            <input
+                                type="checkbox"
+                                id="bookingIsRecurring"
+                                name="is_recurring"
+                                value="1"
+                            >
+                            <span class="recurrence-toggle-custom"></span>
+                            <span class="recurrence-toggle-text">
+                                <i class="bi bi-repeat"></i>
+                                Repeat meeting (Recurring Series)
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Recurrence Configuration Container (Progressive Disclosure) -->
+                <div id="recurrenceFieldsContainer" class="booking-form-full recurrence-fields-container d-none">
+
+                    <div class="recurrence-card">
+                        <div class="recurrence-card-header">
+                            <div class="recurrence-card-title">
+                                <i class="bi bi-arrow-repeat"></i>
+                                Recurrence Configuration
+                            </div>
+                            <span class="recurrence-badge">Series Options</span>
+                        </div>
+
+                        <div class="recurrence-card-body">
+                            <div class="recurrence-grid">
+
+                                <!-- Frequency -->
+                                <div class="booking-form-group">
+                                    <label for="recurrenceFrequency">
+                                        Frequency
+                                        <span>*</span>
+                                    </label>
+                                    <select id="recurrenceFrequency" name="recurrence_frequency">
+                                        <option value="daily">Daily</option>
+                                        <option value="weekly" selected>Weekly</option>
+                                        <option value="biweekly">Biweekly (Every 2 weeks)</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="weekdays">Weekdays (Mon – Fri)</option>
+                                    </select>
+                                </div>
+
+                                <!-- Interval -->
+                                <div class="booking-form-group" id="recurrenceIntervalGroup">
+                                    <label for="recurrenceInterval">
+                                        Repeat Every
+                                    </label>
+                                    <div class="recurrence-interval-box">
+                                        <input
+                                            type="number"
+                                            id="recurrenceInterval"
+                                            name="recurrence_interval"
+                                            min="1"
+                                            max="52"
+                                            value="1"
+                                        >
+                                        <span id="recurrenceIntervalUnit" class="recurrence-unit-text">week(s)</span>
+                                    </div>
+                                </div>
+
+                                <!-- Weekday selector for Weekly & Biweekly -->
+                                <div class="booking-form-group booking-form-full" id="recurrenceDaysOfWeekGroup">
+                                    <label>
+                                        Repeat On Days
+                                    </label>
+                                    <div class="recurrence-weekdays-bar" role="group" aria-label="Days of week">
+                                        <button type="button" class="weekday-btn" data-dow="1">Mon</button>
+                                        <button type="button" class="weekday-btn" data-dow="2">Tue</button>
+                                        <button type="button" class="weekday-btn" data-dow="3">Wed</button>
+                                        <button type="button" class="weekday-btn" data-dow="4">Thu</button>
+                                        <button type="button" class="weekday-btn" data-dow="5">Fri</button>
+                                        <button type="button" class="weekday-btn" data-dow="6">Sat</button>
+                                        <button type="button" class="weekday-btn" data-dow="7">Sun</button>
+                                    </div>
+                                    <small class="recurrence-helper-text">Defaults to start date's day of week if none selected.</small>
+                                </div>
+
+                                <!-- End Condition Options -->
+                                <div class="booking-form-group booking-form-full">
+                                    <label>
+                                        Ends
+                                        <span>*</span>
+                                    </label>
+                                    <div class="recurrence-end-options">
+                                        <label class="recurrence-radio-label" for="recurrenceEndTypeOccurrences">
+                                            <input
+                                                type="radio"
+                                                name="recurrence_end_type"
+                                                id="recurrenceEndTypeOccurrences"
+                                                value="occurrences"
+                                                checked
+                                            >
+                                            <span class="recurrence-radio-custom"></span>
+                                            <span class="recurrence-radio-text">After</span>
+                                            <input
+                                                type="number"
+                                                id="recurrenceOccurrences"
+                                                name="recurrence_occurrences"
+                                                min="1"
+                                                max="52"
+                                                value="5"
+                                                class="recurrence-inline-input"
+                                                aria-label="Number of occurrences"
+                                            >
+                                            <span class="recurrence-radio-text">occurrences (max 52)</span>
+                                        </label>
+
+                                        <label class="recurrence-radio-label" for="recurrenceEndTypeDate">
+                                            <input
+                                                type="radio"
+                                                name="recurrence_end_type"
+                                                id="recurrenceEndTypeDate"
+                                                value="date"
+                                            >
+                                            <span class="recurrence-radio-custom"></span>
+                                            <span class="recurrence-radio-text">On date</span>
+                                            <input
+                                                type="date"
+                                                id="recurrenceUntilDate"
+                                                name="recurrence_until_date"
+                                                class="recurrence-inline-input"
+                                                disabled
+                                                aria-label="Recurrence end date"
+                                            >
+                                            <span class="recurrence-radio-text">(up to 1 year)</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Monthly note -->
+                                <div class="booking-form-group booking-form-full d-none" id="recurrenceMonthlyNote">
+                                    <div class="recurrence-info-box">
+                                        <i class="bi bi-info-circle"></i>
+                                        <span>Occurs monthly on the same day of the month. Months with fewer days automatically adjust safely.</span>
+                                    </div>
+                                </div>
+
+                                <!-- Preview Action Bar -->
+                                <div class="booking-form-group booking-form-full recurrence-actions-wrapper">
+                                    <button
+                                        type="button"
+                                        id="previewRecurrenceBtn"
+                                        class="btn-preview-recurrence"
+                                    >
+                                        <i class="bi bi-eye"></i>
+                                        Preview Occurrences & Check Conflicts
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- Recurrence Preview Container -->
+                        <div id="recurrencePreviewContainer" class="recurrence-preview-container d-none">
+                            <!-- Injected dynamically via JS: summary badges, conflict banner, occurrence table -->
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
 
 
