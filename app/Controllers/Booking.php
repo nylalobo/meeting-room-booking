@@ -481,6 +481,304 @@ class Booking extends BaseController
     }
 
     /**
+     * Cancel recurring booking series (mode: all or future).
+     *
+     * DELETE /api/bookings/series/(:segment)
+     */
+    public function deleteSeries(string $groupId): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $groupId = trim($groupId);
+
+        if (!BookingModel::isValidUuid($groupId)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'Invalid recurring group ID format. Expected UUIDv4.',
+            ]);
+        }
+
+        $rawOccurrences = $this->bookingModel->getSeriesOccurrences($groupId);
+
+        if (empty($rawOccurrences)) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Recurring booking series not found.',
+            ]);
+        }
+
+        // Validate mode
+        $mode = strtolower(trim((string) ($this->request->getGet('mode') ?? $this->request->getJSON(true)['mode'] ?? 'all')));
+        if ($mode === '') {
+            $mode = 'all';
+        }
+        if (!in_array($mode, ['all', 'future'], true)) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => "Invalid mode. Supported modes: 'all', 'future'.",
+            ]);
+        }
+
+        // Authorization check
+        $seriesOrganizerId = (int) $rawOccurrences[0]['user_id'];
+        $organizer = $this->userModel->find($seriesOrganizerId);
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = $roleRow['name'];
+            }
+        }
+        $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
+        $organizerDeptId   = !empty($organizer['department_id']) ? (int) $organizer['department_id'] : null;
+
+        $isAuthorized = false;
+        if ($currentUserId === $seriesOrganizerId) {
+            $isAuthorized = true;
+        } elseif (in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true)) {
+            $isAuthorized = true;
+        } elseif ($currentUserRoleName === 'Manager') {
+            if ($currentUserDeptId !== null && $organizerDeptId !== null && $currentUserDeptId === $organizerDeptId) {
+                $isAuthorized = true;
+            }
+        }
+
+        if (!$isAuthorized) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. You do not have permission to manage this recurring series.',
+            ]);
+        }
+
+        $fromParam = trim((string) ($this->request->getGet('from') ?? $this->request->getJSON(true)['from'] ?? ''));
+        $cutoff = null;
+        if ($fromParam !== '') {
+            $fromTs = strtotime($fromParam);
+            if ($fromTs === false) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'status'  => 'error',
+                    'message' => "Invalid 'from' datetime format.",
+                ]);
+            }
+            $cutoff = date('Y-m-d H:i:s', $fromTs);
+        } else {
+            $cutoff = date('Y-m-d H:i:s');
+        }
+
+        $db = \Config\Database::connect();
+        $db->transBegin();
+
+        $cancelResult = $this->bookingModel->cancelRecurringSeries($groupId, $mode, $cutoff);
+        $affectedIds = $cancelResult['affected_ids'];
+        $affectedCount = $cancelResult['affected_count'];
+
+        $recordId = !empty($affectedIds) ? $affectedIds[0] : (int) $rawOccurrences[0]['id'];
+        $this->auditLogModel->insert([
+            'user_id'    => $currentUserId,
+            'action'     => 'recurring_series_cancelled_' . $mode,
+            'table_name' => 'bookings',
+            'record_id'  => $recordId,
+            'old_values' => null,
+            'new_values' => json_encode([
+                'recurring_group_id' => $groupId,
+                'mode'               => $mode,
+                'affected_count'     => $affectedCount,
+                'affected_ids'       => $affectedIds,
+            ]),
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => (string) $this->request->getUserAgent(),
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        if ($db->transStatus() === false) {
+            $db->transRollback();
+            return $this->response->setStatusCode(500)->setJSON([
+                'status'  => 'error',
+                'message' => 'Failed to cancel recurring booking series.',
+            ]);
+        }
+
+        $db->transCommit();
+
+        return $this->response->setJSON([
+            'status'  => 'success',
+            'message' => "Recurring booking series cancelled successfully ({$affectedCount} occurrences affected).",
+            'data'    => [
+                'recurring_group_id'        => $groupId,
+                'mode'                      => $mode,
+                'affected_count'            => $affectedCount,
+                'affected_occurrence_count' => $affectedCount,
+                'affected_ids'              => $affectedIds,
+                'affected_booking_ids'      => $affectedIds,
+            ],
+        ]);
+    }
+
+    /**
+     * Detach a single booking from its recurring series.
+     *
+     * POST /api/bookings/(:num)/detach
+     */
+    public function detach(int $id): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $booking = $this->bookingModel->find($id);
+        if ($booking === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Booking not found.',
+            ]);
+        }
+
+        if (empty($booking['recurring_group_id'])) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'This booking is not part of a recurring series.',
+            ]);
+        }
+
+        // Authorization check
+        $bookingUserId = (int) $booking['user_id'];
+        $organizer = $this->userModel->find($bookingUserId);
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = $roleRow['name'];
+            }
+        }
+        $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
+        $organizerDeptId   = !empty($organizer['department_id']) ? (int) $organizer['department_id'] : null;
+
+        $isAuthorized = false;
+        if ($currentUserId === $bookingUserId) {
+            $isAuthorized = true;
+        } elseif (in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true)) {
+            $isAuthorized = true;
+        } elseif ($currentUserRoleName === 'Manager') {
+            if ($currentUserDeptId !== null && $organizerDeptId !== null && $currentUserDeptId === $organizerDeptId) {
+                $isAuthorized = true;
+            }
+        }
+
+        if (!$isAuthorized) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. You do not have permission to detach this booking.',
+            ]);
+        }
+
+        $originalGroupId = $booking['recurring_group_id'];
+
+        $db = \Config\Database::connect();
+        $db->transBegin();
+
+        $this->bookingModel->detachOccurrence($id);
+
+        $this->auditLogModel->insert([
+            'user_id'    => $currentUserId,
+            'action'     => 'booking_detached_from_series',
+            'table_name' => 'bookings',
+            'record_id'  => $id,
+            'old_values' => json_encode([
+                'recurring_group_id' => $originalGroupId,
+                'recurrence_pattern' => $booking['recurrence_pattern'],
+                'recurrence_index'   => $booking['recurrence_index'],
+                'recurrence_total'   => $booking['recurrence_total'],
+            ]),
+            'new_values' => json_encode([
+                'recurring_group_id' => null,
+                'recurrence_pattern' => null,
+                'recurrence_index'   => null,
+                'recurrence_total'   => null,
+                'original_group_id'  => $originalGroupId,
+            ]),
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => (string) $this->request->getUserAgent(),
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        if ($db->transStatus() === false) {
+            $db->transRollback();
+            return $this->response->setStatusCode(500)->setJSON([
+                'status'  => 'error',
+                'message' => 'Failed to detach booking from series.',
+            ]);
+        }
+
+        $db->transCommit();
+
+        $updatedBooking = $this->bookingModel->find($id);
+        $updatedBooking['id']      = (int) $updatedBooking['id'];
+        $updatedBooking['room_id'] = (int) $updatedBooking['room_id'];
+        $updatedBooking['user_id'] = (int) $updatedBooking['user_id'];
+
+        // Enrich response
+        $room = $this->roomModel->find($updatedBooking['room_id']);
+        $user = $this->userModel->find($updatedBooking['user_id']);
+
+        $updatedBooking['room_name'] = $room['name'] ?? 'Unknown Room';
+        $updatedBooking['room_code'] = $room['room_code'] ?? null;
+        $updatedBooking['organizer_name'] = $user
+            ? trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''))
+            : 'Unknown User';
+        $updatedBooking['organizer_email'] = $user['email'] ?? null;
+
+        if ($user && !empty($user['department_id'])) {
+            $dept = $this->departmentModel->find($user['department_id']);
+            $updatedBooking['organizer_department_name'] = $dept['name'] ?? null;
+            $updatedBooking['organizer_department_id']   = (int) $user['department_id'];
+        } else {
+            $updatedBooking['organizer_department_name'] = null;
+            $updatedBooking['organizer_department_id']   = null;
+        }
+
+        if (!empty($updatedBooking['approver_id'])) {
+            $approver = $this->userModel->find($updatedBooking['approver_id']);
+            $updatedBooking['approver_name'] = $approver
+                ? trim(($approver['first_name'] ?? '') . ' ' . ($approver['last_name'] ?? ''))
+                : null;
+            $updatedBooking['approver_email'] = $approver['email'] ?? null;
+        } else {
+            $updatedBooking['approver_name'] = null;
+            $updatedBooking['approver_email'] = null;
+        }
+
+        $updatedBooking['can_approve'] = $this->canUserApproveBooking(
+            $currentUserId,
+            $currentUserRoleName,
+            $currentUserDeptId,
+            $updatedBooking,
+            $user
+        );
+
+        return $this->response->setJSON([
+            'status'  => 'success',
+            'message' => 'Booking detached from recurring series successfully.',
+            'data'    => $updatedBooking,
+        ]);
+    }
+
+    /**
      * Create a new booking (single or recurring series).
      */
     public function create(): ResponseInterface

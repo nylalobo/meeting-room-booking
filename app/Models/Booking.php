@@ -642,4 +642,62 @@ class Booking extends Model
         ->get()
         ->getResultArray();
     }
+
+    /**
+     * Cancel recurring series occurrences (mode: all or future).
+     *
+     * @param string $recurringGroupId
+     * @param string $mode 'all' or 'future'
+     * @param string|null $cutoff Cutoff datetime for 'future' mode
+     * @return array ['affected_count' => int, 'affected_ids' => array]
+     */
+    public function cancelRecurringSeries(string $recurringGroupId, string $mode = 'all', ?string $cutoff = null): array
+    {
+        $db = \Config\Database::connect();
+
+        $builder = $db->table('bookings')
+            ->where('recurring_group_id', $recurringGroupId);
+
+        if ($mode === 'future') {
+            $cutoff = $cutoff ?: date('Y-m-d H:i:s');
+            $builder->where('start_time >=', $cutoff);
+        }
+
+        $targetBookings = $builder->select('id')->get()->getResultArray();
+        $affectedIds = array_map(fn($b) => (int) $b['id'], $targetBookings);
+
+        if (!empty($affectedIds)) {
+            $db->table('bookings')
+                ->whereIn('id', $affectedIds)
+                ->update([
+                    'status'     => 'cancelled',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+        }
+
+        return [
+            'affected_count' => count($affectedIds),
+            'affected_ids'   => $affectedIds,
+        ];
+    }
+
+    /**
+     * Detach a single occurrence from its recurring series, making it an independent booking.
+     *
+     * @param int $bookingId
+     * @return bool
+     */
+    public function detachOccurrence(int $bookingId): bool
+    {
+        $db = \Config\Database::connect();
+        return $db->table('bookings')
+            ->where('id', $bookingId)
+            ->update([
+                'recurring_group_id' => null,
+                'recurrence_pattern' => null,
+                'recurrence_index'   => null,
+                'recurrence_total'   => null,
+                'updated_at'         => date('Y-m-d H:i:s'),
+            ]);
+    }
 }

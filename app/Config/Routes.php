@@ -171,6 +171,7 @@ $routes->get('api/bookings/pending-approvals', 'Booking::pendingApprovals');
 $routes->post('api/bookings/recurring-preview', 'Booking::recurringPreview');
 $routes->get('api/bookings/calendar', 'Booking::calendar');
 $routes->get('api/bookings/series/(:segment)', 'Booking::series/$1');
+$routes->delete('api/bookings/series/(:segment)', 'Booking::deleteSeries/$1');
 $routes->get('api/bookings', 'Booking::apiIndex');
 $routes->get('api/bookings/(:num)', 'Booking::show/$1');
 $routes->post('api/bookings', 'Booking::create');
@@ -178,6 +179,7 @@ $routes->put('api/bookings/(:num)', 'Booking::update/$1');
 $routes->delete('api/bookings/(:num)', 'Booking::delete/$1');
 $routes->post('api/bookings/(:num)/approve', 'Booking::approve/$1');
 $routes->post('api/bookings/(:num)/reject', 'Booking::reject/$1');
+$routes->post('api/bookings/(:num)/detach', 'Booking::detach/$1');
 
 // Legacy routes for backward compatibility
 $routes->get('bookings/(:num)', 'Booking::show/$1');
