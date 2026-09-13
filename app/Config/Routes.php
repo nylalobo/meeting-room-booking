@@ -186,6 +186,7 @@ $routes->post('api/bookings/(:num)/detach', 'Booking::detach/$1');
 $routes->post('api/bookings/(:num)/check-in', 'Booking::checkIn/$1');
 $routes->post('api/bookings/(:num)/check-out', 'Booking::checkOut/$1');
 $routes->get('api/bookings/(:num)/check-ins', 'Booking::checkIns/$1');
+$routes->get('api/bookings/(:num)/attendance', 'Booking::attendance/$1');
 
 // Legacy routes for backward compatibility
 $routes->get('bookings/(:num)', 'Booking::show/$1');

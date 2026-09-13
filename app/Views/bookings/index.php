@@ -874,8 +874,136 @@
             <button type="button" class="btn-booking-cancel" id="calDetailCloseBtn">
                 Close
             </button>
+            <button type="button" class="btn-cal-attendance" id="calDetailAttendanceBtn" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
+                <i class="bi bi-person-check"></i> Attendance
+            </button>
             <button type="button" class="btn-booking-submit" id="calDetailEditBtn">
                 <i class="bi bi-pencil"></i> Edit Booking
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     Attendance & Check-in Tracking Modal (Phase 4 Feature 4.2)
+     ================================================================ -->
+<div class="booking-modal-overlay d-none" id="attendanceModal">
+    <div class="booking-modal attendance-modal" role="dialog" aria-modal="true" aria-labelledby="attendanceModalTitle">
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="attendanceModalTitle">Attendance Management</h2>
+                <p id="attendanceModalSubtitle">Real-time check-in tracking, attendance status, and meeting durations.</p>
+            </div>
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeAttendanceModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="attendance-modal-body">
+            <!-- Loading state -->
+            <div id="attendanceLoading" class="attendance-state">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <span>Loading attendance data...</span>
+            </div>
+
+            <!-- Error state -->
+            <div id="attendanceError" class="attendance-state attendance-error d-none">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span id="attendanceErrorText">Unable to load attendance data.</span>
+                <button type="button" class="btn-attendance-retry" id="attendanceRetryBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Retry</span>
+                </button>
+            </div>
+
+            <!-- Content Container -->
+            <div id="attendanceContent" class="attendance-content d-none">
+                <!-- Meeting details banner -->
+                <div class="attendance-meeting-banner">
+                    <div class="attendance-meeting-header">
+                        <h3 class="attendance-meeting-title" id="attMeetingTitle">—</h3>
+                        <span id="attMeetingStatusBadge" class="booking-status booking-status-approved">Approved</span>
+                    </div>
+                    <div class="attendance-meeting-meta">
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-door-open"></i>
+                            <span id="attRoomLocation">—</span>
+                        </div>
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-clock"></i>
+                            <span id="attDateTime">—</span>
+                        </div>
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-person"></i>
+                            <span id="attOrganizer">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Statistics Grid -->
+                <div class="attendance-stats-grid">
+                    <div class="attendance-stat-card">
+                        <span class="attendance-stat-value" id="attStatInvited">0</span>
+                        <span class="attendance-stat-label">Total Invited</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-checkedin">
+                        <span class="attendance-stat-value" id="attStatCheckedIn">0</span>
+                        <span class="attendance-stat-label">Checked In</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-checkedout">
+                        <span class="attendance-stat-value" id="attStatCheckedOut">0</span>
+                        <span class="attendance-stat-label">Checked Out</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-active">
+                        <span class="attendance-stat-value" id="attStatCurrentlyCheckedIn">0</span>
+                        <span class="attendance-stat-label">Currently In</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-notchecked">
+                        <span class="attendance-stat-value" id="attStatNotCheckedIn">0</span>
+                        <span class="attendance-stat-label">Not Checked In</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-declined">
+                        <span class="attendance-stat-value" id="attStatDeclined">0</span>
+                        <span class="attendance-stat-label">Declined</span>
+                    </div>
+                </div>
+
+                <!-- Empty Attendees state -->
+                <div id="attendanceEmpty" class="attendance-state d-none">
+                    <i class="bi bi-people"></i>
+                    <span>No attendees found for this meeting.</span>
+                </div>
+
+                <!-- Attendees Table -->
+                <div id="attendanceTableWrapper" class="attendance-table-wrapper">
+                    <table class="table custom-dark-table attendance-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>ATTENDEE</th>
+                                <th>ROLE</th>
+                                <th>RESPONSE</th>
+                                <th>ATTENDANCE</th>
+                                <th>CHECK-IN</th>
+                                <th>CHECK-OUT</th>
+                                <th>DURATION</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-modal-footer">
+            <button type="button" class="btn-booking-cancel" id="closeAttendanceModalBtn">
+                Close
             </button>
         </div>
     </div>
@@ -1046,6 +1174,242 @@
 
 .booking-meta-approver {
     color: var(--color-text-muted, #8496b5);
+}
+
+/* Attendance Modal Styles (Feature 4.2) */
+.attendance-modal {
+    max-width: 880px;
+    width: 95%;
+}
+
+.attendance-modal-body {
+    padding: 20px 24px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+
+.attendance-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--color-text-muted, #7b8cae);
+    font-size: 14px;
+}
+
+.attendance-state i {
+    font-size: 28px;
+}
+
+.attendance-error {
+    color: #f87171;
+}
+
+.btn-attendance-retry {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 6px 14px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #f87171;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-attendance-retry:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.attendance-meeting-banner {
+    background: var(--bg-card-inner, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+}
+
+.attendance-meeting-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.attendance-meeting-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--color-text-white, #ffffff);
+}
+
+.attendance-meeting-meta {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 13px;
+    color: var(--color-text-muted, #7b8cae);
+}
+
+.attendance-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.attendance-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.attendance-stat-card {
+    background: var(--bg-card-inner, rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    border-radius: 8px;
+    padding: 12px 14px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.attendance-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text-white, #ffffff);
+}
+
+.attendance-stat-label {
+    font-size: 11px;
+    color: var(--color-text-muted, #7b8cae);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.attendance-stat-checkedin .attendance-stat-value { color: #4ade80; }
+.attendance-stat-checkedout .attendance-stat-value { color: #60a5fa; }
+.attendance-stat-active .attendance-stat-value { color: #facc15; }
+.attendance-stat-notchecked .attendance-stat-value { color: #94a3b8; }
+.attendance-stat-declined .attendance-stat-value { color: #f87171; }
+
+.attendance-table-wrapper {
+    overflow-x: auto;
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    border-radius: 8px;
+}
+
+.attendance-table {
+    width: 100%;
+}
+
+.attendance-table th {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--table-header-color, #7b8cae);
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    white-space: nowrap;
+}
+
+.attendance-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.attendance-user-name {
+    font-weight: 600;
+    color: var(--color-text-white, #ffffff);
+}
+
+.attendance-user-email {
+    font-size: 11.5px;
+    color: var(--color-text-muted, #7b8cae);
+}
+
+.attendance-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.attendance-badge-checked_in {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.attendance-badge-checked_out {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.attendance-badge-auto_completed {
+    background: rgba(147, 51, 234, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+.attendance-badge-not_checked_in {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.attendance-badge-late {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    font-size: 10px;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+}
+
+.attendance-badge-organizer {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.attendance-badge-participant {
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.attendance-badge-guest {
+    background: rgba(251, 146, 60, 0.15);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+.booking-attendance-btn:hover {
+    background-color: rgba(56, 189, 248, 0.15) !important;
+    border-color: rgba(56, 189, 248, 0.35) !important;
+    color: #38bdf8 !important;
 }
 </style>
 

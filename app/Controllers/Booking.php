@@ -7,6 +7,7 @@ use App\Models\Booking as BookingModel;
 use App\Models\BookingCheckin as BookingCheckinModel;
 use App\Models\BookingParticipant as BookingParticipantModel;
 use App\Models\Department as DepartmentModel;
+use App\Models\Location as LocationModel;
 use App\Models\Room as RoomModel;
 use App\Models\User as UserModel;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -17,21 +18,18 @@ class Booking extends BaseController
     protected RoomModel $roomModel;
     protected UserModel $userModel;
     protected DepartmentModel $departmentModel;
+    protected LocationModel $locationModel;
     protected AuditLogModel $auditLogModel;
     protected BookingCheckinModel $bookingCheckinModel;
     protected BookingParticipantModel $bookingParticipantModel;
 
     public function __construct()
     {
-        $this->bookingModel    = new BookingModel();
-        $this->roomModel       = new RoomModel();
-        $this->userModel       = new UserModel();
-        $this->departmentModel = new DepartmentModel();
-        $this->auditLogModel   = new AuditLogModel();
         $this->bookingModel            = new BookingModel();
         $this->roomModel               = new RoomModel();
         $this->userModel               = new UserModel();
         $this->departmentModel         = new DepartmentModel();
+        $this->locationModel           = new LocationModel();
         $this->auditLogModel           = new AuditLogModel();
         $this->bookingCheckinModel     = new BookingCheckinModel();
         $this->bookingParticipantModel = new BookingParticipantModel();
@@ -105,6 +103,14 @@ class Booking extends BaseController
             }
 
             $booking['can_approve'] = $this->canUserApproveBooking(
+                $currentUserId,
+                $currentUserRoleName,
+                $currentUserDeptId,
+                $booking,
+                $user
+            );
+
+            $booking['can_view_attendance'] = $this->canUserViewAttendance(
                 $currentUserId,
                 $currentUserRoleName,
                 $currentUserDeptId,
@@ -1399,6 +1405,14 @@ class Booking extends BaseController
                 $organizer
             );
 
+            $booking['can_view_attendance'] = $this->canUserViewAttendance(
+                $currentUserId,
+                $currentUserRoleName,
+                $currentUserDeptId,
+                $booking,
+                $organizer
+            );
+
             $enriched[] = $booking;
         }
 
@@ -1438,6 +1452,41 @@ class Booking extends BaseController
         }
 
         // Departmental approver: Manager can approve bookings from employees in their department
+        if ($userRoleName === 'Manager') {
+            $organizerDeptId = !empty($organizer['department_id']) ? (int) $organizer['department_id'] : null;
+            if ($userDeptId !== null && $organizerDeptId !== null && $userDeptId === $organizerDeptId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if a user can view attendance records for a specific booking.
+     */
+    protected function canUserViewAttendance(
+        int $userId,
+        string $userRoleName,
+        ?int $userDeptId,
+        array $booking,
+        ?array $organizer
+    ): bool {
+        if (empty($userId)) {
+            return false;
+        }
+
+        // Organizer can always view attendance
+        if ((int) ($booking['user_id'] ?? 0) === $userId) {
+            return true;
+        }
+
+        // Global roles: Admin and Facilities Manager
+        if (in_array($userRoleName, ['Admin', 'Facilities Manager'], true)) {
+            return true;
+        }
+
+        // Departmental Manager: Manager of the same department as the organizer
         if ($userRoleName === 'Manager') {
             $organizerDeptId = !empty($organizer['department_id']) ? (int) $organizer['department_id'] : null;
             if ($userDeptId !== null && $organizerDeptId !== null && $userDeptId === $organizerDeptId) {
@@ -1982,5 +2031,348 @@ class Booking extends BaseController
             'status' => 'success',
             'data'   => $formatted,
         ]);
+    }
+
+    /**
+     * Get comprehensive attendance tracking and management data for a booking.
+     *
+     * GET /api/bookings/(:num)/attendance
+     */
+    public function attendance(int $bookingId): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $booking = $this->bookingModel->find($bookingId);
+        if ($booking === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Booking not found.',
+            ]);
+        }
+
+        $organizerId = (int) $booking['user_id'];
+        $organizer = $this->userModel->find($organizerId);
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = $roleRow['name'];
+            }
+        }
+
+        $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
+        $canView = $this->canUserViewAttendance(
+            $currentUserId,
+            $currentUserRoleName,
+            $currentUserDeptId,
+            $booking,
+            $organizer
+        );
+
+        if (!$canView) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to view attendance for this booking.',
+            ]);
+        }
+
+        // Room and Location details
+        $room = $this->roomModel->find($booking['room_id']);
+        $locationName = null;
+        if ($room && !empty($room['location_id'])) {
+            $location = $this->locationModel->find($room['location_id']);
+            $locationName = $location['name'] ?? null;
+        }
+
+        $organizerName = $organizer
+            ? trim(($organizer['first_name'] ?? '') . ' ' . ($organizer['last_name'] ?? ''))
+            : '';
+        if ($organizerName === '') {
+            $organizerName = $organizer['email'] ?? ('User #' . $organizerId);
+        }
+
+        // Attendees dataset building (organizer + participants + checkins)
+        $attendeesMap = [];
+
+        // 1. Organizer is always represented (even if absent from booking_participants)
+        $attendeesMap[$organizerId] = [
+            'user_id'          => $organizerId,
+            'name'             => $organizerName,
+            'email'            => $organizer['email'] ?? '',
+            'participant_type' => 'organizer',
+            'response_status'  => 'accepted',
+            'is_invited'       => true,
+        ];
+
+        // 2. Booking Participants
+        $participants = $this->bookingParticipantModel
+            ->select('booking_participants.*, users.first_name, users.last_name, users.email')
+            ->join('users', 'users.id = booking_participants.user_id', 'left')
+            ->where('booking_participants.booking_id', $bookingId)
+            ->findAll();
+
+        foreach ($participants as $p) {
+            $uid = (int) $p['user_id'];
+            $pName = trim(($p['first_name'] ?? '') . ' ' . ($p['last_name'] ?? ''));
+            if ($pName === '') {
+                $pName = $p['email'] ?? ('User #' . $uid);
+            }
+
+            if (isset($attendeesMap[$uid])) {
+                // Merge with existing record (e.g. organizer)
+                if (!empty($p['participant_type'])) {
+                    $attendeesMap[$uid]['participant_type'] = $p['participant_type'];
+                }
+                if (!empty($p['response_status'])) {
+                    $attendeesMap[$uid]['response_status'] = $p['response_status'];
+                }
+            } else {
+                $attendeesMap[$uid] = [
+                    'user_id'          => $uid,
+                    'name'             => $pName,
+                    'email'            => $p['email'] ?? '',
+                    'participant_type' => $p['participant_type'] ?? 'participant',
+                    'response_status'  => $p['response_status'] ?? 'pending',
+                    'is_invited'       => true,
+                ];
+            }
+        }
+
+        // 3. Booking Check-ins (strictly isolated by booking_id)
+        $checkinRecords = $this->bookingCheckinModel
+            ->select('booking_checkins.*, users.first_name, users.last_name, users.email')
+            ->join('users', 'users.id = booking_checkins.user_id', 'left')
+            ->where('booking_checkins.booking_id', $bookingId)
+            ->orderBy('booking_checkins.id', 'ASC')
+            ->findAll();
+
+        $latestCheckinByUser = [];
+        foreach ($checkinRecords as $c) {
+            $uid = (int) $c['user_id'];
+            $latestCheckinByUser[$uid] = $c;
+        }
+
+        // Account for guest check-in records present in booking_checkins
+        foreach ($latestCheckinByUser as $uid => $c) {
+            if (!isset($attendeesMap[$uid])) {
+                $guestName = trim(($c['first_name'] ?? '') . ' ' . ($c['last_name'] ?? ''));
+                if ($guestName === '') {
+                    $guestName = $c['email'] ?? ('User #' . $uid);
+                }
+                $attendeesMap[$uid] = [
+                    'user_id'          => $uid,
+                    'name'             => $guestName,
+                    'email'            => $c['email'] ?? '',
+                    'participant_type' => 'guest',
+                    'response_status'  => 'accepted',
+                    'is_invited'       => false,
+                ];
+            }
+        }
+
+        // Server current timestamp
+        $nowTs = time();
+
+        $attendees = [];
+        $totalInvited = 0;
+        $totalCheckedIn = 0;
+        $totalCheckedOut = 0;
+        $currentlyCheckedIn = 0;
+        $notCheckedIn = 0;
+        $totalDeclined = 0;
+
+        foreach ($attendeesMap as $uid => $att) {
+            $isInvited = !empty($att['is_invited']);
+            if ($isInvited) {
+                $totalInvited++;
+                if (($att['response_status'] ?? '') === 'declined') {
+                    $totalDeclined++;
+                }
+            }
+
+            $hasCheckin = isset($latestCheckinByUser[$uid]);
+            if ($hasCheckin) {
+                $c = $latestCheckinByUser[$uid];
+                $status = in_array($c['status'], ['checked_in', 'checked_out', 'auto_completed'], true)
+                    ? $c['status']
+                    : 'checked_in';
+
+                $checkInTime = $c['check_in_time'];
+                $checkOutTime = $c['check_out_time'];
+                $checkInMethod = $c['check_in_method'] ?? 'qr_code';
+
+                $totalCheckedIn++;
+                if ($status === 'checked_out') {
+                    $totalCheckedOut++;
+                } elseif ($status === 'checked_in') {
+                    $currentlyCheckedIn++;
+                }
+
+                $isLate = false;
+                if (!empty($checkInTime) && !empty($booking['start_time'])) {
+                    $isLate = (strtotime($checkInTime) > strtotime($booking['start_time']));
+                }
+
+                $durationInfo = $this->formatAttendanceDuration($checkInTime, $checkOutTime, $status, $nowTs);
+
+                $attendees[] = [
+                    'user_id'            => $uid,
+                    'name'               => $att['name'],
+                    'email'              => $att['email'],
+                    'participant_type'   => $att['participant_type'],
+                    'response_status'    => $att['response_status'],
+                    'attendance_status'  => $status,
+                    'check_in_time'      => $checkInTime,
+                    'check_out_time'     => $checkOutTime,
+                    'check_in_method'    => $checkInMethod,
+                    'is_late'            => $isLate,
+                    'duration_minutes'   => $durationInfo['minutes'],
+                    'duration_formatted' => $durationInfo['formatted'],
+                ];
+            } else {
+                if ($isInvited) {
+                    $notCheckedIn++;
+                }
+
+                $attendees[] = [
+                    'user_id'            => $uid,
+                    'name'               => $att['name'],
+                    'email'              => $att['email'],
+                    'participant_type'   => $att['participant_type'],
+                    'response_status'    => $att['response_status'],
+                    'attendance_status'  => 'not_checked_in',
+                    'check_in_time'      => null,
+                    'check_out_time'     => null,
+                    'check_in_method'    => null,
+                    'is_late'            => false,
+                    'duration_minutes'   => null,
+                    'duration_formatted' => null,
+                ];
+            }
+        }
+
+        // Sort: Organizer first, then alphabetical by name
+        usort($attendees, function ($a, $b) {
+            if ($a['participant_type'] === 'organizer' && $b['participant_type'] !== 'organizer') {
+                return -1;
+            }
+            if ($b['participant_type'] === 'organizer' && $a['participant_type'] !== 'organizer') {
+                return 1;
+            }
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => [
+                'booking' => [
+                    'booking_id'     => (int) $booking['id'],
+                    'title'          => $booking['title'],
+                    'room_id'        => (int) $booking['room_id'],
+                    'room_name'      => $room['name'] ?? 'Unknown Room',
+                    'room_code'      => $room['room_code'] ?? null,
+                    'location_name'  => $locationName,
+                    'start_time'     => $booking['start_time'],
+                    'end_time'       => $booking['end_time'],
+                    'status'         => $booking['status'],
+                    'organizer_name' => $organizerName,
+                ],
+                'summary' => [
+                    'total_invited'        => $totalInvited,
+                    'total_checked_in'     => $totalCheckedIn,
+                    'total_checked_out'    => $totalCheckedOut,
+                    'currently_checked_in' => $currentlyCheckedIn,
+                    'not_checked_in'       => $notCheckedIn,
+                    'total_declined'       => $totalDeclined,
+                ],
+                'attendees' => $attendees,
+            ],
+        ]);
+    }
+
+    /**
+     * Format duration into minutes and human-readable string.
+     *
+     * @param string|null $checkInTime
+     * @param string|null $checkOutTime
+     * @param string $attendanceStatus
+     * @param int $nowTs
+     * @return array{minutes: int|null, formatted: string|null}
+     */
+    protected function formatAttendanceDuration(?string $checkInTime, ?string $checkOutTime, string $attendanceStatus, int $nowTs): array
+    {
+        if (empty($checkInTime) || $attendanceStatus === 'not_checked_in') {
+            return [
+                'minutes'   => null,
+                'formatted' => null,
+            ];
+        }
+
+        $inTs = strtotime($checkInTime);
+        if ($inTs === false) {
+            return [
+                'minutes'   => null,
+                'formatted' => null,
+            ];
+        }
+
+        if (!empty($checkOutTime)) {
+            $outTs = strtotime($checkOutTime);
+            $diffSec = max(0, ($outTs !== false ? $outTs - $inTs : 0));
+            $minutes = (int) round($diffSec / 60);
+
+            return [
+                'minutes'   => $minutes,
+                'formatted' => $this->formatMinutesHuman($minutes),
+            ];
+        }
+
+        if ($attendanceStatus === 'checked_in') {
+            $diffSec = max(0, $nowTs - $inTs);
+            $minutes = (int) round($diffSec / 60);
+
+            return [
+                'minutes'   => $minutes,
+                'formatted' => 'In progress (' . $this->formatMinutesHuman($minutes) . ')',
+            ];
+        }
+
+        return [
+            'minutes'   => 0,
+            'formatted' => '0 mins',
+        ];
+    }
+
+    /**
+     * Convert minutes to human readable string.
+     */
+    protected function formatMinutesHuman(int $minutes): string
+    {
+        if ($minutes < 0) {
+            $minutes = 0;
+        }
+        if ($minutes < 60) {
+            return $minutes . ' mins';
+        }
+
+        $hours = intdiv($minutes, 60);
+        $remMinutes = $minutes % 60;
+
+        $hrStr = $hours === 1 ? '1 hr' : "{$hours} hrs";
+
+        if ($remMinutes === 0) {
+            return $hrStr;
+        }
+
+        return "{$hrStr} {$remMinutes} mins";
     }
 }

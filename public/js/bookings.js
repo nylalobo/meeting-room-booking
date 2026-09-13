@@ -25,6 +25,7 @@
             setupBookingRejectionModal();
             setupRoomAvailabilitySearch();
             setupCalendarControls();
+            setupAttendanceModal();
         }
     });
 
@@ -519,6 +520,19 @@
                                 aria-label="Reject booking"
                             >
                                 <i class="bi bi-x-lg" style="color: #f87171;"></i>
+                            </button>
+                        ` : ''}
+
+                        ${booking.can_view_attendance !== false ? `
+                            <button
+                                type="button"
+                                class="booking-action-btn booking-attendance-btn"
+                                data-booking-id="${escapeHtml(booking.id)}"
+                                data-booking-title="${escapeHtml(booking.title || 'Untitled Meeting')}"
+                                title="View attendance & check-ins"
+                                aria-label="View attendance"
+                            >
+                                <i class="bi bi-person-check"></i>
                             </button>
                         ` : ''}
 
@@ -1465,6 +1479,11 @@
                 '.booking-reject-btn'
             );
 
+        const attendanceButtons =
+            document.querySelectorAll(
+                '.booking-attendance-btn'
+            );
+
         editButtons.forEach((button) => {
             button.addEventListener(
                 'click',
@@ -1502,6 +1521,17 @@
                 () => {
                     const bookingId = button.dataset.bookingId;
                     openBookingRejectionModal(bookingId);
+                }
+            );
+        });
+
+        attendanceButtons.forEach((button) => {
+            button.addEventListener(
+                'click',
+                () => {
+                    const bookingId = Number(button.dataset.bookingId);
+                    const bookingTitle = button.dataset.bookingTitle || '';
+                    openAttendanceModal(bookingId, bookingTitle);
                 }
             );
         });
@@ -3074,6 +3104,16 @@
             }
         });
 
+        const calDetailAttendanceBtn = document.getElementById('calDetailAttendanceBtn');
+        calDetailAttendanceBtn?.addEventListener('click', () => {
+            if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.id) {
+                const bId = Number(currentSelectedCalendarEvent.id);
+                const bTitle = currentSelectedCalendarEvent.title || '';
+                closeCalendarDetailModal();
+                openAttendanceModal(bId, bTitle);
+            }
+        });
+
         viewSeriesBtn?.addEventListener('click', () => {
             if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.recurring_group_id) {
                 loadSeriesOccurrences(currentSelectedCalendarEvent.recurring_group_id, currentSelectedCalendarEvent.id);
@@ -4110,6 +4150,273 @@
         const s = formatTimeForDisplay(sComp.hours, sComp.minutes);
         const e = formatTimeForDisplay(eComp.hours, eComp.minutes);
         return `${s} - ${e}`;
+    }
+
+
+    /* ==========================================================================
+       ATTENDANCE MANAGEMENT & TRACKING (FEATURE 4.2)
+       ========================================================================== */
+
+    let activeAttendanceBookingId = null;
+
+    function setupAttendanceModal() {
+        const modal = document.getElementById('attendanceModal');
+        const closeBtn = document.getElementById('closeAttendanceModal');
+        const closeBtnFooter = document.getElementById('closeAttendanceModalBtn');
+        const attRetryBtn = document.getElementById('attendanceRetryBtn');
+
+        if (!modal) return;
+
+        closeBtn?.addEventListener('click', closeAttendanceModalWindow);
+        closeBtnFooter?.addEventListener('click', closeAttendanceModalWindow);
+
+        attRetryBtn?.addEventListener('click', () => {
+            if (activeAttendanceBookingId) {
+                fetchAttendanceData(activeAttendanceBookingId);
+            }
+        });
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeAttendanceModalWindow();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.classList.contains('d-none')) {
+                closeAttendanceModalWindow();
+            }
+        });
+    }
+
+    function openAttendanceModal(bookingId, bookingTitle) {
+        activeAttendanceBookingId = Number(bookingId);
+
+        const modal = document.getElementById('attendanceModal');
+        const loading = document.getElementById('attendanceLoading');
+        const error = document.getElementById('attendanceError');
+        const content = document.getElementById('attendanceContent');
+        const titleEl = document.getElementById('attMeetingTitle');
+
+        if (!modal) return;
+
+        if (titleEl) {
+            titleEl.textContent = bookingTitle || 'Loading meeting...';
+        }
+
+        modal.classList.remove('d-none');
+        document.body.classList.add('booking-modal-open');
+
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        content?.classList.add('d-none');
+
+        fetchAttendanceData(activeAttendanceBookingId);
+    }
+
+    function closeAttendanceModalWindow() {
+        const modal = document.getElementById('attendanceModal');
+        if (!modal) return;
+
+        modal.classList.add('d-none');
+        document.body.classList.remove('booking-modal-open');
+        activeAttendanceBookingId = null;
+    }
+
+    async function fetchAttendanceData(bookingId) {
+        const loading = document.getElementById('attendanceLoading');
+        const error = document.getElementById('attendanceError');
+        const errorText = document.getElementById('attendanceErrorText');
+        const content = document.getElementById('attendanceContent');
+
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        content?.classList.add('d-none');
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/attendance`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                loading?.classList.add('d-none');
+                error?.classList.remove('d-none');
+                if (errorText) {
+                    errorText.textContent = result.message || 'Unable to load attendance data for this meeting.';
+                }
+                return;
+            }
+
+            loading?.classList.add('d-none');
+            content?.classList.remove('d-none');
+            renderAttendanceData(result.data);
+
+        } catch (err) {
+            loading?.classList.add('d-none');
+            error?.classList.remove('d-none');
+            if (errorText) {
+                errorText.textContent = 'Network error while loading attendance. Please try again.';
+            }
+        }
+    }
+
+    function renderAttendanceData(data) {
+        if (!data || !data.booking) return;
+
+        // Meeting Header Details
+        const titleEl = document.getElementById('attMeetingTitle');
+        if (titleEl) {
+            titleEl.textContent = data.booking.title || 'Untitled Meeting';
+        }
+
+        const statusBadge = document.getElementById('attMeetingStatusBadge');
+        if (statusBadge) {
+            const st = String(data.booking.status || 'pending').toLowerCase();
+            statusBadge.className = `booking-status booking-status-${escapeHtml(st)}`;
+            statusBadge.textContent = st.charAt(0).toUpperCase() + st.slice(1);
+        }
+
+        const roomLocEl = document.getElementById('attRoomLocation');
+        if (roomLocEl) {
+            const roomText = data.booking.room_code
+                ? `${data.booking.room_name} (${data.booking.room_code})`
+                : (data.booking.room_name || 'Room');
+            const locText = data.booking.location_name ? ` • ${data.booking.location_name}` : '';
+            roomLocEl.textContent = roomText + locText;
+        }
+
+        const dateTimeEl = document.getElementById('attDateTime');
+        if (dateTimeEl) {
+            const dStr = formatDateForDisplay(data.booking.start_time);
+            const tStr = formatTimeRangeForDisplay(data.booking.start_time, data.booking.end_time);
+            dateTimeEl.textContent = `${dStr} • ${tStr}`;
+        }
+
+        const orgEl = document.getElementById('attOrganizer');
+        if (orgEl) {
+            orgEl.textContent = `Organizer: ${data.booking.organizer_name || 'Unknown'}`;
+        }
+
+        // Summary Counts
+        const summary = data.summary || {};
+        const setStat = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = String(val ?? 0);
+        };
+
+        setStat('attStatInvited', summary.total_invited);
+        setStat('attStatCheckedIn', summary.total_checked_in);
+        setStat('attStatCheckedOut', summary.total_checked_out);
+        setStat('attStatCurrentlyCheckedIn', summary.currently_checked_in);
+        setStat('attStatNotCheckedIn', summary.not_checked_in);
+        setStat('attStatDeclined', summary.total_declined);
+
+        // Attendees List
+        const attendees = data.attendees || [];
+        const tableBody = document.getElementById('attendanceTableBody');
+        const emptyState = document.getElementById('attendanceEmpty');
+        const tableWrapper = document.getElementById('attendanceTableWrapper');
+
+        if (!tableBody) return;
+
+        tableBody.innerHTML = '';
+
+        if (attendees.length === 0) {
+            tableWrapper?.classList.add('d-none');
+            emptyState?.classList.remove('d-none');
+            return;
+        }
+
+        emptyState?.classList.add('d-none');
+        tableWrapper?.classList.remove('d-none');
+
+        attendees.forEach((att) => {
+            const tr = document.createElement('tr');
+
+            const roleRaw = att.participant_type || 'participant';
+            const roleLabel = roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1);
+
+            const respRaw = att.response_status || 'pending';
+            const respLabel = respRaw.charAt(0).toUpperCase() + respRaw.slice(1);
+
+            const attStatus = att.attendance_status || 'not_checked_in';
+            const attStatusLabel = formatAttendanceStatusLabel(attStatus);
+
+            const inTimeStr = att.check_in_time ? formatTimeOnlyForDisplay(att.check_in_time) : '—';
+            const outTimeStr = att.check_out_time ? formatTimeOnlyForDisplay(att.check_out_time) : '—';
+            const durStr = att.duration_formatted ? escapeHtml(att.duration_formatted) : '—';
+
+            let lateBadge = '';
+            if (att.is_late) {
+                lateBadge = `<span class="attendance-badge attendance-badge-late" title="Checked in after scheduled start time"><i class="bi bi-clock-history"></i> Late</span>`;
+            }
+
+            tr.innerHTML = `
+                <td>
+                    <div class="attendance-user-name">${escapeHtml(att.name || 'User')}</div>
+                    ${att.email ? `<div class="attendance-user-email">${escapeHtml(att.email)}</div>` : ''}
+                </td>
+                <td>
+                    <span class="attendance-badge attendance-badge-${escapeHtml(roleRaw)}">
+                        ${escapeHtml(roleLabel)}
+                    </span>
+                </td>
+                <td>
+                    <span class="booking-status booking-status-${escapeHtml(respRaw)}">
+                        ${escapeHtml(respLabel)}
+                    </span>
+                </td>
+                <td>
+                    <span class="attendance-badge attendance-badge-${escapeHtml(attStatus)}">
+                        ${escapeHtml(attStatusLabel)}
+                    </span>
+                    ${lateBadge}
+                </td>
+                <td>${escapeHtml(inTimeStr)}</td>
+                <td>${escapeHtml(outTimeStr)}</td>
+                <td>${durStr}</td>
+            `;
+
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function formatAttendanceStatusLabel(status) {
+        switch (status) {
+            case 'checked_in':
+                return 'Checked In';
+            case 'checked_out':
+                return 'Checked Out';
+            case 'auto_completed':
+                return 'Auto Completed';
+            case 'not_checked_in':
+                return 'Not Checked In';
+            default:
+                return String(status || '').replace(/_/g, ' ');
+        }
+    }
+
+    function formatTimeOnlyForDisplay(dateTimeStr) {
+        const comp = parseDateTimeComponents(dateTimeStr);
+        if (!comp) return '—';
+        return formatTimeForDisplay(comp.hours, comp.minutes);
+    }
+
+    function escapeHtml(str) {
+        if (typeof window.escapeHtml === 'function') {
+            return window.escapeHtml(str);
+        }
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
 })();
