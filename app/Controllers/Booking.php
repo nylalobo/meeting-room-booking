@@ -6,6 +6,7 @@ use App\Models\AuditLog as AuditLogModel;
 use App\Models\Booking as BookingModel;
 use App\Models\BookingCheckin as BookingCheckinModel;
 use App\Models\BookingParticipant as BookingParticipantModel;
+use App\Models\BookingVisitor as BookingVisitorModel;
 use App\Models\Department as DepartmentModel;
 use App\Models\Location as LocationModel;
 use App\Models\Room as RoomModel;
@@ -22,6 +23,7 @@ class Booking extends BaseController
     protected AuditLogModel $auditLogModel;
     protected BookingCheckinModel $bookingCheckinModel;
     protected BookingParticipantModel $bookingParticipantModel;
+    protected BookingVisitorModel $bookingVisitorModel;
 
     public function __construct()
     {
@@ -33,6 +35,7 @@ class Booking extends BaseController
         $this->auditLogModel           = new AuditLogModel();
         $this->bookingCheckinModel     = new BookingCheckinModel();
         $this->bookingParticipantModel = new BookingParticipantModel();
+        $this->bookingVisitorModel     = new BookingVisitorModel();
     }
 
     /**
@@ -2226,6 +2229,7 @@ class Booking extends BaseController
 
                 $attendees[] = [
                     'user_id'            => $uid,
+                    'is_visitor'         => false,
                     'name'               => $att['name'],
                     'email'              => $att['email'],
                     'participant_type'   => $att['participant_type'],
@@ -2245,6 +2249,7 @@ class Booking extends BaseController
 
                 $attendees[] = [
                     'user_id'            => $uid,
+                    'is_visitor'         => false,
                     'name'               => $att['name'],
                     'email'              => $att['email'],
                     'participant_type'   => $att['participant_type'],
@@ -2258,6 +2263,70 @@ class Booking extends BaseController
                     'duration_formatted' => null,
                 ];
             }
+        }
+
+        // 4. Booking Visitors (Feature 4.3)
+        $visitors = $this->bookingVisitorModel->getVisitorsForBooking($bookingId, true);
+        $totalVisitors = 0;
+
+        // Determine if current user can manage visitors (Organizer, Admin, Facilities Manager, same-dept Manager)
+        $organizerDeptId = !empty($organizer['department_id']) ? (int) $organizer['department_id'] : null;
+        $canManageVisitors = false;
+        if ($currentUserId === $organizerId || in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true)) {
+            $canManageVisitors = true;
+        } elseif ($currentUserRoleName === 'Manager' && $currentUserDeptId !== null && $organizerDeptId !== null && $currentUserDeptId === $organizerDeptId) {
+            $canManageVisitors = true;
+        }
+
+        foreach ($visitors as $v) {
+            $vStatus = $v['status']; // 'expected', 'checked_in', 'checked_out', 'cancelled'
+            $isCancelled = ($vStatus === 'cancelled');
+
+            $checkInTime  = $v['check_in_time'];
+            $checkOutTime = $v['check_out_time'];
+            $hasCheckin   = !empty($checkInTime);
+
+            if (!$isCancelled) {
+                $totalInvited++;
+                $totalVisitors++;
+
+                if ($hasCheckin) {
+                    $totalCheckedIn++;
+                    if ($vStatus === 'checked_out') {
+                        $totalCheckedOut++;
+                    } elseif ($vStatus === 'checked_in') {
+                        $currentlyCheckedIn++;
+                    }
+                } else {
+                    $notCheckedIn++;
+                }
+            }
+
+            $isLate = false;
+            if (!empty($checkInTime) && !empty($booking['start_time'])) {
+                $isLate = (strtotime($checkInTime) > strtotime($booking['start_time']));
+            }
+
+            $durationInfo = $this->formatAttendanceDuration($checkInTime, $checkOutTime, $vStatus, $nowTs);
+
+            $attendees[] = [
+                'id'                 => (int) $v['id'],
+                'user_id'            => null,
+                'is_visitor'         => true,
+                'name'               => $v['full_name'],
+                'email'              => $v['email'],
+                'company'            => $v['company'] ?? null,
+                'phone'              => $canManageVisitors ? ($v['phone'] ?? null) : null,
+                'participant_type'   => 'visitor',
+                'response_status'    => $isCancelled ? 'declined' : 'accepted',
+                'attendance_status'  => $vStatus,
+                'check_in_time'      => $checkInTime,
+                'check_out_time'     => $checkOutTime,
+                'check_in_method'    => $v['check_in_method'] ?? 'manual',
+                'is_late'            => $isLate,
+                'duration_minutes'   => $durationInfo['minutes'],
+                'duration_formatted' => $durationInfo['formatted'],
+            ];
         }
 
         // Sort: Organizer first, then alphabetical by name
@@ -2293,6 +2362,7 @@ class Booking extends BaseController
                     'currently_checked_in' => $currentlyCheckedIn,
                     'not_checked_in'       => $notCheckedIn,
                     'total_declined'       => $totalDeclined,
+                    'total_visitors'       => $totalVisitors,
                 ],
                 'attendees' => $attendees,
             ],
@@ -2310,7 +2380,7 @@ class Booking extends BaseController
      */
     protected function formatAttendanceDuration(?string $checkInTime, ?string $checkOutTime, string $attendanceStatus, int $nowTs): array
     {
-        if (empty($checkInTime) || $attendanceStatus === 'not_checked_in') {
+        if (empty($checkInTime) || $attendanceStatus === 'not_checked_in' || $attendanceStatus === 'cancelled' || $attendanceStatus === 'expected') {
             return [
                 'minutes'   => null,
                 'formatted' => null,

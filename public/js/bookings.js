@@ -26,6 +26,7 @@
             setupRoomAvailabilitySearch();
             setupCalendarControls();
             setupAttendanceModal();
+            setupVisitorsModal();
         }
     });
 
@@ -535,6 +536,17 @@
                                 <i class="bi bi-person-check"></i>
                             </button>
                         ` : ''}
+
+                        <button
+                            type="button"
+                            class="booking-action-btn booking-visitors-btn"
+                            data-booking-id="${escapeHtml(booking.id)}"
+                            data-booking-title="${escapeHtml(booking.title || 'Untitled Meeting')}"
+                            title="Manage visitors & guests"
+                            aria-label="Manage visitors"
+                        >
+                            <i class="bi bi-person-badge"></i>
+                        </button>
 
                         <button
                             type="button"
@@ -1484,6 +1496,11 @@
                 '.booking-attendance-btn'
             );
 
+        const visitorButtons =
+            document.querySelectorAll(
+                '.booking-visitors-btn'
+            );
+
         editButtons.forEach((button) => {
             button.addEventListener(
                 'click',
@@ -1532,6 +1549,17 @@
                     const bookingId = Number(button.dataset.bookingId);
                     const bookingTitle = button.dataset.bookingTitle || '';
                     openAttendanceModal(bookingId, bookingTitle);
+                }
+            );
+        });
+
+        visitorButtons.forEach((button) => {
+            button.addEventListener(
+                'click',
+                () => {
+                    const bookingId = Number(button.dataset.bookingId);
+                    const bookingTitle = button.dataset.bookingTitle || '';
+                    openVisitorsModal(bookingId, bookingTitle);
                 }
             );
         });
@@ -3114,6 +3142,16 @@
             }
         });
 
+        const calDetailVisitorsBtn = document.getElementById('calDetailVisitorsBtn');
+        calDetailVisitorsBtn?.addEventListener('click', () => {
+            if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.id) {
+                const bId = Number(currentSelectedCalendarEvent.id);
+                const bTitle = currentSelectedCalendarEvent.title || '';
+                closeCalendarDetailModal();
+                openVisitorsModal(bId, bTitle);
+            }
+        });
+
         viewSeriesBtn?.addEventListener('click', () => {
             if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.recurring_group_id) {
                 loadSeriesOccurrences(currentSelectedCalendarEvent.recurring_group_id, currentSelectedCalendarEvent.id);
@@ -4065,6 +4103,41 @@
             }
         }
 
+        // Calendar Visitors Button Visibility (Phase 4 Feature 4.3)
+        const visBtn = document.getElementById('calDetailVisitorsBtn');
+        if (visBtn) {
+            const normStatus = String(ev.status || 'pending').toLowerCase();
+            const currentUser = window.MeetSpaceUser || null;
+            let canViewVisitors = false;
+
+            if (currentUser && currentUser.id) {
+                if (['Admin', 'Facilities Manager'].includes(currentUser.role_name)) {
+                    canViewVisitors = true;
+                } else if (Number(ev.user_id) === Number(currentUser.id)) {
+                    canViewVisitors = true;
+                } else if (currentUser.role_name === 'Manager' && currentUser.department_id && ev.organizer_department_id && Number(currentUser.department_id) === Number(ev.organizer_department_id)) {
+                    canViewVisitors = true;
+                } else if (ev.can_view_attendance !== false && ev.can_view_attendance !== undefined) {
+                    canViewVisitors = Boolean(ev.can_view_attendance);
+                } else if (typeof allBookings !== 'undefined' && Array.isArray(allBookings)) {
+                    const matchedBooking = allBookings.find(b => Number(b.id) === Number(ev.id));
+                    if (matchedBooking && matchedBooking.can_view_attendance !== false) {
+                        canViewVisitors = true;
+                    }
+                }
+            }
+
+            if (normStatus === 'cancelled' || normStatus === 'rejected') {
+                canViewVisitors = false;
+            }
+
+            if (canViewVisitors) {
+                visBtn.classList.remove('d-none');
+            } else {
+                visBtn.classList.add('d-none');
+            }
+        }
+
         modal.classList.remove('d-none');
     }
 
@@ -4072,6 +4145,7 @@
         document.getElementById('calendarEventDetailModal')?.classList.add('d-none');
         document.getElementById('calDetailCancelledBanner')?.classList.add('d-none');
         document.getElementById('calDetailRejectionSection')?.classList.add('d-none');
+        document.getElementById('calDetailVisitorsBtn')?.classList.add('d-none');
         const rejReasonEl = document.getElementById('calDetailRejectionReason');
         if (rejReasonEl) rejReasonEl.textContent = '';
         document.getElementById('calDetailRecurrenceSection')?.classList.add('d-none');
@@ -4337,11 +4411,12 @@
         attendees.forEach((att) => {
             const tr = document.createElement('tr');
 
-            const roleRaw = att.participant_type || 'participant';
-            const roleLabel = roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1);
+            const isVisitor = Boolean(att.is_visitor || att.participant_type === 'visitor');
+            const roleRaw = att.participant_type || (isVisitor ? 'visitor' : 'participant');
+            const roleLabel = isVisitor ? 'Visitor' : (roleRaw.charAt(0).toUpperCase() + roleRaw.slice(1));
 
-            const respRaw = att.response_status || 'pending';
-            const respLabel = respRaw.charAt(0).toUpperCase() + respRaw.slice(1);
+            const respRaw = att.response_status || (isVisitor ? 'expected' : 'pending');
+            const respLabel = (isVisitor && respRaw === 'expected') ? 'Registered' : (respRaw.charAt(0).toUpperCase() + respRaw.slice(1));
 
             const attStatus = att.attendance_status || 'not_checked_in';
             const attStatusLabel = formatAttendanceStatusLabel(attStatus);
@@ -4355,10 +4430,22 @@
                 lateBadge = `<span class="attendance-badge attendance-badge-late" title="Checked in after scheduled start time"><i class="bi bi-clock-history"></i> Late</span>`;
             }
 
+            let subInfo = '';
+            if (att.company && att.email) {
+                subInfo = `<div class="attendance-user-email">${escapeHtml(att.company)} • ${escapeHtml(att.email)}</div>`;
+            } else if (att.company) {
+                subInfo = `<div class="attendance-user-email">${escapeHtml(att.company)}</div>`;
+            } else if (att.email) {
+                subInfo = `<div class="attendance-user-email">${escapeHtml(att.email)}</div>`;
+            }
+
             tr.innerHTML = `
                 <td>
-                    <div class="attendance-user-name">${escapeHtml(att.name || 'User')}</div>
-                    ${att.email ? `<div class="attendance-user-email">${escapeHtml(att.email)}</div>` : ''}
+                    <div class="attendance-user-name">
+                        ${escapeHtml(att.name || 'User')}
+                        ${isVisitor ? '<span class="badge attendance-badge-visitor ms-1" style="font-size: 10px; padding: 1px 6px;">Guest</span>' : ''}
+                    </div>
+                    ${subInfo}
                 </td>
                 <td>
                     <span class="attendance-badge attendance-badge-${escapeHtml(roleRaw)}">
@@ -4393,6 +4480,8 @@
                 return 'Checked Out';
             case 'auto_completed':
                 return 'Auto Completed';
+            case 'expected':
+                return 'Expected';
             case 'not_checked_in':
                 return 'Not Checked In';
             default:
@@ -4417,6 +4506,600 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    /* ==========================================================================
+       VISITORS / GUESTS MANAGEMENT (FEATURE 4.3)
+       ========================================================================== */
+
+    let activeVisitorsBookingId = null;
+    let currentVisitorsList = [];
+
+    function setupVisitorsModal() {
+        const modal = document.getElementById('visitorsModal');
+        const closeBtn = document.getElementById('closeVisitorsModal');
+        const closeBtnFooter = document.getElementById('closeVisitorsModalBtn');
+        const visitorsRetryBtn = document.getElementById('visitorsRetryBtn');
+        const toggleFormBtn = document.getElementById('toggleAddVisitorFormBtn');
+        const cancelFormHeaderBtn = document.getElementById('cancelVisitorFormBtn');
+        const cancelFormBtn = document.getElementById('cancelVisitorBtn');
+        const form = document.getElementById('visitorForm');
+
+        if (!modal) return;
+
+        closeBtn?.addEventListener('click', closeVisitorsModalWindow);
+        closeBtnFooter?.addEventListener('click', closeVisitorsModalWindow);
+
+        visitorsRetryBtn?.addEventListener('click', () => {
+            if (activeVisitorsBookingId) {
+                fetchVisitorsData(activeVisitorsBookingId);
+            }
+        });
+
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeVisitorsModalWindow();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.classList.contains('d-none')) {
+                closeVisitorsModalWindow();
+            }
+        });
+
+        toggleFormBtn?.addEventListener('click', () => {
+            const card = document.getElementById('visitorFormCard');
+            if (!card) return;
+            if (card.classList.contains('d-none')) {
+                resetVisitorForm();
+                card.classList.remove('d-none');
+                document.getElementById('visitorFullName')?.focus();
+            } else {
+                card.classList.add('d-none');
+            }
+        });
+
+        cancelFormHeaderBtn?.addEventListener('click', () => {
+            document.getElementById('visitorFormCard')?.classList.add('d-none');
+            resetVisitorForm();
+        });
+
+        cancelFormBtn?.addEventListener('click', () => {
+            document.getElementById('visitorFormCard')?.classList.add('d-none');
+            resetVisitorForm();
+        });
+
+        form?.addEventListener('submit', handleVisitorFormSubmit);
+    }
+
+    function openVisitorsModal(bookingId, bookingTitle) {
+        activeVisitorsBookingId = Number(bookingId);
+
+        const modal = document.getElementById('visitorsModal');
+        const loading = document.getElementById('visitorsLoading');
+        const error = document.getElementById('visitorsError');
+        const content = document.getElementById('visitorsContent');
+        const titleEl = document.getElementById('visMeetingTitle');
+
+        if (!modal) return;
+
+        if (titleEl) {
+            titleEl.textContent = bookingTitle || 'Loading meeting...';
+        }
+
+        modal.classList.remove('d-none');
+        document.body.classList.add('booking-modal-open');
+
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        content?.classList.add('d-none');
+
+        resetVisitorForm();
+        document.getElementById('visitorFormCard')?.classList.add('d-none');
+
+        fetchVisitorsData(activeVisitorsBookingId);
+    }
+
+    function closeVisitorsModalWindow() {
+        const modal = document.getElementById('visitorsModal');
+        if (!modal) return;
+
+        modal.classList.add('d-none');
+        document.body.classList.remove('booking-modal-open');
+        resetVisitorForm();
+        document.getElementById('visitorFormCard')?.classList.add('d-none');
+        activeVisitorsBookingId = null;
+        currentVisitorsList = [];
+    }
+
+    function resetVisitorForm() {
+        const form = document.getElementById('visitorForm');
+        if (form) form.reset();
+        const editId = document.getElementById('visitorEditId');
+        if (editId) editId.value = '';
+        const title = document.getElementById('visitorFormTitle');
+        if (title) title.textContent = 'Register New Visitor';
+        const submitBtnText = document.getElementById('submitVisitorBtnText');
+        if (submitBtnText) submitBtnText.textContent = 'Save Visitor';
+        const err = document.getElementById('visitorFormError');
+        if (err) {
+            err.textContent = '';
+            err.classList.add('d-none');
+        }
+    }
+
+    async function fetchVisitorsData(bookingId) {
+        const loading = document.getElementById('visitorsLoading');
+        const error = document.getElementById('visitorsError');
+        const errorText = document.getElementById('visitorsErrorText');
+        const content = document.getElementById('visitorsContent');
+
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        content?.classList.add('d-none');
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/visitors`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                loading?.classList.add('d-none');
+                error?.classList.remove('d-none');
+                if (errorText) {
+                    errorText.textContent = result.message || 'Unable to load visitors for this meeting.';
+                }
+                return;
+            }
+
+            loading?.classList.add('d-none');
+            content?.classList.remove('d-none');
+            renderVisitorsData(result.data);
+
+        } catch (err) {
+            loading?.classList.add('d-none');
+            error?.classList.remove('d-none');
+            if (errorText) {
+                errorText.textContent = 'Network error while loading visitors. Please try again.';
+            }
+        }
+    }
+
+    function renderVisitorsData(data) {
+        if (!data || !data.booking) return;
+
+        currentVisitorsList = data.visitors || [];
+
+        // Meeting Header Details
+        const titleEl = document.getElementById('visMeetingTitle');
+        if (titleEl) {
+            titleEl.textContent = data.booking.title || 'Untitled Meeting';
+        }
+
+        const statusBadge = document.getElementById('visMeetingStatusBadge');
+        if (statusBadge) {
+            const st = String(data.booking.status || 'pending').toLowerCase();
+            statusBadge.className = `booking-status booking-status-${escapeHtml(st)}`;
+            statusBadge.textContent = st.charAt(0).toUpperCase() + st.slice(1);
+        }
+
+        const roomLocEl = document.getElementById('visRoomLocation');
+        if (roomLocEl) {
+            const roomText = data.booking.room_code
+                ? `${data.booking.room_name} (${data.booking.room_code})`
+                : (data.booking.room_name || 'Room');
+            const locText = data.booking.location_name ? ` • ${data.booking.location_name}` : '';
+            roomLocEl.textContent = roomText + locText;
+        }
+
+        const dateTimeEl = document.getElementById('visDateTime');
+        if (dateTimeEl) {
+            const dStr = formatDateForDisplay(data.booking.start_time);
+            const tStr = formatTimeRangeForDisplay(data.booking.start_time, data.booking.end_time);
+            dateTimeEl.textContent = `${dStr} • ${tStr}`;
+        }
+
+        const orgEl = document.getElementById('visOrganizer');
+        if (orgEl) {
+            orgEl.textContent = `Organizer: ${data.booking.organizer_name || 'Unknown'}`;
+        }
+
+        // Visitor Count Badge
+        const countBadge = document.getElementById('visitorCountBadge');
+        if (countBadge) {
+            countBadge.textContent = String(currentVisitorsList.length);
+        }
+
+        // Toggle add button visibility based on permissions
+        const canManage = Boolean(data.can_manage);
+        const toggleBtn = document.getElementById('toggleAddVisitorFormBtn');
+        if (toggleBtn) {
+            if (canManage) {
+                toggleBtn.classList.remove('d-none');
+            } else {
+                toggleBtn.classList.add('d-none');
+            }
+        }
+
+        // Visitors Table Body
+        const tableBody = document.getElementById('visitorsTableBody');
+        const emptyState = document.getElementById('visitorsEmpty');
+        const tableWrapper = document.getElementById('visitorsTableWrapper');
+
+        if (!tableBody) return;
+
+        tableBody.innerHTML = '';
+
+        if (currentVisitorsList.length === 0) {
+            tableWrapper?.classList.add('d-none');
+            emptyState?.classList.remove('d-none');
+            return;
+        }
+
+        emptyState?.classList.add('d-none');
+        tableWrapper?.classList.remove('d-none');
+
+        currentVisitorsList.forEach((visitor) => {
+            const tr = document.createElement('tr');
+
+            const statusRaw = visitor.status || 'expected';
+            const statusLabel = formatVisitorStatusLabel(statusRaw);
+
+            const inTimeStr = visitor.check_in_time ? formatTimeOnlyForDisplay(visitor.check_in_time) : '—';
+            const outTimeStr = visitor.check_out_time ? formatTimeOnlyForDisplay(visitor.check_out_time) : '—';
+            const durStr = visitor.duration_formatted ? escapeHtml(visitor.duration_formatted) : '—';
+
+            let companyPhone = '';
+            if (visitor.company && visitor.phone) {
+                companyPhone = `<div>${escapeHtml(visitor.company)}</div><div class="text-muted" style="font-size: 11px;">${escapeHtml(visitor.phone)}</div>`;
+            } else if (visitor.company) {
+                companyPhone = `<div>${escapeHtml(visitor.company)}</div>`;
+            } else if (visitor.phone) {
+                companyPhone = `<div>${escapeHtml(visitor.phone)}</div>`;
+            } else {
+                companyPhone = '—';
+            }
+
+            let actionsHtml = '';
+            if (canManage) {
+                if (statusRaw === 'expected') {
+                    actionsHtml = `
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="visitor-action-btn btn-visitor-checkin" data-visitor-id="${visitor.id}" title="Check In Visitor">
+                                <i class="bi bi-box-arrow-in-right"></i> Check In
+                            </button>
+                            <button type="button" class="visitor-action-btn btn-visitor-edit" data-visitor-id="${visitor.id}" title="Edit Visitor">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="visitor-action-btn btn-visitor-delete" data-visitor-id="${visitor.id}" title="Cancel Visitor Registration">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                } else if (statusRaw === 'checked_in') {
+                    actionsHtml = `
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="visitor-action-btn btn-visitor-checkout" data-visitor-id="${visitor.id}" title="Check Out Visitor">
+                                <i class="bi bi-box-arrow-right"></i> Check Out
+                            </button>
+                            <button type="button" class="visitor-action-btn btn-visitor-edit" data-visitor-id="${visitor.id}" title="Edit Visitor">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    actionsHtml = `
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="visitor-action-btn btn-visitor-edit" data-visitor-id="${visitor.id}" title="Edit Visitor Notes">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            } else {
+                actionsHtml = '<span class="text-muted" style="font-size: 12px;">Read only</span>';
+            }
+
+            tr.innerHTML = `
+                <td>
+                    <div class="attendance-user-name">${escapeHtml(visitor.full_name)}</div>
+                    <div class="attendance-user-email">${escapeHtml(visitor.email)}</div>
+                    ${visitor.notes ? `<div class="text-muted" style="font-size: 11px; margin-top: 2px;"><i class="bi bi-info-circle"></i> ${escapeHtml(visitor.notes)}</div>` : ''}
+                </td>
+                <td>${companyPhone}</td>
+                <td>
+                    <span class="attendance-badge attendance-badge-${escapeHtml(statusRaw)}">
+                        ${escapeHtml(statusLabel)}
+                    </span>
+                </td>
+                <td>${escapeHtml(inTimeStr)}</td>
+                <td>${escapeHtml(outTimeStr)}</td>
+                <td>${durStr}</td>
+                <td>${actionsHtml}</td>
+            `;
+
+            tableBody.appendChild(tr);
+        });
+
+        attachVisitorRowActions();
+    }
+
+    function formatVisitorStatusLabel(status) {
+        switch (status) {
+            case 'expected':
+                return 'Expected';
+            case 'checked_in':
+                return 'Checked In';
+            case 'checked_out':
+                return 'Checked Out';
+            case 'cancelled':
+                return 'Cancelled';
+            default:
+                return String(status || '').replace(/_/g, ' ');
+        }
+    }
+
+    function attachVisitorRowActions() {
+        const tableBody = document.getElementById('visitorsTableBody');
+        if (!tableBody) return;
+
+        // Check In buttons
+        tableBody.querySelectorAll('.btn-visitor-checkin').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const vId = Number(btn.dataset.visitorId);
+                checkInVisitorAction(vId);
+            });
+        });
+
+        // Check Out buttons
+        tableBody.querySelectorAll('.btn-visitor-checkout').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const vId = Number(btn.dataset.visitorId);
+                checkOutVisitorAction(vId);
+            });
+        });
+
+        // Edit buttons
+        tableBody.querySelectorAll('.btn-visitor-edit').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const vId = Number(btn.dataset.visitorId);
+                openEditVisitorForm(vId);
+            });
+        });
+
+        // Delete / Cancel buttons
+        tableBody.querySelectorAll('.btn-visitor-delete').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const vId = Number(btn.dataset.visitorId);
+                deleteVisitorAction(vId);
+            });
+        });
+    }
+
+    async function checkInVisitorAction(visitorId) {
+        if (!activeVisitorsBookingId || !visitorId) return;
+
+        try {
+            const response = await fetch(`/api/bookings/${activeVisitorsBookingId}/visitors/${visitorId}/check-in`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                showAppNotification(result.message || 'Unable to check in visitor.', 'error', 'Check-in Error');
+                return;
+            }
+
+            showAppNotification(result.message || 'Visitor checked in successfully.', 'success', 'Visitor Checked In');
+            fetchVisitorsData(activeVisitorsBookingId);
+
+        } catch (err) {
+            showAppNotification('Network error while checking in visitor.', 'error', 'Network Error');
+        }
+    }
+
+    async function checkOutVisitorAction(visitorId) {
+        if (!activeVisitorsBookingId || !visitorId) return;
+
+        try {
+            const response = await fetch(`/api/bookings/${activeVisitorsBookingId}/visitors/${visitorId}/check-out`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                showAppNotification(result.message || 'Unable to check out visitor.', 'error', 'Check-out Error');
+                return;
+            }
+
+            showAppNotification(result.message || 'Visitor checked out successfully.', 'success', 'Visitor Checked Out');
+            fetchVisitorsData(activeVisitorsBookingId);
+
+        } catch (err) {
+            showAppNotification('Network error while checking out visitor.', 'error', 'Network Error');
+        }
+    }
+
+    function openEditVisitorForm(visitorId) {
+        const visitor = currentVisitorsList.find((v) => Number(v.id) === Number(visitorId));
+        if (!visitor) return;
+
+        const card = document.getElementById('visitorFormCard');
+        if (!card) return;
+
+        document.getElementById('visitorEditId').value = String(visitor.id);
+        document.getElementById('visitorFullName').value = visitor.full_name || '';
+        document.getElementById('visitorEmail').value = visitor.email || '';
+        document.getElementById('visitorCompany').value = visitor.company || '';
+        document.getElementById('visitorPhone').value = visitor.phone || '';
+        document.getElementById('visitorNotes').value = visitor.notes || '';
+
+        document.getElementById('visitorFormTitle').textContent = 'Edit Visitor';
+        document.getElementById('submitVisitorBtnText').textContent = 'Update Visitor';
+
+        const err = document.getElementById('visitorFormError');
+        if (err) {
+            err.textContent = '';
+            err.classList.add('d-none');
+        }
+
+        card.classList.remove('d-none');
+        document.getElementById('visitorFullName')?.focus();
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    async function deleteVisitorAction(visitorId) {
+        if (!activeVisitorsBookingId || !visitorId) return;
+
+        const visitor = currentVisitorsList.find((v) => Number(v.id) === Number(visitorId));
+        const visitorName = visitor ? visitor.full_name : 'this visitor';
+
+        const confirmed = window.confirm(`Are you sure you want to remove ${visitorName} from this meeting?`);
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/api/bookings/${activeVisitorsBookingId}/visitors/${visitorId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                showAppNotification(result.message || 'Unable to remove visitor.', 'error', 'Visitor Error');
+                return;
+            }
+
+            showAppNotification(result.message || 'Visitor removed successfully.', 'success', 'Visitor Removed');
+            fetchVisitorsData(activeVisitorsBookingId);
+
+        } catch (err) {
+            showAppNotification('Network error while removing visitor.', 'error', 'Network Error');
+        }
+    }
+
+    async function handleVisitorFormSubmit(e) {
+        e.preventDefault();
+        if (!activeVisitorsBookingId) return;
+
+        const formCard = document.getElementById('visitorFormCard');
+        const errEl = document.getElementById('visitorFormError');
+        const submitBtn = document.getElementById('submitVisitorBtn');
+
+        const editId = document.getElementById('visitorEditId')?.value.trim();
+        const fullName = document.getElementById('visitorFullName')?.value.trim();
+        const email = document.getElementById('visitorEmail')?.value.trim();
+        const company = document.getElementById('visitorCompany')?.value.trim();
+        const phone = document.getElementById('visitorPhone')?.value.trim();
+        const notes = document.getElementById('visitorNotes')?.value.trim();
+
+        if (errEl) {
+            errEl.textContent = '';
+            errEl.classList.add('d-none');
+        }
+
+        if (!fullName) {
+            if (errEl) {
+                errEl.textContent = 'Please enter the visitor\'s full name.';
+                errEl.classList.remove('d-none');
+            }
+            return;
+        }
+
+        if (!email) {
+            if (errEl) {
+                errEl.textContent = 'Please enter a valid email address.';
+                errEl.classList.remove('d-none');
+            }
+            return;
+        }
+
+        const isEditing = Boolean(editId);
+        const url = isEditing
+            ? `/api/bookings/${activeVisitorsBookingId}/visitors/${editId}`
+            : `/api/bookings/${activeVisitorsBookingId}/visitors`;
+        const method = isEditing ? 'PUT' : 'POST';
+
+        const payload = {
+            full_name: fullName,
+            email: email,
+            company: company || null,
+            phone: phone || null,
+            notes: notes || null
+        };
+
+        try {
+            if (submitBtn) submitBtn.disabled = true;
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                if (errEl) {
+                    let errMsg = result.message || 'Unable to save visitor.';
+                    if (result.errors && typeof result.errors === 'object') {
+                        const firstKey = Object.keys(result.errors)[0];
+                        if (firstKey) {
+                            errMsg = result.errors[firstKey];
+                        }
+                    }
+                    errEl.textContent = errMsg;
+                    errEl.classList.remove('d-none');
+                }
+                return;
+            }
+
+            showAppNotification(
+                result.message || (isEditing ? 'Visitor updated successfully.' : 'Visitor registered successfully.'),
+                'success',
+                'Visitor Saved'
+            );
+
+            formCard?.classList.add('d-none');
+            resetVisitorForm();
+            fetchVisitorsData(activeVisitorsBookingId);
+
+        } catch (err) {
+            if (errEl) {
+                errEl.textContent = 'Network error while saving visitor. Please try again.';
+                errEl.classList.remove('d-none');
+            }
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
     }
 
 })();

@@ -877,6 +877,9 @@
             <button type="button" class="btn-cal-attendance" id="calDetailAttendanceBtn" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.3); color: #38bdf8; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
                 <i class="bi bi-person-check"></i> Attendance
             </button>
+            <button type="button" class="btn-cal-visitors" id="calDetailVisitorsBtn" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.3); color: #c084fc; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
+                <i class="bi bi-person-badge"></i> Visitors
+            </button>
             <button type="button" class="btn-booking-submit" id="calDetailEditBtn">
                 <i class="bi bi-pencil"></i> Edit Booking
             </button>
@@ -1003,6 +1006,161 @@
 
         <div class="booking-modal-footer">
             <button type="button" class="btn-booking-cancel" id="closeAttendanceModalBtn">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     Visitors & Guests Management Modal (Phase 4 Feature 4.3)
+     ================================================================ -->
+<div class="booking-modal-overlay d-none" id="visitorsModal">
+    <div class="booking-modal visitors-modal" role="dialog" aria-modal="true" aria-labelledby="visitorsModalTitle">
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="visitorsModalTitle">Meeting Visitors &amp; Guests</h2>
+                <p id="visitorsModalSubtitle">Register external guests, track visitor arrivals, and manage meeting access.</p>
+            </div>
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeVisitorsModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="visitors-modal-body">
+            <!-- Loading state -->
+            <div id="visitorsLoading" class="attendance-state">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <span>Loading visitors data...</span>
+            </div>
+
+            <!-- Error state -->
+            <div id="visitorsError" class="attendance-state attendance-error d-none">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span id="visitorsErrorText">Unable to load visitors data.</span>
+                <button type="button" class="btn-attendance-retry" id="visitorsRetryBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Retry</span>
+                </button>
+            </div>
+
+            <!-- Content Container -->
+            <div id="visitorsContent" class="visitors-content d-none">
+                <!-- Meeting details banner -->
+                <div class="attendance-meeting-banner">
+                    <div class="attendance-meeting-header">
+                        <h3 class="attendance-meeting-title" id="visMeetingTitle">—</h3>
+                        <span id="visMeetingStatusBadge" class="booking-status booking-status-approved">Approved</span>
+                    </div>
+                    <div class="attendance-meeting-meta">
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-door-open"></i>
+                            <span id="visRoomLocation">—</span>
+                        </div>
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-clock"></i>
+                            <span id="visDateTime">—</span>
+                        </div>
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-person"></i>
+                            <span id="visOrganizer">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Visitor Toggle & Form Section -->
+                <div class="visitor-form-section" id="visitorFormSection">
+                    <div class="visitor-section-header">
+                        <div class="visitor-section-title">
+                            <i class="bi bi-people"></i>
+                            <span>Registered Visitors</span>
+                            <span class="badge visitor-count-badge" id="visitorCountBadge">0</span>
+                        </div>
+                        <button type="button" class="btn-add-visitor-toggle" id="toggleAddVisitorFormBtn">
+                            <i class="bi bi-person-plus"></i>
+                            <span>Add Visitor</span>
+                        </button>
+                    </div>
+
+                    <!-- Collapsible Add/Edit Visitor Form -->
+                    <div id="visitorFormCard" class="visitor-form-card d-none">
+                        <div class="visitor-form-header">
+                            <h4 id="visitorFormTitle">Register New Visitor</h4>
+                            <button type="button" class="btn-close-visitor-form" id="cancelVisitorFormBtn" aria-label="Cancel">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <form id="visitorForm" novalidate>
+                            <input type="hidden" id="visitorEditId" value="">
+                            <div class="visitor-form-grid">
+                                <div class="visitor-form-group">
+                                    <label for="visitorFullName">Full Name <span>*</span></label>
+                                    <input type="text" id="visitorFullName" name="full_name" placeholder="e.g. Jane Doe" required maxlength="150">
+                                </div>
+                                <div class="visitor-form-group">
+                                    <label for="visitorEmail">Email Address <span>*</span></label>
+                                    <input type="email" id="visitorEmail" name="email" placeholder="e.g. jane.doe@partner.com" required maxlength="150">
+                                </div>
+                                <div class="visitor-form-group">
+                                    <label for="visitorCompany">Company / Affiliation</label>
+                                    <input type="text" id="visitorCompany" name="company" placeholder="e.g. Partner Corp" maxlength="150">
+                                </div>
+                                <div class="visitor-form-group">
+                                    <label for="visitorPhone">Phone Number</label>
+                                    <input type="tel" id="visitorPhone" name="phone" placeholder="e.g. +1 555-0100" maxlength="30">
+                                </div>
+                                <div class="visitor-form-group visitor-form-full">
+                                    <label for="visitorNotes">Notes / Special Instructions</label>
+                                    <input type="text" id="visitorNotes" name="notes" placeholder="e.g. Needs parking pass, guest Wi-Fi" maxlength="1000">
+                                </div>
+                            </div>
+                            <div id="visitorFormError" class="visitor-form-alert d-none"></div>
+                            <div class="visitor-form-actions">
+                                <button type="button" class="btn-visitor-cancel" id="cancelVisitorBtn">Cancel</button>
+                                <button type="submit" class="btn-visitor-submit" id="submitVisitorBtn">
+                                    <i class="bi bi-check-lg"></i>
+                                    <span id="submitVisitorBtnText">Save Visitor</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Empty Visitors state -->
+                <div id="visitorsEmpty" class="attendance-state d-none">
+                    <i class="bi bi-person-x"></i>
+                    <span>No external visitors registered for this meeting yet.</span>
+                </div>
+
+                <!-- Visitors Table -->
+                <div id="visitorsTableWrapper" class="attendance-table-wrapper">
+                    <table class="table custom-dark-table attendance-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>VISITOR</th>
+                                <th>COMPANY &amp; PHONE</th>
+                                <th>STATUS</th>
+                                <th>CHECK-IN</th>
+                                <th>CHECK-OUT</th>
+                                <th>DURATION</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visitorsTableBody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-modal-footer">
+            <button type="button" class="btn-booking-cancel" id="closeVisitorsModalBtn">
                 Close
             </button>
         </div>
@@ -1406,10 +1564,240 @@
     border: 1px solid rgba(251, 146, 60, 0.3);
 }
 
-.booking-attendance-btn:hover {
-    background-color: rgba(56, 189, 248, 0.15) !important;
-    border-color: rgba(56, 189, 248, 0.35) !important;
-    color: #38bdf8 !important;
+.attendance-badge-visitor {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.attendance-badge-expected {
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.booking-visitors-btn:hover {
+    background-color: rgba(168, 85, 247, 0.15) !important;
+    border-color: rgba(168, 85, 247, 0.35) !important;
+    color: #c084fc !important;
+}
+
+.visitor-form-section {
+    margin-bottom: 20px;
+}
+
+.visitor-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.visitor-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+}
+
+.visitor-count-badge {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.btn-add-visitor-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(168, 85, 247, 0.15);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    color: #c084fc;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-add-visitor-toggle:hover {
+    background: rgba(168, 85, 247, 0.25);
+    border-color: #c084fc;
+}
+
+.visitor-form-card {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.visitor-form-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.visitor-form-header h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+}
+
+.btn-close-visitor-form {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #94a3b8);
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.visitor-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.visitor-form-full {
+    grid-column: 1 / -1;
+}
+
+.visitor-form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary, #94a3b8);
+    margin-bottom: 4px;
+}
+
+.visitor-form-group label span {
+    color: #f87171;
+}
+
+.visitor-form-group input {
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: var(--text-primary, #f1f5f9);
+    font-size: 13px;
+    transition: border-color 0.2s;
+}
+
+.visitor-form-group input:focus {
+    outline: none;
+    border-color: #a855f7;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.visitor-form-alert {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 6px;
+    color: #f87171;
+    font-size: 12px;
+}
+
+.visitor-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.btn-visitor-cancel {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    color: var(--text-secondary, #94a3b8);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.btn-visitor-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: #a855f7;
+    border: 1px solid #9333ea;
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-visitor-submit:hover {
+    background: #9333ea;
+}
+
+.visitor-action-btn {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.btn-visitor-checkin {
+    background: rgba(74, 222, 128, 0.15);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #4ade80;
+}
+
+.btn-visitor-checkin:hover {
+    background: rgba(74, 222, 128, 0.25);
+}
+
+.btn-visitor-checkout {
+    background: rgba(251, 146, 60, 0.15);
+    border-color: rgba(251, 146, 60, 0.35);
+    color: #fb923c;
+}
+
+.btn-visitor-checkout:hover {
+    background: rgba(251, 146, 60, 0.25);
+}
+
+.btn-visitor-edit {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+}
+
+.btn-visitor-edit:hover {
+    color: #f1f5f9;
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-visitor-delete {
+    background: transparent;
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.btn-visitor-delete:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
 }
 </style>
 
