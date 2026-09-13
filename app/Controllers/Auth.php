@@ -21,19 +21,77 @@ class Auth extends BaseController
     }
 
     /**
+     * Validate and sanitize a post-login return URL.
+     * Ensures only safe, relative, internal application paths are accepted.
+     */
+    private function getSafeReturnUrl(): ?string
+    {
+        $req = $this->request ?? service('request');
+        $raw = (string) (
+            $req->getPost('return_url')
+            ?? $req->getGet('return_url')
+            ?? $req->getPost('return')
+            ?? $req->getGet('return')
+            ?? $req->getPost('redirect')
+            ?? $req->getGet('redirect')
+            ?? ''
+        );
+
+        $trimmed = trim($raw);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        // Must start with exactly one forward slash and not protocol-relative (// or /\)
+        if (!str_starts_with($trimmed, '/') || str_starts_with($trimmed, '//') || str_starts_with($trimmed, '/\\')) {
+            return null;
+        }
+
+        // Must not contain scheme delimiters (://, :) or backslashes
+        if (str_contains($trimmed, '://') || str_contains($trimmed, ':') || str_contains($trimmed, '\\')) {
+            return null;
+        }
+
+        // Must not contain control characters or newlines
+        if (preg_match('/[\x00-\x1F\x7F]/', $trimmed)) {
+            return null;
+        }
+
+        // Prevent redirect loops to login, register, or logout
+        $pathOnly = parse_url($trimmed, PHP_URL_PATH) ?? '';
+        $normalizedPath = trim($pathOnly, '/');
+        if (in_array($normalizedPath, ['login', 'register', 'logout', 'resend-verification'], true)) {
+            return null;
+        }
+
+        // Validate safe URI path characters
+        if (!preg_match('@^/[a-zA-Z0-9_\-\.~/%?&=#]*$@', $trimmed)) {
+            return null;
+        }
+
+        return $trimmed;
+    }
+
+    /**
      * Render the login page.
-     * If user is already authenticated, redirect to dashboard.
+     * If user is already authenticated, redirect to dashboard or safe return URL.
      */
     public function login(): string|ResponseInterface
     {
+        $returnUrl = $this->getSafeReturnUrl();
+
         if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            if ($returnUrl !== null) {
+                return redirect()->to($returnUrl);
+            }
             return redirect()->to('/');
         }
 
         return view('auth/login', [
-            'title'   => 'Sign In',
-            'error'   => $this->session->getFlashdata('error'),
-            'success' => $this->session->getFlashdata('success'),
+            'title'     => 'Sign In',
+            'error'     => $this->session->getFlashdata('error'),
+            'success'   => $this->session->getFlashdata('success'),
+            'returnUrl' => $returnUrl,
         ]);
     }
 
@@ -42,7 +100,13 @@ class Auth extends BaseController
      */
     public function attemptLogin(): ResponseInterface
     {
+        $returnUrl = $this->getSafeReturnUrl();
+        $loginUrl  = '/login' . ($returnUrl !== null ? '?return=' . rawurlencode($returnUrl) : '');
+
         if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            if ($returnUrl !== null) {
+                return redirect()->to($returnUrl);
+            }
             return redirect()->to('/');
         }
 
@@ -86,7 +150,7 @@ class Auth extends BaseController
                     ]);
             }
 
-            return redirect()->to('/login')
+            return redirect()->to($loginUrl)
                 ->withInput()
                 ->with('error', 'Please enter a valid email and password.');
         }
@@ -109,7 +173,7 @@ class Auth extends BaseController
                     ]);
             }
 
-            return redirect()->to('/login')
+            return redirect()->to($loginUrl)
                 ->withInput()
                 ->with('error', $genericError);
         }
@@ -125,7 +189,7 @@ class Auth extends BaseController
                     ]);
             }
 
-            return redirect()->to('/login')
+            return redirect()->to($loginUrl)
                 ->withInput()
                 ->with('error', $genericError);
         }
@@ -141,7 +205,7 @@ class Auth extends BaseController
                     ]);
             }
 
-            return redirect()->to('/login')
+            return redirect()->to($loginUrl)
                 ->withInput()
                 ->with('error', $genericError);
         }
@@ -159,7 +223,7 @@ class Auth extends BaseController
                     ]);
             }
 
-            return redirect()->to('/login')
+            return redirect()->to($loginUrl)
                 ->withInput()
                 ->with('error', $unverifiedError);
         }
@@ -200,12 +264,18 @@ class Auth extends BaseController
                     'role_id'       => !empty($user['role_id']) ? (int) $user['role_id'] : null,
                     'role_name'     => $roleName,
                     'department_id' => !empty($user['department_id']) ? (int) $user['department_id'] : null,
+                    'return_url'    => $returnUrl,
                 ],
             ]);
         }
 
+        if ($returnUrl !== null) {
+            return redirect()->to($returnUrl);
+        }
+
         return redirect()->to('/');
     }
+
 
     /**
      * Render registration page.

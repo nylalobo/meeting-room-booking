@@ -259,4 +259,120 @@
 
 </div>
 
+
+<!-- ================================================================
+     Room QR Code Modal
+     ================================================================ -->
+
+<div class="booking-modal-overlay d-none" id="roomQrModal">
+
+    <div
+        class="booking-modal room-qr-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="roomQrModalTitle"
+    >
+
+        <div class="booking-modal-header">
+
+            <div>
+                <h2 id="roomQrModalTitle">Room QR Code</h2>
+                <p id="roomQrModalSubtitle">Scan to check in to meetings in this room.</p>
+            </div>
+
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeRoomQrModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+
+        </div>
+
+        <div class="room-qr-modal-body">
+
+            <div id="roomQrLoading" class="bookings-state">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <span>Loading room QR code...</span>
+            </div>
+
+            <div id="roomQrError" class="booking-form-alert booking-form-error d-none">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="roomQrErrorText"></span>
+            </div>
+
+            <div id="roomQrContent" class="room-qr-content d-none">
+
+                <div class="room-qr-poster" id="roomQrPoster">
+
+                    <div class="room-qr-poster-header">
+                        <div class="room-qr-brand">MeetSpace</div>
+                        <h3 id="roomQrName" class="room-qr-name"></h3>
+                        <div class="room-qr-meta">
+                            <span class="room-qr-label">Room Code:</span>
+                            <span id="roomQrCodeBadge" class="room-qr-badge"></span>
+                        </div>
+                    </div>
+
+                    <div id="roomQrCodeDisplay" class="room-qr-box" aria-label="Room QR Code"></div>
+
+                    <p class="room-qr-instructions">
+                        <i class="bi bi-phone"></i>
+                        Scan with your phone camera to check in
+                    </p>
+
+                    <div class="room-qr-url-section">
+                        <label class="room-qr-url-label" for="roomQrUrlInput">Check-in URL</label>
+                        <div class="room-qr-url-wrapper">
+                            <input
+                                type="text"
+                                id="roomQrUrlInput"
+                                class="room-qr-url-input"
+                                readonly
+                            >
+                            <button
+                                type="button"
+                                class="btn-qr-copy"
+                                id="roomQrCopyBtn"
+                                title="Copy check-in link"
+                                aria-label="Copy check-in link"
+                            >
+                                <i class="bi bi-clipboard" id="roomQrCopyIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="booking-modal-footer room-qr-modal-footer">
+
+            <button
+                type="button"
+                class="btn-primary-action btn-qr-print"
+                id="roomQrPrintBtn"
+            >
+                <i class="bi bi-printer"></i>
+                Print Placard
+            </button>
+
+            <button
+                type="button"
+                class="btn-booking-cancel"
+                id="closeRoomQrBtn"
+            >
+                Close
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
 <?= $this->endSection() ?>

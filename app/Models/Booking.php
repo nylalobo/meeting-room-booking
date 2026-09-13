@@ -701,4 +701,53 @@ class Booking extends Model
                 'updated_at'         => date('Y-m-d H:i:s'),
             ]);
     }
+
+    /**
+     * Get the current approved booking eligible for check-in for a specific room.
+     *
+     * Eligibility criteria:
+     * - booking.status = 'approved'
+     * - booking.room_id = $roomId
+     * - $now >= start_time - 15 minutes (i.e. start_time <= $now + 15 minutes)
+     * - $now <= end_time (i.e. end_time >= $now)
+     *
+     * Ordering:
+     * - Currently active meetings first (start_time <= $now AND end_time >= $now)
+     * - Then nearest start_time ASC, id ASC
+     *
+     * @param int $roomId
+     * @param string|null $now Server time in Y-m-d H:i:s format
+     * @return array|null
+     */
+    public function getCurrentEligibleBookingForRoom(int $roomId, ?string $now = null): ?array
+    {
+        if ($now === null) {
+            $now = date('Y-m-d H:i:s');
+        }
+
+        $fifteenMinutesAhead = date('Y-m-d H:i:s', strtotime($now . ' +15 minutes'));
+
+        $builder = $this->builder();
+        $builder->select(
+            'bookings.id, bookings.room_id, bookings.user_id, bookings.recurring_group_id, ' .
+            'bookings.recurrence_pattern, bookings.recurrence_index, bookings.recurrence_total, ' .
+            'bookings.title, bookings.description, bookings.start_time, bookings.end_time, bookings.status, ' .
+            'rooms.name as room_name, rooms.room_code, rooms.location_id, ' .
+            'users.first_name, users.last_name, users.email, users.department_id, ' .
+            'departments.name as department_name'
+        )
+        ->join('rooms', 'rooms.id = bookings.room_id', 'left')
+        ->join('users', 'users.id = bookings.user_id', 'left')
+        ->join('departments', 'departments.id = users.department_id', 'left')
+        ->where('bookings.room_id', $roomId)
+        ->where('bookings.status', 'approved')
+        ->where('bookings.start_time <=', $fifteenMinutesAhead)
+        ->where('bookings.end_time >=', $now)
+        ->orderBy("CASE WHEN bookings.start_time <= '{$now}' AND bookings.end_time >= '{$now}' THEN 0 ELSE 1 END", 'ASC', false)
+        ->orderBy('bookings.start_time', 'ASC')
+        ->orderBy('bookings.id', 'ASC')
+        ->limit(1);
+
+        return $builder->get()->getRowArray() ?: null;
+    }
 }

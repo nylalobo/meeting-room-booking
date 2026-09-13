@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadRooms();
         setupRoomFilters();
         setupRoomModal();
+        setupRoomQrModal();
     }
 });
 
@@ -265,6 +266,24 @@ function renderRooms(rooms) {
             <td>
 
                 <div class="room-actions">
+
+                    <button
+                        type="button"
+                        class="room-action-btn room-qr-btn"
+                        data-room-id="${escapeHtml(
+                            room.id
+                        )}"
+                        data-room-name="${escapeHtml(
+                            room.name || ''
+                        )}"
+                        data-room-code="${escapeHtml(
+                            room.room_code || ''
+                        )}"
+                        title="View Room QR Code"
+                        aria-label="View Room QR Code"
+                    >
+                        <i class="bi bi-qr-code"></i>
+                    </button>
 
                     <button
                         type="button"
@@ -591,6 +610,11 @@ function resetRoomForm() {
 
 function setupRoomActionButtons() {
 
+    const qrButtons =
+        document.querySelectorAll(
+            '.room-qr-btn'
+        );
+
     const editButtons =
         document.querySelectorAll(
             '.room-edit-btn'
@@ -600,6 +624,24 @@ function setupRoomActionButtons() {
         document.querySelectorAll(
             '.room-delete-btn'
         );
+
+    qrButtons.forEach(
+        (button) => {
+
+            button.addEventListener(
+                'click',
+                () => {
+
+                    const roomId =
+                        button.dataset.roomId;
+
+                    openRoomQrModal(
+                        roomId
+                    );
+                }
+            );
+        }
+    );
 
     editButtons.forEach(
         (button) => {
@@ -1327,3 +1369,269 @@ function hideRoomFormMessages() {
     );
 }
 
+
+/* ==========================================================================
+   ROOM QR CODE MODAL
+   ========================================================================== */
+
+function setupRoomQrModal() {
+
+    const modal =
+        document.getElementById(
+            'roomQrModal'
+        );
+
+    const closeBtn =
+        document.getElementById(
+            'closeRoomQrModal'
+        );
+
+    const cancelBtn =
+        document.getElementById(
+            'closeRoomQrBtn'
+        );
+
+    const copyBtn =
+        document.getElementById(
+            'roomQrCopyBtn'
+        );
+
+    const printBtn =
+        document.getElementById(
+            'roomQrPrintBtn'
+        );
+
+    closeBtn?.addEventListener(
+        'click',
+        closeRoomQrModal
+    );
+
+    cancelBtn?.addEventListener(
+        'click',
+        closeRoomQrModal
+    );
+
+    modal?.addEventListener(
+        'click',
+        (event) => {
+
+            if (event.target === modal) {
+                closeRoomQrModal();
+            }
+        }
+    );
+
+    document.addEventListener(
+        'keydown',
+        (event) => {
+
+            if (
+                event.key === 'Escape' &&
+                modal &&
+                !modal.classList.contains('d-none')
+            ) {
+                closeRoomQrModal();
+            }
+        }
+    );
+
+    copyBtn?.addEventListener(
+        'click',
+        async () => {
+
+            const urlInput =
+                document.getElementById(
+                    'roomQrUrlInput'
+                );
+
+            const icon =
+                document.getElementById(
+                    'roomQrCopyIcon'
+                );
+
+            if (!urlInput || !urlInput.value) {
+                return;
+            }
+
+            try {
+                await navigator.clipboard.writeText(
+                    urlInput.value
+                );
+
+                if (icon) {
+                    icon.className = 'bi bi-check-lg';
+
+                    setTimeout(() => {
+                        icon.className = 'bi bi-clipboard';
+                    }, 2000);
+                }
+
+                if (typeof showAppNotification === 'function') {
+                    showAppNotification(
+                        'Check-in link copied to clipboard.',
+                        'success',
+                        'Link Copied'
+                    );
+                }
+            } catch (err) {
+                urlInput.select();
+                document.execCommand('copy');
+
+                if (typeof showAppNotification === 'function') {
+                    showAppNotification(
+                        'Check-in link copied to clipboard.',
+                        'success',
+                        'Link Copied'
+                    );
+                }
+            }
+        }
+    );
+
+    printBtn?.addEventListener(
+        'click',
+        () => {
+            window.print();
+        }
+    );
+}
+
+
+async function openRoomQrModal(roomId) {
+
+    const modal =
+        document.getElementById(
+            'roomQrModal'
+        );
+
+    const loading =
+        document.getElementById(
+            'roomQrLoading'
+        );
+
+    const errorBox =
+        document.getElementById(
+            'roomQrError'
+        );
+
+    const errorText =
+        document.getElementById(
+            'roomQrErrorText'
+        );
+
+    const content =
+        document.getElementById(
+            'roomQrContent'
+        );
+
+    const nameEl =
+        document.getElementById(
+            'roomQrName'
+        );
+
+    const badgeEl =
+        document.getElementById(
+            'roomQrCodeBadge'
+        );
+
+    const displayEl =
+        document.getElementById(
+            'roomQrCodeDisplay'
+        );
+
+    const urlInput =
+        document.getElementById(
+            'roomQrUrlInput'
+        );
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('d-none');
+    loading?.classList.remove('d-none');
+    errorBox?.classList.add('d-none');
+    content?.classList.add('d-none');
+
+    // Pre-populate known room name & code from cache if available
+    const localRoom = findRoomById(roomId);
+    if (localRoom) {
+        if (nameEl) {
+            nameEl.textContent = localRoom.name || 'Meeting Room';
+        }
+        if (badgeEl) {
+            badgeEl.textContent = localRoom.room_code || '—';
+        }
+    }
+
+    try {
+        const response = await fetch(`/api/rooms/${roomId}/qr-code`);
+        const result = await response.json();
+
+        if (!response.ok || result.status !== 'success') {
+            throw new Error(result.message || `Unable to load QR code (HTTP ${response.status}).`);
+        }
+
+        const data = result.data || {};
+
+        if (nameEl) {
+            nameEl.textContent = data.room_name || localRoom?.name || 'Meeting Room';
+        }
+
+        if (badgeEl) {
+            badgeEl.textContent = data.room_code || localRoom?.room_code || '—';
+        }
+
+        if (urlInput) {
+            urlInput.value = data.check_in_url || '';
+        }
+
+        if (displayEl) {
+            if (data.qr_svg) {
+                displayEl.innerHTML = data.qr_svg;
+            } else if (data.qr_data_uri) {
+                displayEl.innerHTML = `<img src="${escapeHtml(data.qr_data_uri)}" alt="Room QR Code" class="img-fluid" />`;
+            } else {
+                displayEl.innerHTML = '<span class="text-muted">QR code unavailable.</span>';
+            }
+        }
+
+        loading?.classList.add('d-none');
+        content?.classList.remove('d-none');
+
+    } catch (err) {
+        console.error('Error fetching room QR code:', err);
+        loading?.classList.add('d-none');
+        if (errorText) {
+            errorText.textContent = err.message || 'Unable to generate room QR code.';
+        }
+        errorBox?.classList.remove('d-none');
+    }
+}
+
+
+function closeRoomQrModal() {
+
+    const modal =
+        document.getElementById(
+            'roomQrModal'
+        );
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.add('d-none');
+    document.getElementById('roomQrLoading')?.classList.add('d-none');
+    document.getElementById('roomQrError')?.classList.add('d-none');
+    document.getElementById('roomQrContent')?.classList.add('d-none');
+
+    const displayEl =
+        document.getElementById(
+            'roomQrCodeDisplay'
+        );
+
+    if (displayEl) {
+        displayEl.innerHTML = '';
+    }
+}

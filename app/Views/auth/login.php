@@ -327,6 +327,9 @@
 
         <form action="<?= base_url('login') ?>" method="POST" autocomplete="on">
             <?= csrf_field() ?>
+            <?php if (!empty($returnUrl)): ?>
+                <input type="hidden" name="return_url" value="<?= esc($returnUrl) ?>">
+            <?php endif; ?>
 
             <!-- Email Address -->
             <div class="form-group">

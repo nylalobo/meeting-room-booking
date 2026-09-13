@@ -3,24 +3,35 @@
 namespace App\Controllers;
 
 use App\Models\Booking as BookingModel;
+use App\Models\BookingCheckin as BookingCheckinModel;
+use App\Models\BookingParticipant as BookingParticipantModel;
 use App\Models\Facility as FacilityModel;
 use App\Models\Location as LocationModel;
 use App\Models\Room as RoomModel;
+use App\Models\User as UserModel;
+use chillerlan\QRCode\QRCode;
+use chillerlan\QRCode\QROptions;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Room extends BaseController
 {
     protected RoomModel $roomModel;
     protected BookingModel $bookingModel;
+    protected BookingCheckinModel $bookingCheckinModel;
+    protected BookingParticipantModel $bookingParticipantModel;
+    protected UserModel $userModel;
     protected LocationModel $locationModel;
     protected FacilityModel $facilityModel;
 
     public function __construct()
     {
-        $this->roomModel     = new RoomModel();
-        $this->bookingModel  = new BookingModel();
-        $this->locationModel = new LocationModel();
-        $this->facilityModel = new FacilityModel();
+        $this->roomModel               = new RoomModel();
+        $this->bookingModel            = new BookingModel();
+        $this->bookingCheckinModel     = new BookingCheckinModel();
+        $this->bookingParticipantModel = new BookingParticipantModel();
+        $this->userModel               = new UserModel();
+        $this->locationModel           = new LocationModel();
+        $this->facilityModel           = new FacilityModel();
     }
 
     public function index(): ResponseInterface
@@ -434,5 +445,386 @@ class Room extends BaseController
         $this->request->setGlobal('get', $getParams);
 
         return $this->availability();
+    }
+
+    /**
+     * Get the current approved booking in this room that is currently eligible for check-in.
+     *
+     * GET /api/rooms/(:num)/current-booking
+     */
+    public function currentBooking(int $id): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $room = $this->roomModel->find($id);
+        if ($room === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Room not found.',
+            ]);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $booking = $this->bookingModel->getCurrentEligibleBookingForRoom($id, $now);
+
+        if ($booking === null) {
+            return $this->response->setJSON([
+                'status'  => 'success',
+                'message' => 'No booking is currently eligible for check-in in this room.',
+                'data'    => null,
+            ]);
+        }
+
+        // Resolve current user role
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = $roleRow['name'];
+            }
+        }
+
+        $isOrganizer = ((int) $booking['user_id'] === $currentUserId);
+        $isElevatedRole = in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true);
+
+        $participant = $this->bookingParticipantModel
+            ->where('booking_id', (int) $booking['id'])
+            ->where('user_id', $currentUserId)
+            ->first();
+        $isParticipant = ($participant !== null && $participant['response_status'] !== 'declined');
+
+        $isAuthorized = ($isOrganizer || $isElevatedRole || $isParticipant);
+
+        // Current user check-in status
+        $userCheckin = $this->bookingCheckinModel->getLatestCheckinForUser((int) $booking['id'], $currentUserId);
+        $checkInStatus = $userCheckin ? $userCheckin['status'] : 'not_checked_in';
+        $checkInTime   = $userCheckin ? $userCheckin['check_in_time'] : null;
+        $checkOutTime  = $userCheckin ? $userCheckin['check_out_time'] : null;
+        $checkInMethod = $userCheckin ? $userCheckin['check_in_method'] : null;
+        $checkinId     = $userCheckin ? (int) $userCheckin['id'] : null;
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => [
+                'id'                 => (int) $booking['id'],
+                'booking_id'         => (int) $booking['id'],
+                'title'              => $booking['title'],
+                'description'        => $booking['description'] ?? null,
+                'room_id'            => (int) $booking['room_id'],
+                'room_name'          => $booking['room_name'] ?? $room['name'],
+                'room_code'          => $booking['room_code'] ?? $room['room_code'],
+                'start_time'         => $booking['start_time'],
+                'end_time'           => $booking['end_time'],
+                'status'             => $booking['status'],
+                'recurring_group_id' => $booking['recurring_group_id'] ?? null,
+                'is_recurring'       => !empty($booking['recurring_group_id']),
+                'organizer'          => [
+                    'id'              => (int) $booking['user_id'],
+                    'first_name'      => $booking['first_name'] ?? '',
+                    'last_name'       => $booking['last_name'] ?? '',
+                    'email'           => $booking['email'] ?? '',
+                    'department_id'   => !empty($booking['department_id']) ? (int) $booking['department_id'] : null,
+                    'department_name' => $booking['department_name'] ?? null,
+                ],
+                'is_authorized'      => $isAuthorized,
+                'check_in_status'    => $checkInStatus,
+                'check_in_time'      => $checkInTime,
+                'check_out_time'     => $checkOutTime,
+                'check_in_method'    => $checkInMethod,
+                'checkin_id'         => $checkinId,
+            ],
+        ]);
+    }
+
+    /**
+     * Get room QR code identity, check-in URL, and rendered vector SVG QR code.
+     *
+     * GET /api/rooms/(:num)/qr-code
+     */
+    public function qrCode(int $id): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $room = $this->roomModel->find($id);
+        if ($room === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Room not found.',
+            ]);
+        }
+
+        if (isset($room['is_active']) && (int) $room['is_active'] !== 1) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'message' => 'Cannot generate QR code for an inactive room.',
+            ]);
+        }
+
+        $roomCode = trim((string) ($room['room_code'] ?? ''));
+        if ($roomCode === '') {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'message' => 'Room has no assigned room code.',
+            ]);
+        }
+
+        $checkInPath = '/check-in/room/' . rawurlencode($roomCode);
+        $checkInUrl  = rtrim(base_url(), '/') . $checkInPath;
+
+        // Render vector SVG QR code using chillerlan/php-qrcode
+        $options = new QROptions([
+            'outputBase64'     => false,
+            'svgAddXmlHeader'  => false,
+            'scale'            => 6,
+            'drawLightModules' => true,
+        ]);
+        $qr = new QRCode($options);
+        $svgMarkup = $qr->render($checkInUrl);
+
+        $base64Options = new QROptions([
+            'outputBase64'     => true,
+            'svgAddXmlHeader'  => true,
+            'scale'            => 6,
+            'drawLightModules' => true,
+        ]);
+        $dataUri = (new QRCode($base64Options))->render($checkInUrl);
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => [
+                'room_id'       => (int) $room['id'],
+                'room_name'     => (string) $room['name'],
+                'room_code'     => $roomCode,
+                'check_in_path' => $checkInPath,
+                'check_in_url'  => $checkInUrl,
+                'qr_payload'    => $checkInUrl,
+                'qr_svg'        => $svgMarkup,
+                'qr_data_uri'   => $dataUri,
+            ],
+        ]);
+    }
+
+    /**
+     * Mobile-first QR check-in landing page.
+     *
+     * GET /check-in/room/(:segment)
+     */
+    public function checkInLanding(string $roomCode): string|ResponseInterface
+    {
+        $rawCode = rawurldecode(trim($roomCode));
+
+        if ($rawCode === '') {
+            $this->response->setStatusCode(404);
+            return view('checkin/room', [
+                'title'        => 'Room Not Found',
+                'state'        => 'room_not_found',
+                'room'         => null,
+                'roomCode'     => '',
+                'booking'      => null,
+                'user'         => null,
+                'isLoggedIn'   => false,
+                'isAuthorized' => false,
+                'checkInStatus'=> 'not_found',
+                'loginUrl'     => base_url('login'),
+                'safeReturnUrl'=> '/',
+            ]);
+        }
+
+        // Room lookup by room_code
+        $room = $this->roomModel->where('room_code', $rawCode)->first();
+
+        if ($room === null) {
+            $this->response->setStatusCode(404);
+            return view('checkin/room', [
+                'title'        => 'Room Not Found',
+                'state'        => 'room_not_found',
+                'room'         => null,
+                'roomCode'     => $rawCode,
+                'booking'      => null,
+                'user'         => null,
+                'isLoggedIn'   => false,
+                'isAuthorized' => false,
+                'checkInStatus'=> 'not_found',
+                'loginUrl'     => base_url('login'),
+                'safeReturnUrl'=> '/',
+            ]);
+        }
+
+        // Check if room is active
+        $isActive = isset($room['is_active']) ? (int) $room['is_active'] === 1 : true;
+        if (!$isActive) {
+            $this->response->setStatusCode(422);
+            return view('checkin/room', [
+                'title'        => 'Room Unavailable',
+                'state'        => 'room_inactive',
+                'room'         => [
+                    'id'        => (int) $room['id'],
+                    'name'      => (string) $room['name'],
+                    'room_code' => (string) $room['room_code'],
+                ],
+                'roomCode'     => $rawCode,
+                'booking'      => null,
+                'user'         => null,
+                'isLoggedIn'   => false,
+                'isAuthorized' => false,
+                'checkInStatus'=> 'inactive',
+                'loginUrl'     => base_url('login'),
+                'safeReturnUrl'=> '/',
+            ]);
+        }
+
+        // Resolve location name
+        $locationName = 'Main Building';
+        if (!empty($room['location_id'])) {
+            $loc = $this->locationModel->find($room['location_id']);
+            if ($loc && !empty($loc['name'])) {
+                $locationName = $loc['name'];
+            }
+        }
+
+        $roomData = [
+            'id'            => (int) $room['id'],
+            'name'          => (string) $room['name'],
+            'room_code'     => (string) $room['room_code'],
+            'capacity'      => !empty($room['capacity']) ? (int) $room['capacity'] : null,
+            'floor'         => !empty($room['floor']) ? (string) $room['floor'] : null,
+            'description'   => !empty($room['description']) ? (string) $room['description'] : null,
+            'location_name' => $locationName,
+        ];
+
+        // Resolve user session
+        $session = service('session');
+        $isLoggedIn = $session->get('isLoggedIn') === true && !empty($session->get('user_id'));
+        $currentUserId = $isLoggedIn ? (int) $session->get('user_id') : null;
+
+        $userData = null;
+        $currentUserRoleName = '';
+        if ($isLoggedIn && $currentUserId) {
+            $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+            $userRecord = $this->userModel->find($currentUserId);
+            if (empty($currentUserRoleName) && !empty($userRecord['role_id'])) {
+                $db = \Config\Database::connect();
+                $roleRow = $db->table('roles')->where('id', $userRecord['role_id'])->get()->getRowArray();
+                if ($roleRow) {
+                    $currentUserRoleName = $roleRow['name'];
+                }
+            }
+
+            $userData = [
+                'id'         => $currentUserId,
+                'first_name' => $session->get('first_name') ?? ($userRecord['first_name'] ?? ''),
+                'last_name'  => $session->get('last_name') ?? ($userRecord['last_name'] ?? ''),
+                'email'      => $session->get('email') ?? ($userRecord['email'] ?? ''),
+                'role_name'  => $currentUserRoleName ?: 'Member',
+            ];
+        }
+
+        // Resolve current eligible booking
+        $now = date('Y-m-d H:i:s');
+        $booking = $this->bookingModel->getCurrentEligibleBookingForRoom((int) $room['id'], $now);
+
+        $safeReturnUrl = '/check-in/room/' . rawurlencode($room['room_code']);
+        $loginUrl = base_url('login?return=' . rawurlencode($safeReturnUrl));
+
+        if ($booking === null) {
+            return view('checkin/room', [
+                'title'        => $room['name'] . ' - Check In',
+                'state'        => 'no_eligible_booking',
+                'room'         => $roomData,
+                'roomCode'     => (string) $room['room_code'],
+                'booking'      => null,
+                'user'         => $userData,
+                'isLoggedIn'   => $isLoggedIn,
+                'isAuthorized' => false,
+                'roleLabel'    => '',
+                'checkInStatus'=> 'no_meeting',
+                'userCheckin'  => null,
+                'loginUrl'     => $loginUrl,
+                'safeReturnUrl'=> $safeReturnUrl,
+            ]);
+        }
+
+        // Format booking data
+        $organizerName = 'Organizer';
+        if (!empty($booking['first_name']) || !empty($booking['last_name'])) {
+            $organizerName = trim(($booking['first_name'] ?? '') . ' ' . ($booking['last_name'] ?? ''));
+        }
+
+        $bookingData = [
+            'id'                 => (int) $booking['id'],
+            'title'              => (string) $booking['title'],
+            'description'        => $booking['description'] ?? null,
+            'start_time'         => (string) $booking['start_time'],
+            'end_time'           => (string) $booking['end_time'],
+            'status'             => (string) $booking['status'],
+            'organizer_id'       => (int) $booking['user_id'],
+            'organizer_name'     => $organizerName,
+            'organizer_email'    => $booking['email'] ?? null,
+            'organizer_dept'     => $booking['department_name'] ?? null,
+            'is_recurring'       => !empty($booking['recurring_group_id']),
+        ];
+
+        // Determine authorization and check-in status
+        $isAuthorized = false;
+        $checkInStatus = 'login_required';
+        $userCheckin = null;
+        $roleLabel = '';
+
+        if ($isLoggedIn && $currentUserId) {
+            $isOrganizer = ((int) $booking['user_id'] === $currentUserId);
+            $isElevatedRole = in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true);
+
+            $participant = $this->bookingParticipantModel
+                ->where('booking_id', (int) $booking['id'])
+                ->where('user_id', $currentUserId)
+                ->first();
+            $isParticipant = ($participant !== null && $participant['response_status'] !== 'declined');
+
+            $isAuthorized = ($isOrganizer || $isElevatedRole || $isParticipant);
+
+            if ($isOrganizer) {
+                $roleLabel = 'Organizer';
+            } elseif ($isParticipant) {
+                $roleLabel = 'Attendee';
+            } elseif ($isElevatedRole) {
+                $roleLabel = $currentUserRoleName;
+            }
+
+            // Check active check-in record
+            $userCheckin = $this->bookingCheckinModel->getLatestCheckinForUser((int) $booking['id'], $currentUserId);
+            $checkInStatus = $userCheckin ? $userCheckin['status'] : 'not_checked_in';
+        }
+
+        return view('checkin/room', [
+            'title'         => $room['name'] . ' - Check In',
+            'state'         => 'eligible_booking',
+            'room'          => $roomData,
+            'roomCode'      => (string) $room['room_code'],
+            'booking'       => $bookingData,
+            'user'          => $userData,
+            'isLoggedIn'    => $isLoggedIn,
+            'isAuthorized'  => $isAuthorized,
+            'roleLabel'     => $roleLabel,
+            'checkInStatus' => $checkInStatus,
+            'userCheckin'   => $userCheckin,
+            'loginUrl'      => $loginUrl,
+            'safeReturnUrl' => $safeReturnUrl,
+        ]);
     }
 }

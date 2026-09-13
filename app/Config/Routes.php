@@ -19,6 +19,7 @@ $routes->get('verify-email/(:any)', 'Auth::verifyEmail/$1');
 $routes->get('resend-verification', 'Auth::resendVerificationForm');
 $routes->post('resend-verification', 'Auth::resendVerification');
 $routes->match(['get', 'post'], 'logout', 'Auth::logout');
+$routes->get('check-in/room/(:segment)', 'Room::checkInLanding/$1');
 
 
 /*
@@ -115,6 +116,8 @@ $routes->get('rooms', 'Home::rooms');
 $routes->get('api/rooms/availability', 'Room::availability');
 $routes->post('api/rooms/availability', 'Room::availability');
 $routes->get('api/rooms/(:num)/availability', 'Room::roomAvailability/$1');
+$routes->get('api/rooms/(:num)/current-booking', 'Room::currentBooking/$1');
+$routes->get('api/rooms/(:num)/qr-code', 'Room::qrCode/$1');
 $routes->get('api/rooms', 'Room::index');
 $routes->get('api/rooms/(:num)', 'Room::show/$1');
 $routes->post('api/rooms', 'Room::create');
@@ -180,6 +183,9 @@ $routes->delete('api/bookings/(:num)', 'Booking::delete/$1');
 $routes->post('api/bookings/(:num)/approve', 'Booking::approve/$1');
 $routes->post('api/bookings/(:num)/reject', 'Booking::reject/$1');
 $routes->post('api/bookings/(:num)/detach', 'Booking::detach/$1');
+$routes->post('api/bookings/(:num)/check-in', 'Booking::checkIn/$1');
+$routes->post('api/bookings/(:num)/check-out', 'Booking::checkOut/$1');
+$routes->get('api/bookings/(:num)/check-ins', 'Booking::checkIns/$1');
 
 // Legacy routes for backward compatibility
 $routes->get('bookings/(:num)', 'Booking::show/$1');

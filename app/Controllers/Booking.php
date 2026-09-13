@@ -4,6 +4,8 @@ namespace App\Controllers;
 
 use App\Models\AuditLog as AuditLogModel;
 use App\Models\Booking as BookingModel;
+use App\Models\BookingCheckin as BookingCheckinModel;
+use App\Models\BookingParticipant as BookingParticipantModel;
 use App\Models\Department as DepartmentModel;
 use App\Models\Room as RoomModel;
 use App\Models\User as UserModel;
@@ -16,6 +18,8 @@ class Booking extends BaseController
     protected UserModel $userModel;
     protected DepartmentModel $departmentModel;
     protected AuditLogModel $auditLogModel;
+    protected BookingCheckinModel $bookingCheckinModel;
+    protected BookingParticipantModel $bookingParticipantModel;
 
     public function __construct()
     {
@@ -24,6 +28,13 @@ class Booking extends BaseController
         $this->userModel       = new UserModel();
         $this->departmentModel = new DepartmentModel();
         $this->auditLogModel   = new AuditLogModel();
+        $this->bookingModel            = new BookingModel();
+        $this->roomModel               = new RoomModel();
+        $this->userModel               = new UserModel();
+        $this->departmentModel         = new DepartmentModel();
+        $this->auditLogModel           = new AuditLogModel();
+        $this->bookingCheckinModel     = new BookingCheckinModel();
+        $this->bookingParticipantModel = new BookingParticipantModel();
     }
 
     /**
@@ -1645,6 +1656,331 @@ class Booking extends BaseController
                 'created_ids'        => $createdIds,
                 'created_bookings'   => $createdBookings,
             ],
+        ]);
+    }
+
+    /**
+     * Check in to an approved booking within the valid time window.
+     *
+     * POST /api/bookings/(:num)/check-in
+     */
+    public function checkIn(int $bookingId): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $booking = $this->bookingModel->find($bookingId);
+        if ($booking === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Booking not found.',
+            ]);
+        }
+
+        if ($booking['status'] !== 'approved') {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'message' => "Cannot check into a booking with status '{$booking['status']}'. Only approved bookings can be checked into.",
+            ]);
+        }
+
+        $now = time();
+        $startTime = strtotime($booking['start_time']);
+        $endTime   = strtotime($booking['end_time']);
+        $checkinWindowStart = $startTime - (15 * 60);
+
+        if ($now < $checkinWindowStart) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'message' => 'Check-in is not yet open. Check-in opens 15 minutes before the meeting start time.',
+            ]);
+        }
+
+        if ($now > $endTime) {
+            return $this->response->setStatusCode(422)->setJSON([
+                'status'  => 'error',
+                'message' => 'Check-in has closed. This meeting has already ended.',
+            ]);
+        }
+
+        // Resolve current user role
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = $roleRow['name'];
+            }
+        }
+
+        $isOrganizer = ((int) $booking['user_id'] === $currentUserId);
+        $isElevatedRole = in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true);
+
+        $participant = $this->bookingParticipantModel
+            ->where('booking_id', $bookingId)
+            ->where('user_id', $currentUserId)
+            ->first();
+        $isParticipant = ($participant !== null && $participant['response_status'] !== 'declined');
+
+        if (!$isOrganizer && !$isElevatedRole && !$isParticipant) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You are not authorized to check into this meeting.',
+            ]);
+        }
+
+        $activeCheckin = $this->bookingCheckinModel->getActiveCheckin($bookingId, $currentUserId);
+        if ($activeCheckin !== null) {
+            return $this->response->setStatusCode(409)->setJSON([
+                'status'  => 'error',
+                'message' => 'User is already checked in to this meeting.',
+                'data'    => $activeCheckin,
+            ]);
+        }
+
+        $rawInput = $this->request->getJSON(true) ?? $this->request->getPost() ?? [];
+        $allowedMethods = ['qr_code', 'manual', 'room_display'];
+        $method = 'qr_code';
+        if (!empty($rawInput['check_in_method']) && in_array($rawInput['check_in_method'], $allowedMethods, true)) {
+            $method = $rawInput['check_in_method'];
+        }
+
+        $serverNow = date('Y-m-d H:i:s');
+        $checkinData = [
+            'booking_id'      => $bookingId,
+            'user_id'         => $currentUserId,
+            'check_in_time'   => $serverNow,
+            'check_out_time'  => null,
+            'check_in_method' => $method,
+            'status'          => 'checked_in',
+        ];
+
+        $checkinId = $this->bookingCheckinModel->insert($checkinData);
+        if (!$checkinId) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'status'  => 'error',
+                'message' => 'Failed to record check-in.',
+                'errors'  => $this->bookingCheckinModel->errors(),
+            ]);
+        }
+
+        $createdCheckin = $this->bookingCheckinModel->find($checkinId);
+
+        $this->auditLogModel->insert([
+            'user_id'    => $currentUserId,
+            'action'     => 'booking_checked_in',
+            'table_name' => 'bookings',
+            'record_id'  => $bookingId,
+            'old_values' => null,
+            'new_values' => json_encode([
+                'checkin_id'      => (int) $checkinId,
+                'user_id'         => $currentUserId,
+                'check_in_time'   => $serverNow,
+                'check_in_method' => $method,
+                'status'          => 'checked_in',
+            ]),
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => (string) $this->request->getUserAgent(),
+            'created_at' => $serverNow,
+        ]);
+
+        return $this->response->setStatusCode(201)->setJSON([
+            'status'  => 'success',
+            'message' => 'Check-in successful.',
+            'data'    => $createdCheckin,
+        ]);
+    }
+
+    /**
+     * Check out of an active check-in for a booking.
+     *
+     * POST /api/bookings/(:num)/check-out
+     */
+    public function checkOut(int $bookingId): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $booking = $this->bookingModel->find($bookingId);
+        if ($booking === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Booking not found.',
+            ]);
+        }
+
+        // Resolve current user role
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = $roleRow['name'];
+            }
+        }
+
+        $targetUserId = $currentUserId;
+        $rawInput = $this->request->getJSON(true) ?? $this->request->getPost() ?? [];
+        if (!empty($rawInput['user_id'])) {
+            $requestedUserId = (int) $rawInput['user_id'];
+            if ($requestedUserId > 0 && $requestedUserId !== $currentUserId) {
+                $isElevatedRole = in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true);
+                if (!$isElevatedRole) {
+                    return $this->response->setStatusCode(403)->setJSON([
+                        'status'  => 'error',
+                        'message' => 'Forbidden. You can only check out your own session.',
+                    ]);
+                }
+                $targetUserId = $requestedUserId;
+            }
+        }
+
+        $activeCheckin = $this->bookingCheckinModel->getActiveCheckin($bookingId, $targetUserId);
+        if ($activeCheckin === null) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'No active check-in found for this booking.',
+            ]);
+        }
+
+        $serverNow = date('Y-m-d H:i:s');
+        $updateSuccess = $this->bookingCheckinModel->update($activeCheckin['id'], [
+            'check_out_time' => $serverNow,
+            'status'         => 'checked_out',
+        ]);
+
+        if (!$updateSuccess) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'status'  => 'error',
+                'message' => 'Failed to record check-out.',
+                'errors'  => $this->bookingCheckinModel->errors(),
+            ]);
+        }
+
+        $updatedCheckin = $this->bookingCheckinModel->find($activeCheckin['id']);
+
+        $this->auditLogModel->insert([
+            'user_id'    => $currentUserId,
+            'action'     => 'booking_checked_out',
+            'table_name' => 'bookings',
+            'record_id'  => $bookingId,
+            'old_values' => json_encode([
+                'checkin_id'     => (int) $activeCheckin['id'],
+                'status'         => $activeCheckin['status'],
+                'check_out_time' => $activeCheckin['check_out_time'],
+            ]),
+            'new_values' => json_encode([
+                'checkin_id'     => (int) $activeCheckin['id'],
+                'user_id'        => $targetUserId,
+                'status'         => 'checked_out',
+                'check_out_time' => $serverNow,
+            ]),
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => (string) $this->request->getUserAgent(),
+            'created_at' => $serverNow,
+        ]);
+
+        return $this->response->setJSON([
+            'status'  => 'success',
+            'message' => 'Check-out successful.',
+            'data'    => $updatedCheckin,
+        ]);
+    }
+
+    /**
+     * Get check-in and attendance records for a booking.
+     *
+     * GET /api/bookings/(:num)/check-ins
+     */
+    public function checkIns(int $bookingId): ResponseInterface
+    {
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        if (empty($currentUserId)) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'  => 'error',
+                'message' => 'Unauthorized. Authentication required.',
+            ]);
+        }
+
+        $booking = $this->bookingModel->find($bookingId);
+        if ($booking === null) {
+            return $this->response->setStatusCode(404)->setJSON([
+                'status'  => 'error',
+                'message' => 'Booking not found.',
+            ]);
+        }
+
+        $organizerId = (int) $booking['user_id'];
+        $organizer = $this->userModel->find($organizerId);
+        $currentUserRecord = $this->userModel->find($currentUserId);
+        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = $roleRow['name'];
+            }
+        }
+
+        $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
+        $organizerDeptId   = !empty($organizer['department_id']) ? (int) $organizer['department_id'] : null;
+
+        $canView = false;
+        if ($currentUserId === $organizerId) {
+            $canView = true;
+        } elseif (in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true)) {
+            $canView = true;
+        } elseif ($currentUserRoleName === 'Manager') {
+            if ($currentUserDeptId !== null && $organizerDeptId !== null && $currentUserDeptId === $organizerDeptId) {
+                $canView = true;
+            }
+        }
+
+        if (!$canView) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to view attendance for this booking.',
+            ]);
+        }
+
+        $records = $this->bookingCheckinModel->getCheckinsWithUsers($bookingId);
+        $formatted = [];
+        foreach ($records as $r) {
+            $formatted[] = [
+                'id'              => (int) $r['id'],
+                'booking_id'      => (int) $r['booking_id'],
+                'user_id'         => (int) $r['user_id'],
+                'user_name'       => trim(($r['first_name'] ?? '') . ' ' . ($r['last_name'] ?? '')),
+                'first_name'      => $r['first_name'] ?? '',
+                'last_name'       => $r['last_name'] ?? '',
+                'email'           => $r['email'] ?? '',
+                'check_in_time'   => $r['check_in_time'],
+                'check_out_time'  => $r['check_out_time'],
+                'check_in_method' => $r['check_in_method'],
+                'status'          => $r['status'],
+                'created_at'      => $r['created_at'] ?? null,
+                'updated_at'      => $r['updated_at'] ?? null,
+            ];
+        }
+
+        return $this->response->setJSON([
+            'status' => 'success',
+            'data'   => $formatted,
         ]);
     }
 }
