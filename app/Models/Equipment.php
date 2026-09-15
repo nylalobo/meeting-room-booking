@@ -125,5 +125,80 @@ class Equipment extends Model
 
         return $data;
     }
+
+    /**
+     * Get equipment enriched with location name and default room name & code.
+     *
+     * @param int|null $id Optional specific equipment ID
+     * @param array $filters Optional filter criteria (status, category, location_id, default_room_id, search)
+     * @return array
+     */
+    public function getEquipmentWithDetails(?int $id = null, array $filters = []): array
+    {
+        $builder = $this->builder();
+        $builder->select('equipment.*, locations.name as location_name, rooms.name as default_room_name, rooms.room_code as default_room_code')
+            ->join('locations', 'locations.id = equipment.location_id', 'left')
+            ->join('rooms', 'rooms.id = equipment.default_room_id', 'left');
+
+        if ($id !== null) {
+            $builder->where('equipment.id', $id);
+            $row = $builder->get()->getRowArray();
+            return $row ? $this->formatEquipmentRow($row) : [];
+        }
+
+        if (!empty($filters['status'])) {
+            $builder->where('equipment.status', strtolower(trim((string) $filters['status'])));
+        }
+
+        if (!empty($filters['category'])) {
+            $builder->where('equipment.category', strtolower(trim((string) $filters['category'])));
+        }
+
+        if (!empty($filters['location_id'])) {
+            $builder->where('equipment.location_id', (int) $filters['location_id']);
+        }
+
+        if (!empty($filters['default_room_id'])) {
+            $builder->where('equipment.default_room_id', (int) $filters['default_room_id']);
+        }
+
+        if (!empty($filters['search'])) {
+            $search = trim((string) $filters['search']);
+            $builder->groupStart()
+                ->like('equipment.name', $search)
+                ->orLike('equipment.code', $search)
+                ->orLike('equipment.model_number', $search)
+                ->orLike('equipment.serial_number', $search)
+            ->groupEnd();
+        }
+
+        $rows = $builder->orderBy('equipment.id', 'ASC')->get()->getResultArray();
+        return array_map([$this, 'formatEquipmentRow'], $rows);
+    }
+
+    /**
+     * Format an equipment row with appropriate types and related details.
+     */
+    public function formatEquipmentRow(array $row): array
+    {
+        return [
+            'id'                => (int) $row['id'],
+            'name'              => $row['name'],
+            'code'              => $row['code'],
+            'category'          => $row['category'],
+            'model_number'      => $row['model_number'],
+            'serial_number'     => $row['serial_number'],
+            'description'       => $row['description'],
+            'location_id'       => !empty($row['location_id']) ? (int) $row['location_id'] : null,
+            'location_name'     => $row['location_name'] ?? null,
+            'default_room_id'   => !empty($row['default_room_id']) ? (int) $row['default_room_id'] : null,
+            'default_room_name' => $row['default_room_name'] ?? null,
+            'default_room_code' => $row['default_room_code'] ?? null,
+            'status'            => $row['status'],
+            'notes'             => $row['notes'] ?? null,
+            'created_at'        => $row['created_at'],
+            'updated_at'        => $row['updated_at'],
+        ];
+    }
 }
 

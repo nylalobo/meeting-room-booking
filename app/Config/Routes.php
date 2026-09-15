@@ -156,6 +156,28 @@ $routes->delete('facilities/(:num)', 'Facility::delete/$1');
 
 /*
 |--------------------------------------------------------------------------
+| Equipment
+|--------------------------------------------------------------------------
+|
+| /api/equipment/availability -> List catalog-available equipment
+| /api/equipment              -> List equipment catalog
+| /api/equipment/{id}         -> Get one equipment item
+| /api/equipment              -> Create equipment (Admin/FacMgr)
+| /api/equipment/{id}         -> Update equipment (Admin/FacMgr)
+| /api/equipment/{id}         -> Retire equipment (Admin/FacMgr)
+|
+*/
+
+$routes->get('api/equipment/availability', 'Equipment::availability');
+$routes->get('api/equipment', 'Equipment::index');
+$routes->get('api/equipment/(:num)', 'Equipment::show/$1');
+$routes->post('api/equipment', 'Equipment::create');
+$routes->put('api/equipment/(:num)', 'Equipment::update/$1');
+$routes->delete('api/equipment/(:num)', 'Equipment::delete/$1');
+
+
+/*
+|--------------------------------------------------------------------------
 | Bookings
 |--------------------------------------------------------------------------
 |
