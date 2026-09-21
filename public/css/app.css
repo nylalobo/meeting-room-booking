@@ -4699,3 +4699,113 @@ input#recurrenceUntilDate {
     font-weight: 500;
     word-break: break-word;
 }
+
+/* ==========================================================================
+   Booking Resource Badges & Actions (Milestone 5)
+   ========================================================================== */
+
+.badge-resource-reserved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(234, 179, 8, 0.14);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.badge-resource-checked-out {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(56, 189, 248, 0.14);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.badge-resource-returned {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-resource-cancelled {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.14);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.btn-resource-action {
+    padding: 4px 9px;
+    border-radius: 5px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.btn-resource-checkout {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+}
+
+.btn-resource-checkout:hover {
+    background: rgba(56, 189, 248, 0.28);
+    color: #7dd3fc;
+}
+
+.btn-resource-return {
+    background: rgba(74, 222, 128, 0.15);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #4ade80;
+}
+
+.btn-resource-return:hover {
+    background: rgba(74, 222, 128, 0.28);
+    color: #86efac;
+}
+
+.btn-resource-remove {
+    background: transparent;
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.btn-resource-remove:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.btn-resource-remove:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #64748b !important;
+}

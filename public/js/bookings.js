@@ -27,6 +27,7 @@
             setupCalendarControls();
             setupAttendanceModal();
             setupVisitorsModal();
+            setupResourcesModal();
         }
     });
 
@@ -546,6 +547,17 @@
                             aria-label="Manage visitors"
                         >
                             <i class="bi bi-person-badge"></i>
+                        </button>
+
+                        <button
+                            type="button"
+                            class="booking-action-btn booking-resources-btn"
+                            data-booking-id="${escapeHtml(booking.id)}"
+                            data-booking-title="${escapeHtml(booking.title || 'Untitled Meeting')}"
+                            title="Manage resources & equipment"
+                            aria-label="Manage resources"
+                        >
+                            <i class="bi bi-box-seam"></i>
                         </button>
 
                         <button
@@ -1501,6 +1513,11 @@
                 '.booking-visitors-btn'
             );
 
+        const resourceButtons =
+            document.querySelectorAll(
+                '.booking-resources-btn'
+            );
+
         editButtons.forEach((button) => {
             button.addEventListener(
                 'click',
@@ -1560,6 +1577,17 @@
                     const bookingId = Number(button.dataset.bookingId);
                     const bookingTitle = button.dataset.bookingTitle || '';
                     openVisitorsModal(bookingId, bookingTitle);
+                }
+            );
+        });
+
+        resourceButtons.forEach((button) => {
+            button.addEventListener(
+                'click',
+                () => {
+                    const bookingId = Number(button.dataset.bookingId);
+                    const bookingTitle = button.dataset.bookingTitle || '';
+                    openResourcesModal(bookingId, bookingTitle);
                 }
             );
         });
@@ -3152,6 +3180,16 @@
             }
         });
 
+        const calDetailResourcesBtn = document.getElementById('calDetailResourcesBtn');
+        calDetailResourcesBtn?.addEventListener('click', () => {
+            if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.id) {
+                const bId = Number(currentSelectedCalendarEvent.id);
+                const bTitle = currentSelectedCalendarEvent.title || '';
+                closeCalendarDetailModal();
+                openResourcesModal(bId, bTitle, currentSelectedCalendarEvent);
+            }
+        });
+
         viewSeriesBtn?.addEventListener('click', () => {
             if (currentSelectedCalendarEvent && currentSelectedCalendarEvent.recurring_group_id) {
                 loadSeriesOccurrences(currentSelectedCalendarEvent.recurring_group_id, currentSelectedCalendarEvent.id);
@@ -4138,6 +4176,48 @@
             }
         }
 
+        // Calendar Resources Button Visibility & Summary (Milestone 5)
+        const resBtn = document.getElementById('calDetailResourcesBtn');
+        const resContent = document.getElementById('calDetailResourcesContent');
+        if (resContent) {
+            resContent.innerHTML = '<span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">Loading resources...</span>';
+        }
+        if (resBtn) {
+            let canViewResources = false;
+            const currentUser = window.MeetSpaceUser || null;
+
+            if (currentUser && currentUser.id) {
+                if (['Admin', 'Facilities Manager'].includes(currentUser.role_name)) {
+                    canViewResources = true;
+                } else if (Number(ev.user_id) === Number(currentUser.id)) {
+                    canViewResources = true;
+                } else if (currentUser.role_name === 'Manager' && currentUser.department_id && ev.organizer_department_id && Number(currentUser.department_id) === Number(ev.organizer_department_id)) {
+                    canViewResources = true;
+                } else if (ev.can_view_attendance !== false && ev.can_view_attendance !== undefined) {
+                    canViewResources = Boolean(ev.can_view_attendance);
+                } else if (typeof allBookings !== 'undefined' && Array.isArray(allBookings)) {
+                    const matchedBooking = allBookings.find(b => Number(b.id) === Number(ev.id));
+                    if (matchedBooking && matchedBooking.can_view_attendance !== false) {
+                        canViewResources = true;
+                    }
+                }
+            }
+
+            if (normStatus === 'cancelled' || normStatus === 'rejected') {
+                canViewResources = false;
+            }
+
+            if (canViewResources) {
+                resBtn.classList.remove('d-none');
+                fetchCalendarEventResourcesSummary(Number(ev.id));
+            } else {
+                resBtn.classList.add('d-none');
+                if (resContent) {
+                    resContent.innerHTML = '<span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">None assigned</span>';
+                }
+            }
+        }
+
         modal.classList.remove('d-none');
     }
 
@@ -4146,6 +4226,11 @@
         document.getElementById('calDetailCancelledBanner')?.classList.add('d-none');
         document.getElementById('calDetailRejectionSection')?.classList.add('d-none');
         document.getElementById('calDetailVisitorsBtn')?.classList.add('d-none');
+        document.getElementById('calDetailResourcesBtn')?.classList.add('d-none');
+        const resContentEl = document.getElementById('calDetailResourcesContent');
+        if (resContentEl) {
+            resContentEl.innerHTML = '<span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">None assigned</span>';
+        }
         const rejReasonEl = document.getElementById('calDetailRejectionReason');
         if (rejReasonEl) rejReasonEl.textContent = '';
         document.getElementById('calDetailRecurrenceSection')?.classList.add('d-none');
@@ -5099,6 +5184,814 @@
             }
         } finally {
             if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+
+    /* ==========================================================================
+       MEETING RESOURCES & EQUIPMENT MANAGEMENT (Phase 4 Feature 4.4 Milestone 5)
+       ========================================================================== */
+
+    let activeResourcesBookingId = null;
+    let activeResourcesBooking = null;
+    let currentResourcesList = [];
+
+    /**
+     * Fetch quick resource count/summary for the calendar event detail modal.
+     */
+    async function fetchCalendarEventResourcesSummary(bookingId) {
+        const resContent = document.getElementById('calDetailResourcesContent');
+        if (!resContent) return;
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/resources`, {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+                resContent.innerHTML = '<span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">None assigned</span>';
+                return;
+            }
+
+            const result = await response.json();
+            if (result.status === 'success' && result.data && Array.isArray(result.data.resources)) {
+                const resources = result.data.resources;
+                if (resources.length === 0) {
+                    resContent.innerHTML = '<span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">None assigned</span>';
+                } else {
+                    resContent.innerHTML = resources.map(r => {
+                        const statusBadge = formatResourceStatusBadge(r.status);
+                        return `<span class="cal-resource-pill"><i class="bi bi-box-seam"></i> ${escapeHtml(r.equipment_name || 'Equipment')} ${statusBadge}</span>`;
+                    }).join('');
+                }
+            } else {
+                resContent.innerHTML = '<span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">None assigned</span>';
+            }
+        } catch (e) {
+            resContent.innerHTML = '<span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">None assigned</span>';
+        }
+    }
+
+    /**
+     * Format a resource lifecycle status badge.
+     */
+    function formatResourceStatusBadge(status) {
+        const s = String(status || 'reserved').toLowerCase();
+        let badgeClass = 'badge-resource-reserved';
+        let label = 'Reserved';
+
+        if (s === 'checked_out') {
+            badgeClass = 'badge-resource-checked-out';
+            label = 'Checked Out';
+        } else if (s === 'returned') {
+            badgeClass = 'badge-resource-returned';
+            label = 'Returned';
+        } else if (s === 'cancelled') {
+            badgeClass = 'badge-resource-cancelled';
+            label = 'Cancelled';
+        }
+
+        return `<span class="${badgeClass}">${escapeHtml(label)}</span>`;
+    }
+
+    /**
+     * Set up event listeners for the Booking Resources modal.
+     */
+    function setupResourcesModal() {
+        const modal = document.getElementById('bookingResourcesModal');
+        const closeBtn = document.getElementById('closeResourcesModal');
+        const closeBtnFooter = document.getElementById('closeResourcesModalBtn');
+        const resRetryBtn = document.getElementById('resourcesRetryBtn');
+        const toggleFormBtn = document.getElementById('toggleAddResourceFormBtn');
+        const cancelFormHeaderBtn = document.getElementById('cancelResourceFormHeaderBtn');
+        const cancelFormBtn = document.getElementById('cancelResourceBtn');
+        const form = document.getElementById('resourceAssignForm');
+
+        closeBtn?.addEventListener('click', closeResourcesModalWindow);
+        closeBtnFooter?.addEventListener('click', closeResourcesModalWindow);
+
+        resRetryBtn?.addEventListener('click', () => {
+            if (activeResourcesBookingId) {
+                fetchResourcesData(activeResourcesBookingId);
+            }
+        });
+
+        // Close on backdrop click
+        modal?.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeResourcesModalWindow();
+            }
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal && !modal.classList.contains('d-none')) {
+                closeResourcesModalWindow();
+            }
+        });
+
+        toggleFormBtn?.addEventListener('click', () => {
+            const formCard = document.getElementById('resourceFormCard');
+            if (formCard) {
+                const isHidden = formCard.classList.contains('d-none');
+                if (isHidden) {
+                    formCard.classList.remove('d-none');
+                    loadAvailableEquipmentDropdown();
+                } else {
+                    formCard.classList.add('d-none');
+                    resetResourceForm();
+                }
+            }
+        });
+
+        cancelFormHeaderBtn?.addEventListener('click', () => {
+            document.getElementById('resourceFormCard')?.classList.add('d-none');
+            resetResourceForm();
+        });
+
+        cancelFormBtn?.addEventListener('click', () => {
+            document.getElementById('resourceFormCard')?.classList.add('d-none');
+            resetResourceForm();
+        });
+
+        form?.addEventListener('submit', handleResourceFormSubmit);
+    }
+
+    /**
+     * Open the Booking Resources modal for a given booking.
+     */
+    function openResourcesModal(bookingId, bookingTitle, bookingData) {
+        activeResourcesBookingId = Number(bookingId);
+        activeResourcesBooking = bookingData || findBookingById(bookingId) || null;
+
+        const modal = document.getElementById('bookingResourcesModal');
+        const loading = document.getElementById('resourcesLoading');
+        const error = document.getElementById('resourcesError');
+        const content = document.getElementById('resourcesContent');
+        const titleEl = document.getElementById('resMeetingTitle');
+
+        if (!modal) return;
+
+        if (titleEl) {
+            titleEl.textContent = bookingTitle || (activeResourcesBooking ? activeResourcesBooking.title : 'Loading meeting...');
+        }
+
+        modal.classList.remove('d-none');
+        document.body.classList.add('booking-modal-open');
+
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        content?.classList.add('d-none');
+
+        resetResourceForm();
+        document.getElementById('resourceFormCard')?.classList.add('d-none');
+
+        fetchResourcesData(activeResourcesBookingId);
+    }
+
+    /**
+     * Close the Booking Resources modal and reset state.
+     */
+    function closeResourcesModalWindow() {
+        const modal = document.getElementById('bookingResourcesModal');
+        if (!modal) return;
+
+        modal.classList.add('d-none');
+        document.body.classList.remove('booking-modal-open');
+        resetResourceForm();
+        document.getElementById('resourceFormCard')?.classList.add('d-none');
+        activeResourcesBookingId = null;
+        activeResourcesBooking = null;
+        currentResourcesList = [];
+    }
+
+    /**
+     * Reset the resource assignment form fields and error display.
+     */
+    function resetResourceForm() {
+        const form = document.getElementById('resourceAssignForm');
+        if (form) form.reset();
+        const errEl = document.getElementById('resourceFormError');
+        if (errEl) {
+            errEl.textContent = '';
+            errEl.innerHTML = '';
+            errEl.classList.add('d-none');
+        }
+        const selectEl = document.getElementById('resourceEquipmentSelect');
+        if (selectEl) {
+            selectEl.value = '';
+        }
+    }
+
+    /**
+     * Fetch assigned resources from the backend API.
+     */
+    async function fetchResourcesData(bookingId) {
+        const loading = document.getElementById('resourcesLoading');
+        const error = document.getElementById('resourcesError');
+        const errorText = document.getElementById('resourcesErrorText');
+        const content = document.getElementById('resourcesContent');
+
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        content?.classList.add('d-none');
+
+        try {
+            // If booking metadata is missing, fetch it in parallel
+            let bookingFetchPromise = null;
+            if (!activeResourcesBooking || Number(activeResourcesBooking.id) !== Number(bookingId)) {
+                bookingFetchPromise = fetch(`/api/bookings/${bookingId}`, {
+                    headers: { 'Accept': 'application/json' }
+                }).then(r => r.ok ? r.json() : null).catch(() => null);
+            }
+
+            const response = await fetch(`/api/bookings/${bookingId}/resources`, {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                loading?.classList.add('d-none');
+                error?.classList.remove('d-none');
+                if (errorText) {
+                    errorText.textContent = result.message || 'Unable to load resources for this meeting.';
+                }
+                return;
+            }
+
+            if (bookingFetchPromise) {
+                const bookingResult = await bookingFetchPromise;
+                if (bookingResult && bookingResult.data) {
+                    activeResourcesBooking = bookingResult.data;
+                }
+            }
+
+            loading?.classList.add('d-none');
+            content?.classList.remove('d-none');
+            renderResourcesData(result.data, activeResourcesBooking);
+
+        } catch (err) {
+            loading?.classList.add('d-none');
+            error?.classList.remove('d-none');
+            if (errorText) {
+                errorText.textContent = 'Network error while loading resources. Please try again.';
+            }
+        }
+    }
+
+    /**
+     * Render the assigned resources into the modal view.
+     */
+    function renderResourcesData(data, booking) {
+        if (!data) return;
+
+        currentResourcesList = data.resources || [];
+        const canManage = Boolean(data.can_manage);
+
+        // Meeting Header Details
+        const b = booking || {};
+        const titleEl = document.getElementById('resMeetingTitle');
+        if (titleEl) {
+            titleEl.textContent = b.title || 'Untitled Meeting';
+        }
+
+        const statusBadge = document.getElementById('resMeetingStatusBadge');
+        if (statusBadge) {
+            const st = String(b.status || 'pending').toLowerCase();
+            statusBadge.className = `booking-status booking-status-${escapeHtml(st)}`;
+            statusBadge.textContent = st.charAt(0).toUpperCase() + st.slice(1);
+        }
+
+        const roomLocEl = document.getElementById('resRoomLocation');
+        if (roomLocEl) {
+            const roomText = b.room_code
+                ? `${b.room_name} (${b.room_code})`
+                : (b.room_name || 'Room');
+            const locText = b.location_name ? ` • ${b.location_name}` : '';
+            roomLocEl.textContent = roomText + locText;
+        }
+
+        const dateTimeEl = document.getElementById('resDateTime');
+        if (dateTimeEl) {
+            const dStr = b.start_time ? formatDateForDisplay(b.start_time) : '—';
+            const tStr = (b.start_time && b.end_time) ? formatTimeRangeForDisplay(b.start_time, b.end_time) : '—';
+            dateTimeEl.textContent = `${dStr} • ${tStr}`;
+        }
+
+        const orgEl = document.getElementById('resOrganizer');
+        if (orgEl) {
+            orgEl.textContent = `Organizer: ${b.organizer_name || 'Unknown'}`;
+        }
+
+        // Recurrence Occurrence Banner
+        const recurrenceBanner = document.getElementById('resRecurrenceBanner');
+        if (recurrenceBanner) {
+            if (b.is_recurring || b.recurring_group_id) {
+                recurrenceBanner.classList.remove('d-none');
+            } else {
+                recurrenceBanner.classList.add('d-none');
+            }
+        }
+
+        // Cancelled / Rejected Warning Banner
+        const isCancelledOrRejected = ['cancelled', 'rejected'].includes(String(b.status || '').toLowerCase());
+        const cancelledBanner = document.getElementById('resCancelledBanner');
+        const cancelledText = document.getElementById('resCancelledText');
+        if (cancelledBanner) {
+            if (isCancelledOrRejected) {
+                cancelledBanner.classList.remove('d-none');
+                if (cancelledText) {
+                    cancelledText.textContent = `This booking is ${b.status}. Resource assignments cannot be modified.`;
+                }
+            } else {
+                cancelledBanner.classList.add('d-none');
+            }
+        }
+
+        // Stats Counters
+        let countReserved = 0;
+        let countCheckedOut = 0;
+        let countReturned = 0;
+
+        currentResourcesList.forEach(r => {
+            const s = String(r.status || 'reserved').toLowerCase();
+            if (s === 'reserved') countReserved++;
+            else if (s === 'checked_out') countCheckedOut++;
+            else if (s === 'returned') countReturned++;
+        });
+
+        const statTotal = document.getElementById('resStatTotal');
+        const statReserved = document.getElementById('resStatReserved');
+        const statCheckedOut = document.getElementById('resStatCheckedOut');
+        const statReturned = document.getElementById('resStatReturned');
+        const countBadge = document.getElementById('resourceCountBadge');
+
+        if (statTotal) statTotal.textContent = String(currentResourcesList.length);
+        if (statReserved) statReserved.textContent = String(countReserved);
+        if (statCheckedOut) statCheckedOut.textContent = String(countCheckedOut);
+        if (statReturned) statReturned.textContent = String(countReturned);
+        if (countBadge) countBadge.textContent = String(currentResourcesList.length);
+
+        // RBAC: Show/hide "+ Assign Resource" toggle button
+        const toggleBtn = document.getElementById('toggleAddResourceFormBtn');
+        if (toggleBtn) {
+            if (canManage && !isCancelledOrRejected) {
+                toggleBtn.classList.remove('d-none');
+            } else {
+                toggleBtn.classList.add('d-none');
+            }
+        }
+
+        // Resources Table Body
+        const tableBody = document.getElementById('resourcesTableBody');
+        const emptyState = document.getElementById('resourcesEmpty');
+        const tableWrapper = document.getElementById('resourcesTableWrapper');
+
+        if (!tableBody) return;
+        tableBody.innerHTML = '';
+
+        if (currentResourcesList.length === 0) {
+            tableWrapper?.classList.add('d-none');
+            emptyState?.classList.remove('d-none');
+            return;
+        }
+
+        emptyState?.classList.add('d-none');
+        tableWrapper?.classList.remove('d-none');
+
+        currentResourcesList.forEach((r) => {
+            const tr = document.createElement('tr');
+            const resStatus = String(r.status || 'reserved').toLowerCase();
+
+            // Format check-in/out info
+            let checkoutDisplay = '—';
+            if (r.checked_out_at) {
+                const coTime = formatDateTimeFullForDisplay ? formatDateTimeFullForDisplay(r.checked_out_at) : r.checked_out_at;
+                const coUser = r.checked_out_by_name ? `by ${escapeHtml(r.checked_out_by_name)}` : '';
+                checkoutDisplay = `<span>${coTime}</span>${coUser ? `<small class="text-muted d-block" style="font-size: 11px;">${coUser}</small>` : ''}`;
+            }
+
+            let returnDisplay = '—';
+            if (r.returned_at) {
+                const retTime = formatDateTimeFullForDisplay ? formatDateTimeFullForDisplay(r.returned_at) : r.returned_at;
+                const retUser = r.returned_to_name ? `to ${escapeHtml(r.returned_to_name)}` : '';
+                returnDisplay = `<span>${retTime}</span>${retUser ? `<small class="text-muted d-block" style="font-size: 11px;">${retUser}</small>` : ''}`;
+            }
+
+            // Location
+            const locationText = escapeHtml(r.location_name || r.default_room_name || '—');
+
+            // Action buttons
+            let actionsHtml = '';
+            if (canManage && !isCancelledOrRejected) {
+                if (resStatus === 'reserved') {
+                    actionsHtml = `
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button
+                                type="button"
+                                class="btn-resource-action btn-resource-checkout"
+                                data-resource-id="${r.id}"
+                                data-equipment-name="${escapeHtml(r.equipment_name || 'Equipment')}"
+                                title="Check out equipment"
+                            >
+                                <i class="bi bi-box-arrow-up-right"></i> Check Out
+                            </button>
+                            <button
+                                type="button"
+                                class="btn-resource-action btn-resource-remove"
+                                data-resource-id="${r.id}"
+                                data-equipment-name="${escapeHtml(r.equipment_name || 'Equipment')}"
+                                title="Remove assignment"
+                            >
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                } else if (resStatus === 'checked_out') {
+                    actionsHtml = `
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button
+                                type="button"
+                                class="btn-resource-action btn-resource-return"
+                                data-resource-id="${r.id}"
+                                data-equipment-name="${escapeHtml(r.equipment_name || 'Equipment')}"
+                                title="Return equipment"
+                            >
+                                <i class="bi bi-box-arrow-in-down-left"></i> Return
+                            </button>
+                            <button
+                                type="button"
+                                class="btn-resource-action btn-resource-remove"
+                                disabled
+                                title="Cannot remove equipment that is checked out. Return it first."
+                            >
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                } else if (resStatus === 'returned') {
+                    actionsHtml = `
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button
+                                type="button"
+                                class="btn-resource-action btn-resource-remove"
+                                data-resource-id="${r.id}"
+                                data-equipment-name="${escapeHtml(r.equipment_name || 'Equipment')}"
+                                title="Remove assignment record"
+                            >
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            } else {
+                actionsHtml = '<span class="text-muted" style="font-size: 12px; font-style: italic;">View only</span>';
+            }
+
+            const modelSerial = [r.model_number ? `Model: ${r.model_number}` : '', r.serial_number ? `SN: ${r.serial_number}` : ''].filter(Boolean).join(' • ');
+
+            tr.innerHTML = `
+                <td>
+                    <div style="font-weight: 600; color: #f1f5f9;">${escapeHtml(r.equipment_name || 'Equipment')}</div>
+                    ${modelSerial ? `<small class="text-muted" style="font-size: 11px;">${escapeHtml(modelSerial)}</small>` : ''}
+                </td>
+                <td>
+                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                        <span class="badge equip-code-badge">${escapeHtml(r.equipment_code || '—')}</span>
+                        <span class="badge badge-equip-category" style="font-size: 10px;">${escapeHtml(r.category || 'General')}</span>
+                    </div>
+                </td>
+                <td>${locationText}</td>
+                <td>${formatResourceStatusBadge(r.status)}</td>
+                <td>${checkoutDisplay}</td>
+                <td>${returnDisplay}</td>
+                <td style="max-width: 160px; word-break: break-word;">${r.notes ? escapeHtml(r.notes) : '<span class="text-muted">—</span>'}</td>
+                <td>${actionsHtml}</td>
+            `;
+
+            tableBody.appendChild(tr);
+        });
+
+        // Wire action button listeners
+        tableBody.querySelectorAll('.btn-resource-checkout').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const rid = Number(btn.dataset.resourceId);
+                const eqName = btn.dataset.equipmentName || 'Equipment';
+                handleResourceCheckout(activeResourcesBookingId, rid, eqName);
+            });
+        });
+
+        tableBody.querySelectorAll('.btn-resource-return').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const rid = Number(btn.dataset.resourceId);
+                const eqName = btn.dataset.equipmentName || 'Equipment';
+                handleResourceReturn(activeResourcesBookingId, rid, eqName);
+            });
+        });
+
+        tableBody.querySelectorAll('.btn-resource-remove:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const rid = Number(btn.dataset.resourceId);
+                const eqName = btn.dataset.equipmentName || 'Equipment';
+                handleResourceDelete(activeResourcesBookingId, rid, eqName);
+            });
+        });
+    }
+
+    /**
+     * Load catalog available equipment into the select dropdown.
+     */
+    async function loadAvailableEquipmentDropdown() {
+        const select = document.getElementById('resourceEquipmentSelect');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Loading available equipment...</option>';
+        select.disabled = true;
+
+        try {
+            const response = await fetch('/api/equipment/availability', {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+            select.disabled = false;
+
+            if (!response.ok || result.status !== 'success' || !Array.isArray(result.data)) {
+                select.innerHTML = '<option value="">Unable to load available equipment</option>';
+                return;
+            }
+
+            const items = result.data;
+            const assignedIds = new Set(currentResourcesList.map(r => Number(r.equipment_id)));
+            const availableItems = items.filter(item => !assignedIds.has(Number(item.id)));
+
+            if (availableItems.length === 0) {
+                select.innerHTML = '<option value="">No equipment currently available in catalog</option>';
+                return;
+            }
+
+            let optionsHtml = '<option value="">Select an equipment item to assign...</option>';
+            availableItems.forEach(item => {
+                const locStr = item.location_name ? ` [${item.location_name}]` : (item.default_room_name ? ` [Room: ${item.default_room_name}]` : '');
+                optionsHtml += `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code || '—')}) - ${escapeHtml(item.category || 'General')}${escapeHtml(locStr)}</option>`;
+            });
+
+            select.innerHTML = optionsHtml;
+
+        } catch (e) {
+            select.disabled = false;
+            select.innerHTML = '<option value="">Network error loading equipment</option>';
+        }
+    }
+
+    /**
+     * Handle submission of the assign resource form.
+     */
+    async function handleResourceFormSubmit(e) {
+        e.preventDefault();
+        if (!activeResourcesBookingId) return;
+
+        const select = document.getElementById('resourceEquipmentSelect');
+        const notesInput = document.getElementById('resourceNotes');
+        const errEl = document.getElementById('resourceFormError');
+        const submitBtn = document.getElementById('submitResourceBtn');
+        const formCard = document.getElementById('resourceFormCard');
+
+        const equipmentId = select ? select.value : '';
+        if (!equipmentId) {
+            if (errEl) {
+                errEl.innerHTML = '<i class="bi bi-exclamation-circle"></i> Please select an equipment item to assign.';
+                errEl.classList.remove('d-none');
+            }
+            return;
+        }
+
+        if (errEl) {
+            errEl.innerHTML = '';
+            errEl.classList.add('d-none');
+        }
+
+        const payload = {
+            equipment_id: Number(equipmentId),
+            quantity: 1,
+            notes: (notesInput?.value || '').trim() || null
+        };
+
+        try {
+            if (submitBtn) submitBtn.disabled = true;
+
+            const response = await fetch(`/api/bookings/${activeResourcesBookingId}/resources`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            // Conflict handling (HTTP 409)
+            if (response.status === 409) {
+                if (errEl) {
+                    let conflictHtml = `<i class="bi bi-exclamation-triangle-fill" style="color: #fca5a5; font-size: 15px;"></i> <div><strong>Schedule Conflict:</strong> ${escapeHtml(result.message || 'Equipment is reserved for an overlapping booking.')}`;
+                    if (result.conflicting_booking) {
+                        const cb = result.conflicting_booking;
+                        const cbId = cb.booking_id || cb.id || '—';
+                        const cbTitle = escapeHtml(cb.booking_title || cb.title || 'Untitled Meeting');
+                        const cbTime = (cb.start_time && cb.end_time) ? `${formatDateForDisplay(cb.start_time)} ${formatTimeRangeForDisplay(cb.start_time, cb.end_time)}` : '';
+                        conflictHtml += `<br><small style="margin-top: 4px; display: block; color: #fed7aa;">Conflicting Booking #${cbId}: <strong>"${cbTitle}"</strong> (${cbTime})</small>`;
+                    }
+                    conflictHtml += '</div>';
+                    errEl.innerHTML = conflictHtml;
+                    errEl.classList.remove('d-none');
+                }
+                return;
+            }
+
+            if (!response.ok || result.status !== 'success') {
+                if (errEl) {
+                    let errMsg = result.message || 'Unable to assign resource.';
+                    if (result.errors && typeof result.errors === 'object') {
+                        const firstKey = Object.keys(result.errors)[0];
+                        if (firstKey) errMsg = result.errors[firstKey];
+                    }
+                    errEl.innerHTML = `<i class="bi bi-exclamation-circle"></i> ${escapeHtml(errMsg)}`;
+                    errEl.classList.remove('d-none');
+                }
+                return;
+            }
+
+            // Success
+            if (typeof showAppNotification === 'function') {
+                showAppNotification(result.message || 'Resource assigned successfully.', 'success', 'Equipment Assigned');
+            }
+
+            formCard?.classList.add('d-none');
+            resetResourceForm();
+            fetchResourcesData(activeResourcesBookingId);
+
+        } catch (err) {
+            if (errEl) {
+                errEl.innerHTML = '<i class="bi bi-exclamation-circle"></i> Network error while assigning equipment. Please try again.';
+                errEl.classList.remove('d-none');
+            }
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Handle resource checkout action.
+     */
+    async function handleResourceCheckout(bookingId, resourceId, equipmentName) {
+        if (!confirm(`Check out "${equipmentName}" for this meeting?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/resources/${resourceId}/checkout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                if (typeof showAppNotification === 'function') {
+                    showAppNotification(result.message || 'Unable to check out resource.', 'error', 'Checkout Failed');
+                } else {
+                    alert(result.message || 'Unable to check out resource.');
+                }
+                return;
+            }
+
+            if (typeof showAppNotification === 'function') {
+                showAppNotification(result.message || `Checked out "${equipmentName}".`, 'success', 'Resource Checked Out');
+            }
+
+            fetchResourcesData(bookingId);
+
+        } catch (e) {
+            if (typeof showAppNotification === 'function') {
+                showAppNotification('Network error during checkout.', 'error', 'Error');
+            }
+        }
+    }
+
+    /**
+     * Handle resource return action.
+     */
+    async function handleResourceReturn(bookingId, resourceId, equipmentName) {
+        if (!confirm(`Confirm return of "${equipmentName}"?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/resources/${resourceId}/return`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                if (typeof showAppNotification === 'function') {
+                    showAppNotification(result.message || 'Unable to return resource.', 'error', 'Return Failed');
+                } else {
+                    alert(result.message || 'Unable to return resource.');
+                }
+                return;
+            }
+
+            if (typeof showAppNotification === 'function') {
+                showAppNotification(result.message || `Returned "${equipmentName}".`, 'success', 'Resource Returned');
+            }
+
+            fetchResourcesData(bookingId);
+
+        } catch (e) {
+            if (typeof showAppNotification === 'function') {
+                showAppNotification('Network error during return.', 'error', 'Error');
+            }
+        }
+    }
+
+    /**
+     * Handle removing an assigned resource.
+     */
+    async function handleResourceDelete(bookingId, resourceId, equipmentName) {
+        if (!confirm(`Are you sure you want to remove "${equipmentName}" from this meeting?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/bookings/${bookingId}/resources/${resourceId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.status === 401) {
+                window.location.href = '/login';
+                return;
+            }
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== 'success') {
+                if (typeof showAppNotification === 'function') {
+                    showAppNotification(result.message || 'Unable to remove resource.', 'error', 'Delete Failed');
+                } else {
+                    alert(result.message || 'Unable to remove resource.');
+                }
+                return;
+            }
+
+            if (typeof showAppNotification === 'function') {
+                showAppNotification(result.message || `Removed "${equipmentName}".`, 'success', 'Resource Removed');
+            }
+
+            fetchResourcesData(bookingId);
+
+        } catch (e) {
+            if (typeof showAppNotification === 'function') {
+                showAppNotification('Network error during removal.', 'error', 'Error');
+            }
         }
     }
 

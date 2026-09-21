@@ -840,6 +840,14 @@
                 <p class="cal-detail-desc" id="calDetailDescription">No description provided.</p>
             </div>
 
+            <!-- Assigned Resources Section -->
+            <div class="cal-detail-section" id="calDetailResourcesSection">
+                <span class="cal-detail-label"><i class="bi bi-box-seam"></i> Assigned Resources</span>
+                <div id="calDetailResourcesContent" class="cal-resources-tags">
+                    <span class="cal-resource-none text-muted" style="font-size: 13px; color: var(--color-text-muted, #7b8cae);">None assigned</span>
+                </div>
+            </div>
+
             <!-- Rejection Reason Section -->
             <div class="cal-rejection-card d-none" id="calDetailRejectionSection">
                 <span class="cal-rejection-label"><i class="bi bi-exclamation-octagon"></i> Rejection Reason</span>
@@ -879,6 +887,9 @@
             </button>
             <button type="button" class="btn-cal-visitors" id="calDetailVisitorsBtn" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.3); color: #c084fc; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
                 <i class="bi bi-person-badge"></i> Visitors
+            </button>
+            <button type="button" class="btn-cal-resources" id="calDetailResourcesBtn" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.3); color: #facc15; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer;">
+                <i class="bi bi-box-seam"></i> Resources
             </button>
             <button type="button" class="btn-booking-submit" id="calDetailEditBtn">
                 <i class="bi bi-pencil"></i> Edit Booking
@@ -1161,6 +1172,192 @@
 
         <div class="booking-modal-footer">
             <button type="button" class="btn-booking-cancel" id="closeVisitorsModalBtn">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================
+     Meeting Resources & Equipment Modal (Phase 4 Feature 4.4 Milestone 5)
+     ================================================================ -->
+<div class="booking-modal-overlay d-none" id="bookingResourcesModal">
+    <div class="booking-modal resources-modal" role="dialog" aria-modal="true" aria-labelledby="resourcesModalTitle" style="max-width: 920px;">
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="resourcesModalTitle">Meeting Resources &amp; Equipment</h2>
+                <p id="resourcesModalSubtitle">Reserve, check out, and manage equipment assigned to this meeting.</p>
+            </div>
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeResourcesModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="resources-modal-body" style="padding: 20px 24px;">
+            <!-- Loading state -->
+            <div id="resourcesLoading" class="attendance-state">
+                <i class="bi bi-arrow-repeat spin"></i>
+                <span>Loading assigned resources...</span>
+            </div>
+
+            <!-- Error state -->
+            <div id="resourcesError" class="attendance-state attendance-error d-none">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span id="resourcesErrorText">Unable to load resources for this meeting.</span>
+                <button type="button" class="btn-attendance-retry" id="resourcesRetryBtn">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Retry</span>
+                </button>
+            </div>
+
+            <!-- Content Container -->
+            <div id="resourcesContent" class="resources-content d-none">
+                <!-- Meeting details banner -->
+                <div class="attendance-meeting-banner">
+                    <div class="attendance-meeting-header">
+                        <h3 class="attendance-meeting-title" id="resMeetingTitle">—</h3>
+                        <span id="resMeetingStatusBadge" class="booking-status booking-status-approved">Approved</span>
+                    </div>
+                    <div class="attendance-meeting-meta">
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-door-open"></i>
+                            <span id="resRoomLocation">—</span>
+                        </div>
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-clock"></i>
+                            <span id="resDateTime">—</span>
+                        </div>
+                        <div class="attendance-meta-item">
+                            <i class="bi bi-person"></i>
+                            <span id="resOrganizer">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recurrence Occurrence Scoped Notice Banner -->
+                <div class="resource-recurrence-banner d-none" id="resRecurrenceBanner">
+                    <i class="bi bi-repeat"></i>
+                    <span><strong>Recurring Occurrence:</strong> Resource assignments and checkouts apply strictly to this specific meeting occurrence only.</span>
+                </div>
+
+                <!-- Cancelled / Rejected Warning Banner -->
+                <div class="cal-cancelled-banner d-none" id="resCancelledBanner">
+                    <i class="bi bi-x-circle-fill"></i>
+                    <span id="resCancelledText">This booking is cancelled. Resource assignments are locked.</span>
+                </div>
+
+                <!-- Summary Statistics Grid -->
+                <div class="attendance-stats-grid resources-stats-grid">
+                    <div class="attendance-stat-card">
+                        <span class="attendance-stat-value" id="resStatTotal">0</span>
+                        <span class="attendance-stat-label">Total Assigned</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-active">
+                        <span class="attendance-stat-value" id="resStatReserved">0</span>
+                        <span class="attendance-stat-label">Reserved</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-checkedin">
+                        <span class="attendance-stat-value" id="resStatCheckedOut">0</span>
+                        <span class="attendance-stat-label">Checked Out</span>
+                    </div>
+                    <div class="attendance-stat-card attendance-stat-checkedout">
+                        <span class="attendance-stat-value" id="resStatReturned">0</span>
+                        <span class="attendance-stat-label">Returned</span>
+                    </div>
+                </div>
+
+                <!-- Add Resource Toggle & Form Section -->
+                <div class="visitor-form-section" id="resourceFormSection">
+                    <div class="visitor-section-header">
+                        <div class="visitor-section-title">
+                            <i class="bi bi-box-seam"></i>
+                            <span>Assigned Equipment &amp; Resources</span>
+                            <span class="badge visitor-count-badge" id="resourceCountBadge">0</span>
+                        </div>
+                        <button type="button" class="btn-add-visitor-toggle" id="toggleAddResourceFormBtn">
+                            <i class="bi bi-plus-lg"></i>
+                            <span>Assign Resource</span>
+                        </button>
+                    </div>
+
+                    <!-- Collapsible Add/Assign Resource Form -->
+                    <div id="resourceFormCard" class="visitor-form-card d-none">
+                        <div class="visitor-form-header">
+                            <h4 id="resourceFormTitle">Assign Equipment to Meeting</h4>
+                            <button type="button" class="btn-close-visitor-form" id="cancelResourceFormHeaderBtn" aria-label="Cancel">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        <form id="resourceAssignForm" novalidate>
+                            <div class="visitor-form-grid">
+                                <div class="visitor-form-group visitor-form-full">
+                                    <label for="resourceEquipmentSelect">Select Available Equipment <span>*</span></label>
+                                    <select id="resourceEquipmentSelect" name="equipment_id" required>
+                                        <option value="">Loading available equipment...</option>
+                                    </select>
+                                    <small class="form-text" style="color: var(--color-text-muted, #7b8cae); font-size: 11.5px; margin-top: 4px; display: block;">Only equipment currently catalog-marked as 'Available' is listed.</small>
+                                </div>
+                                <div class="visitor-form-group">
+                                    <label for="resourceQuantity">Quantity</label>
+                                    <input type="number" id="resourceQuantity" name="quantity" value="1" readonly disabled style="opacity: 0.8; cursor: not-allowed;">
+                                    <small class="form-text" style="color: var(--color-text-muted, #7b8cae); font-size: 11.5px; margin-top: 4px; display: block;">Assets are physical units (Qty: 1).</small>
+                                </div>
+                                <div class="visitor-form-group visitor-form-full">
+                                    <label for="resourceNotes">Assignment Notes</label>
+                                    <input type="text" id="resourceNotes" name="notes" placeholder="e.g. Needs HDMI adapter, set up in room beforehand" maxlength="1000">
+                                </div>
+                            </div>
+
+                            <!-- Form Error / Conflict Alert -->
+                            <div id="resourceFormError" class="visitor-form-alert d-none"></div>
+
+                            <div class="visitor-form-actions">
+                                <button type="button" class="btn-visitor-cancel" id="cancelResourceBtn">Cancel</button>
+                                <button type="submit" class="btn-visitor-submit" id="submitResourceBtn">
+                                    <i class="bi bi-check-lg"></i>
+                                    <span id="submitResourceBtnText">Assign Equipment</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Empty Resources state -->
+                <div id="resourcesEmpty" class="attendance-state d-none">
+                    <i class="bi bi-box-seam"></i>
+                    <span>No equipment or resources assigned to this meeting yet.</span>
+                </div>
+
+                <!-- Resources Table Wrapper -->
+                <div id="resourcesTableWrapper" class="attendance-table-wrapper d-none">
+                    <table class="table custom-dark-table attendance-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>EQUIPMENT</th>
+                                <th>CODE / CATEGORY</th>
+                                <th>LOCATION</th>
+                                <th>STATUS</th>
+                                <th>CHECK-OUT</th>
+                                <th>RETURN</th>
+                                <th>NOTES</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resourcesTableBody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="booking-modal-footer">
+            <button type="button" class="btn-booking-cancel" id="closeResourcesModalBtn">
                 Close
             </button>
         </div>
@@ -1798,6 +1995,171 @@
 .btn-visitor-delete:hover {
     background: rgba(239, 68, 68, 0.15);
     border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Resource Management Styles (Milestone 5) */
+.booking-resources-btn:hover {
+    background-color: rgba(234, 179, 8, 0.15) !important;
+    border-color: rgba(234, 179, 8, 0.4) !important;
+    color: #facc15 !important;
+}
+
+.btn-cal-resources:hover {
+    background: rgba(234, 179, 8, 0.22) !important;
+    border-color: rgba(234, 179, 8, 0.5) !important;
+    color: #fde047 !important;
+}
+
+.cal-resources-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.cal-resource-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+}
+
+.resource-recurrence-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    color: #38bdf8;
+    font-size: 13px;
+}
+
+.badge-resource-reserved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(234, 179, 8, 0.14);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.badge-resource-checked-out {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(56, 189, 248, 0.14);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.badge-resource-returned {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-resource-cancelled {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.14);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.btn-resource-action {
+    padding: 4px 9px;
+    border-radius: 5px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.btn-resource-checkout {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+}
+
+.btn-resource-checkout:hover {
+    background: rgba(56, 189, 248, 0.28);
+    color: #7dd3fc;
+}
+
+.btn-resource-return {
+    background: rgba(74, 222, 128, 0.15);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #4ade80;
+}
+
+.btn-resource-return:hover {
+    background: rgba(74, 222, 128, 0.28);
+    color: #86efac;
+}
+
+.btn-resource-remove {
+    background: transparent;
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.btn-resource-remove:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.btn-resource-remove:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: transparent !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    color: #64748b !important;
+}
+
+.resource-conflict-banner {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
 }
 </style>
 
