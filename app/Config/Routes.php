@@ -229,6 +229,12 @@ $routes->put('api/bookings/(:num)/visitors/(:num)', 'BookingVisitor::update/$1/$
 $routes->delete('api/bookings/(:num)/visitors/(:num)', 'BookingVisitor::delete/$1/$2');
 $routes->post('api/bookings/(:num)/visitors/(:num)/check-in', 'BookingVisitor::checkIn/$1/$2');
 $routes->post('api/bookings/(:num)/visitors/(:num)/check-out', 'BookingVisitor::checkOut/$1/$2');
+$routes->get('api/bookings/(:num)/resources', 'BookingResource::index/$1');
+$routes->post('api/bookings/(:num)/resources', 'BookingResource::create/$1');
+$routes->get('api/bookings/(:num)/resources/(:num)', 'BookingResource::show/$1/$2');
+$routes->delete('api/bookings/(:num)/resources/(:num)', 'BookingResource::delete/$1/$2');
+$routes->post('api/bookings/(:num)/resources/(:num)/checkout', 'BookingResource::checkout/$1/$2');
+$routes->post('api/bookings/(:num)/resources/(:num)/return', 'BookingResource::returnResource/$1/$2');
 
 // Legacy routes for backward compatibility
 $routes->get('bookings/(:num)', 'Booking::show/$1');
