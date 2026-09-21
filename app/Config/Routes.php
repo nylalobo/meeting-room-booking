@@ -237,6 +237,8 @@ $routes->get('api/bookings/(:num)/resources/(:num)', 'BookingResource::show/$1/$
 $routes->delete('api/bookings/(:num)/resources/(:num)', 'BookingResource::delete/$1/$2');
 $routes->post('api/bookings/(:num)/resources/(:num)/checkout', 'BookingResource::checkout/$1/$2');
 $routes->post('api/bookings/(:num)/resources/(:num)/return', 'BookingResource::returnResource/$1/$2');
+$routes->get('api/bookings/(:num)/catering', 'CateringRequest::bookingIndex/$1');
+$routes->post('api/bookings/(:num)/catering', 'CateringRequest::create/$1');
 
 // Legacy routes for backward compatibility
 $routes->get('bookings/(:num)', 'Booking::show/$1');
@@ -290,10 +292,13 @@ $routes->delete(
 |--------------------------------------------------------------------------
 */
 
-$routes->get(
-    'catering-requests',
-    'CateringRequest::index'
-);
+$routes->get('catering-requests', 'CateringRequest::index');
+$routes->get('api/catering-requests/(:num)', 'CateringRequest::show/$1');
+$routes->put('api/catering-requests/(:num)', 'CateringRequest::update/$1');
+$routes->delete('api/catering-requests/(:num)', 'CateringRequest::delete/$1');
+$routes->post('api/catering-requests/(:num)/approve', 'CateringRequest::approve/$1');
+$routes->post('api/catering-requests/(:num)/reject', 'CateringRequest::reject/$1');
+$routes->post('api/catering-requests/(:num)/complete', 'CateringRequest::complete/$1');
 
 
 /*
