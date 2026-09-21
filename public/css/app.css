@@ -4568,3 +4568,134 @@ input#recurrenceUntilDate {
     border-color: rgba(168, 85, 247, 0.35) !important;
     color: #c084fc !important;
 }
+
+/* ==========================================================================
+   Equipment Inventory Module
+   ========================================================================== */
+
+.equip-code-badge {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--color-indigo);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    display: inline-block;
+}
+
+.badge-equip-category {
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--color-text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    text-transform: capitalize;
+    display: inline-block;
+}
+
+.badge-equip-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 9999px;
+    text-transform: capitalize;
+    letter-spacing: 0.02em;
+}
+
+.badge-equip-available {
+    background-color: rgba(45, 212, 191, 0.12);
+    color: var(--color-teal);
+    border: 1px solid rgba(45, 212, 191, 0.25);
+}
+
+.badge-equip-maintenance {
+    background-color: rgba(251, 191, 36, 0.12);
+    color: var(--color-amber);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.badge-equip-damaged {
+    background-color: rgba(248, 113, 113, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(248, 113, 113, 0.25);
+}
+
+.badge-equip-retired {
+    background-color: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.equipment-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.equip-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.equip-action-btn:hover {
+    background: rgba(255, 255, 255, 0.10);
+    color: var(--color-text-white);
+    border-color: rgba(255, 255, 255, 0.20);
+}
+
+.equip-retire-btn:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    color: #fca5a5 !important;
+}
+
+.equip-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.equip-detail-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.equip-detail-item.full-width {
+    grid-column: 1 / -1;
+}
+
+.equip-detail-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+}
+
+.equip-detail-value {
+    font-size: 13.5px;
+    color: var(--color-text-white);
+    font-weight: 500;
+    word-break: break-word;
+}

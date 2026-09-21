@@ -117,6 +117,11 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
                 <span class="nav-text">Facilities</span>
             </a>
 
+            <a href="<?= base_url('equipment') ?>" class="nav-item <?= str_starts_with(uri_string(), 'equipment') ? 'active' : '' ?>" title="Equipment">
+                <i class="bi bi-tools nav-icon"></i>
+                <span class="nav-text">Equipment</span>
+            </a>
+
             <a href="<?= base_url('users') ?>" class="nav-item <?= str_starts_with(uri_string(), 'users') ? 'active' : '' ?>" title="Users">
                 <i class="bi bi-person nav-icon"></i>
                 <span class="nav-text">Users</span>
@@ -207,6 +212,7 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
 <script src="<?= base_url('js/bookings.js') ?>"></script>
 <script src="<?= base_url('js/participants.js') ?>"></script>
 <script src="<?= base_url('js/facilities.js') ?>"></script>
+<script src="<?= base_url('js/equipment.js') ?>"></script>
 <script src="<?= base_url('js/users.js') ?>"></script>
 <script src="<?= base_url('js/departments.js') ?>"></script>
 

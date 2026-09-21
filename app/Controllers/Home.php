@@ -46,6 +46,13 @@ class Home extends BaseController
         ]);
     }
 
+    public function equipment(): string
+    {
+        return view('equipment/index', [
+            'title' => 'Equipment',
+        ]);
+    }
+
     public function users(): string
     {
         return view('users/index', [

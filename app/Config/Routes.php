@@ -181,6 +181,8 @@ $routes->delete('facilities/(:num)', 'Facility::delete/$1');
 |
 */
 
+$routes->get('equipment', 'Home::equipment');
+
 $routes->get('api/equipment/availability', 'Equipment::availability');
 $routes->get('api/equipment', 'Equipment::index');
 $routes->get('api/equipment/(:num)', 'Equipment::show/$1');
