@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= $title ?? 'Sign In' ?> - MeetSpace Enterprise Suite</title>
+    <title><?= $title ?? 'Forgot Password' ?> - MeetSpace Enterprise Suite</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,12 +48,12 @@
                 radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.07) 0%, transparent 40%);
         }
 
-        .login-container {
+        .auth-container {
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
         }
 
-        .login-brand {
+        .auth-brand {
             display: flex;
             align-items: center;
             justify-content: center;
@@ -98,54 +98,62 @@
             font-weight: 700;
             color: #ffffff;
             line-height: 1.2;
-            letter-spacing: -0.01em;
         }
 
         .brand-title-accent {
-            background: linear-gradient(135deg, #38bdf8 0%, #c084fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
             color: #38bdf8;
         }
 
         .brand-subtitle {
             font-size: 11px;
             font-weight: 600;
-            color: #7e8ea6;
-            letter-spacing: 0.14em;
+            color: var(--color-text-muted);
+            letter-spacing: 0.12em;
             text-transform: uppercase;
             margin-top: 2px;
-            line-height: 1.2;
         }
 
-        .login-card {
-            background: var(--bg-card);
+        .auth-card {
+            background-color: var(--bg-card);
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
+            border-radius: 16px;
             padding: 36px 32px;
-            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.05);
         }
 
-        .login-header {
-            margin-bottom: 24px;
+        .auth-header {
             text-align: center;
+            margin-bottom: 24px;
         }
 
-        .login-title {
-            font-size: 19px;
+        .auth-icon-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: #c084fc;
+            font-size: 24px;
+        }
+
+        .auth-title {
+            font-size: 22px;
             font-weight: 700;
             color: #ffffff;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
 
-        .login-description {
+        .auth-description {
             font-size: 13.5px;
-            color: var(--color-text-muted);
-            line-height: 1.4;
+            color: #94a3b8;
+            line-height: 1.5;
         }
 
-        .login-alert {
+        .auth-alert {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -159,41 +167,20 @@
             line-height: 1.4;
         }
 
-        .login-alert i {
+        .auth-alert i {
             font-size: 16px;
             color: #ef4444;
             flex-shrink: 0;
         }
 
-        .login-alert-success {
+        .auth-alert-success {
             background: rgba(34, 197, 94, 0.12);
             border: 1px solid rgba(34, 197, 94, 0.28);
             color: #86efac;
         }
 
-        .login-alert-success i {
+        .auth-alert-success i {
             color: #22c55e;
-        }
-
-        .login-footer-links {
-            margin-top: 22px;
-            text-align: center;
-            font-size: 13px;
-            color: #94a3b8;
-        }
-
-        .login-footer-links a {
-            color: #38bdf8;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .login-footer-links a.register-link {
-            font-weight: 600;
-        }
-
-        .login-footer-links a:hover {
-            text-decoration: underline;
         }
 
         .form-group {
@@ -247,11 +234,7 @@
             color: #38bdf8;
         }
 
-        .form-control-custom::placeholder {
-            color: #475569;
-        }
-
-        .btn-signin {
+        .btn-primary-auth {
             width: 100%;
             background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
             color: #ffffff;
@@ -267,20 +250,33 @@
             gap: 8px;
             transition: all 0.15s ease;
             box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
-            margin-top: 26px;
+            margin-top: 24px;
         }
 
-        .btn-signin:hover {
+        .btn-primary-auth:hover {
             background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
             box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
             transform: translateY(-1px);
         }
 
-        .btn-signin:active {
-            transform: translateY(0);
+        .auth-footer-links {
+            margin-top: 24px;
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
         }
 
-        .login-footer {
+        .auth-footer-links a {
+            color: #38bdf8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-footer-links a:hover {
+            text-decoration: underline;
+        }
+
+        .auth-footer {
             margin-top: 28px;
             text-align: center;
             font-size: 12px;
@@ -290,10 +286,10 @@
 </head>
 <body>
 
-<div class="login-container">
+<div class="auth-container">
 
-    <!-- MeetSpace Branding -->
-    <div class="login-brand">
+    <!-- Brand -->
+    <a href="<?= base_url('login') ?>" class="auth-brand">
         <div class="brand-logo-box">
             <img src="<?= base_url('assets/images/meetspace-logo.png') ?>" alt="MeetSpace Logo" class="brand-logo-crop">
         </div>
@@ -301,35 +297,37 @@
             <div class="brand-title">Meet<span class="brand-title-accent">Space</span></div>
             <div class="brand-subtitle">Enterprise Suite</div>
         </div>
-    </div>
+    </a>
 
-    <!-- Login Card -->
-    <div class="login-card">
+    <!-- Forgot Password Card -->
+    <div class="auth-card">
 
-        <div class="login-header">
-            <h1 class="login-title">Sign In</h1>
-            <p class="login-description">Enter your enterprise credentials to access your workspace.</p>
+        <div class="auth-header">
+            <div class="auth-icon-circle">
+                <i class="bi bi-key"></i>
+            </div>
+            <h1 class="auth-title">Forgot Password?</h1>
+            <p class="auth-description">
+                Enter your work email and we'll send you a 6-digit recovery code to reset your password.
+            </p>
         </div>
 
         <?php if (!empty($success)): ?>
-            <div class="login-alert login-alert-success" role="alert">
+            <div class="auth-alert auth-alert-success" role="alert">
                 <i class="bi bi-check-circle-fill"></i>
                 <span><?= esc($success) ?></span>
             </div>
         <?php endif; ?>
 
         <?php if (!empty($error)): ?>
-            <div class="login-alert" role="alert">
+            <div class="auth-alert" role="alert">
                 <i class="bi bi-exclamation-circle-fill"></i>
                 <span><?= esc($error) ?></span>
             </div>
         <?php endif; ?>
 
-        <form action="<?= base_url('login') ?>" method="POST" autocomplete="on">
+        <form action="<?= base_url('forgot-password') ?>" method="POST" autocomplete="on">
             <?= csrf_field() ?>
-            <?php if (!empty($returnUrl)): ?>
-                <input type="hidden" name="return_url" value="<?= esc($returnUrl) ?>">
-            <?php endif; ?>
 
             <!-- Email Address -->
             <div class="form-group">
@@ -350,45 +348,25 @@
                 </div>
             </div>
 
-            <!-- Password -->
-            <div class="form-group">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <label for="password" class="form-label mb-0">Password</label>
-                    <a href="<?= base_url('forgot-password') ?>" style="color: #38bdf8; font-size: 12.5px; text-decoration: none;">Forgot password?</a>
-                </div>
-                <div class="input-group-custom">
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        class="form-control-custom"
-                        placeholder="••••••••"
-                        required
-                        autocomplete="current-password"
-                    >
-                    <i class="bi bi-lock input-icon"></i>
-                </div>
-            </div>
-
             <!-- Submit Button -->
-            <button type="submit" class="btn-signin" id="submitLoginBtn">
-                <i class="bi bi-box-arrow-in-right"></i>
-                Sign In
+            <button type="submit" class="btn-primary-auth" id="sendResetBtn">
+                <i class="bi bi-send"></i>
+                Send Recovery Code
             </button>
         </form>
 
-        <div class="login-footer-links">
+        <div class="auth-footer-links">
             <div>
-                <a href="<?= base_url('verify-email') ?>">Need to verify your email? Enter code</a>
+                Remember your password? <a href="<?= base_url('login') ?>">Back to Sign In</a>
             </div>
-            <div style="margin-top: 8px;">
-                Don't have an account? <a href="<?= base_url('register') ?>" class="register-link">Create Account</a>
+            <div style="margin-top: 6px;">
+                Already have a recovery code? <a href="<?= base_url('reset-password') ?>">Enter Code</a>
             </div>
         </div>
 
     </div>
 
-    <div class="login-footer">
+    <div class="auth-footer">
         &copy; <?= date('Y') ?> MeetSpace Enterprise Suite &bull; Secure Room & Resource Management
     </div>
 

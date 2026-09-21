@@ -111,6 +111,11 @@ class Filters extends BaseFilters
                 'login',
                 'register',
                 'resend-verification',
+                'verify-email',
+                'verify-email/*',
+                'forgot-password',
+                'forgot-password/*',
+                'reset-password',
             ],
         ],
     ];

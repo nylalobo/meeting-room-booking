@@ -413,34 +413,42 @@ class Auth extends BaseController
         $lastName    = $data['last_name'];
         $password    = $data['password'];
 
-        $successNotice = 'Registration successful! Please check your email inbox to verify your account before signing in.';
+        $successNotice = 'Registration successful! A 6-digit verification code has been sent to your email.';
 
         // Check for existing account (anti-enumeration: don't reveal existence)
         $existing = $this->userModel->where('email', $email)->first();
 
         if ($existing !== null) {
-            // If the user exists but is unverified, regenerate verification token and resend
+            // If user exists and is unverified, send a fresh OTP (with cooldown protection)
             if (empty($existing['email_verified_at'])) {
-                $rawToken    = bin2hex(random_bytes(32));
-                $hashedToken = hash('sha256', $rawToken);
-                $expiresAt   = date('Y-m-d H:i:s', time() + (24 * 3600));
+                $sentAt  = !empty($existing['email_verification_otp_sent_at']) ? strtotime($existing['email_verification_otp_sent_at']) : 0;
+                $elapsed = time() - $sentAt;
 
-                $updateData = [
-                    'email_verification_token'      => $hashedToken,
-                    'email_verification_expires_at' => $expiresAt,
-                    'role_id'                       => $submittedRoleId,
-                ];
-                if ($departmentId !== null) {
-                    $updateData['department_id'] = $departmentId;
+                if ($elapsed >= 60) {
+                    $otp         = $this->generateOtp();
+                    $hashedOtp   = hash('sha256', $otp);
+                    $expiresAt   = date('Y-m-d H:i:s', time() + 600); // 10 minutes
+
+                    $updateData = [
+                        'email_verification_otp_hash'       => $hashedOtp,
+                        'email_verification_otp_expires_at' => $expiresAt,
+                        'email_verification_otp_attempts'   => 0,
+                        'email_verification_otp_sent_at'    => date('Y-m-d H:i:s'),
+                        'role_id'                           => $submittedRoleId,
+                    ];
+                    if ($departmentId !== null) {
+                        $updateData['department_id'] = $departmentId;
+                    }
+                    if ($phone !== null) {
+                        $updateData['phone'] = $phone;
+                    }
+
+                    $this->userModel->update($existing['id'], $updateData);
+                    $this->sendVerificationEmail($existing['first_name'], $email, $otp);
                 }
-                if ($phone !== null) {
-                    $updateData['phone'] = $phone;
-                }
-
-                $this->userModel->update($existing['id'], $updateData);
-
-                $this->sendVerificationEmail($existing['first_name'], $email, $rawToken);
             }
+
+            $this->session->set('verification_email', $email);
 
             if ($this->isJsonRequest()) {
                 return $this->response
@@ -448,30 +456,33 @@ class Auth extends BaseController
                     ->setJSON([
                         'status'  => 'success',
                         'message' => $successNotice,
+                        'email'   => $email,
                     ]);
             }
 
-            return redirect()->to('/login')
+            return redirect()->to('/verify-email')
                 ->with('success', $successNotice);
         }
 
         // New unverified user registration
-        $rawToken    = bin2hex(random_bytes(32));
-        $hashedToken = hash('sha256', $rawToken);
-        $expiresAt   = date('Y-m-d H:i:s', time() + (24 * 3600));
+        $otp         = $this->generateOtp();
+        $hashedOtp   = hash('sha256', $otp);
+        $expiresAt   = date('Y-m-d H:i:s', time() + 600); // 10 minutes
 
         $newUserData = [
-            'first_name'                    => $firstName,
-            'last_name'                     => $lastName,
-            'email'                         => $email,
-            'password_hash'                 => password_hash($password, PASSWORD_DEFAULT),
-            'department_id'                 => $departmentId,
-            'role_id'                       => $submittedRoleId,
-            'phone'                         => $phone,
-            'is_active'                     => 1,
-            'email_verified_at'             => null,
-            'email_verification_token'      => $hashedToken,
-            'email_verification_expires_at' => $expiresAt,
+            'first_name'                        => $firstName,
+            'last_name'                         => $lastName,
+            'email'                             => $email,
+            'password_hash'                     => password_hash($password, PASSWORD_DEFAULT),
+            'department_id'                     => $departmentId,
+            'role_id'                           => $submittedRoleId,
+            'phone'                             => $phone,
+            'is_active'                         => 1,
+            'email_verified_at'                 => null,
+            'email_verification_otp_hash'       => $hashedOtp,
+            'email_verification_otp_expires_at' => $expiresAt,
+            'email_verification_otp_attempts'   => 0,
+            'email_verification_otp_sent_at'    => date('Y-m-d H:i:s'),
         ];
 
         try {
@@ -492,8 +503,10 @@ class Auth extends BaseController
                 ->with('error', 'Failed to create account. Please try again later.');
         }
 
-        // Send verification email
-        $this->sendVerificationEmail($firstName, $email, $rawToken);
+        // Send verification email with 6-digit OTP
+        $this->sendVerificationEmail($firstName, $email, $otp);
+
+        $this->session->set('verification_email', $email);
 
         if ($this->isJsonRequest()) {
             return $this->response
@@ -501,126 +514,225 @@ class Auth extends BaseController
                 ->setJSON([
                     'status'  => 'success',
                     'message' => $successNotice,
+                    'email'   => $email,
                 ]);
         }
 
-        return redirect()->to('/login')
+        return redirect()->to('/verify-email')
             ->with('success', $successNotice);
     }
 
     /**
-     * Verify email via single-use token.
+     * Render the Email OTP Verification page.
      */
-    public function verifyEmail(string $token): string|ResponseInterface
-    {
-        $token = trim($token);
-
-        // Basic validation of token format (64-character hex string)
-        if (empty($token) || strlen($token) !== 64 || !ctype_xdigit($token)) {
-            if ($this->isJsonRequest()) {
-                return $this->response
-                    ->setStatusCode(400)
-                    ->setJSON([
-                        'status'  => 'error',
-                        'message' => 'Invalid or malformed verification link.',
-                    ]);
-            }
-
-            return $this->response
-                ->setStatusCode(400)
-                ->setBody(view('auth/verify_email_status', [
-                    'title'   => 'Invalid Verification Link',
-                    'status'  => 'invalid',
-                    'message' => 'This email verification link is malformed or invalid.',
-                ]));
-        }
-
-        $hashedToken = hash('sha256', $token);
-
-        $user = $this->userModel
-            ->where('email_verification_token', $hashedToken)
-            ->first();
-
-        if ($user === null) {
-            if ($this->isJsonRequest()) {
-                return $this->response
-                    ->setStatusCode(400)
-                    ->setJSON([
-                        'status'  => 'error',
-                        'message' => 'Invalid or already-used verification link.',
-                    ]);
-            }
-
-            return $this->response
-                ->setStatusCode(400)
-                ->setBody(view('auth/verify_email_status', [
-                    'title'   => 'Invalid Verification Link',
-                    'status'  => 'invalid',
-                    'message' => 'This verification link is invalid, expired, or has already been used.',
-                ]));
-        }
-
-        // Check expiration
-        if (!empty($user['email_verification_expires_at']) && strtotime($user['email_verification_expires_at']) < time()) {
-            if ($this->isJsonRequest()) {
-                return $this->response
-                    ->setStatusCode(410)
-                    ->setJSON([
-                        'status'  => 'error',
-                        'message' => 'Verification link has expired.',
-                    ]);
-            }
-
-            return $this->response
-                ->setStatusCode(410)
-                ->setBody(view('auth/verify_email_status', [
-                    'title'   => 'Link Expired',
-                    'status'  => 'expired',
-                    'message' => 'This verification link has expired. Verification links are valid for 24 hours.',
-                ]));
-        }
-
-        // Mark email as verified and clear token (single-use enforcement)
-        $this->userModel->update($user['id'], [
-            'email_verified_at'             => date('Y-m-d H:i:s'),
-            'email_verification_token'      => null,
-            'email_verification_expires_at' => null,
-        ]);
-
-        if ($this->isJsonRequest()) {
-            return $this->response->setJSON([
-                'status'  => 'success',
-                'message' => 'Email verified successfully. You can now log in.',
-            ]);
-        }
-
-        return view('auth/verify_email_status', [
-            'title'   => 'Email Verified',
-            'status'  => 'success',
-            'message' => 'Your email address has been verified successfully! You can now sign in to your MeetSpace account.',
-        ]);
-    }
-
-    /**
-     * Render resend verification form.
-     */
-    public function resendVerificationForm(): string|ResponseInterface
+    public function verifyEmailForm(): string|ResponseInterface
     {
         if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
             return redirect()->to('/');
         }
 
-        return view('auth/resend_verification', [
-            'title'   => 'Resend Verification',
-            'error'   => $this->session->getFlashdata('error'),
-            'success' => $this->session->getFlashdata('success'),
+        $email = (string) (
+            $this->request->getGet('email')
+            ?? $this->session->get('verification_email')
+            ?? old('email')
+            ?? ''
+        );
+
+        $cooldownRemaining = 0;
+        if (!empty($email)) {
+            $user = $this->userModel->where('email', strtolower($email))->first();
+            if ($user && !empty($user['email_verification_otp_sent_at'])) {
+                $elapsed = time() - strtotime($user['email_verification_otp_sent_at']);
+                if ($elapsed < 60) {
+                    $cooldownRemaining = 60 - $elapsed;
+                }
+            }
+        }
+
+        return view('auth/verify_email', [
+            'title'             => 'Verify Email',
+            'email'             => $email,
+            'cooldownRemaining' => $cooldownRemaining,
+            'error'             => $this->session->getFlashdata('error'),
+            'success'           => $this->session->getFlashdata('success'),
         ]);
     }
 
     /**
-     * Process resend verification submission.
+     * Process 6-digit Email OTP Verification submission.
      */
-    public function resendVerification(): ResponseInterface
+    public function attemptVerifyEmail(): ResponseInterface
+    {
+        if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            return redirect()->to('/');
+        }
+
+        $email = trim((string) ($this->request->getPost('email') ?? ''));
+        $otp   = trim((string) ($this->request->getPost('otp') ?? ''));
+
+        if (empty($email) && empty($otp) && $this->request->is('json')) {
+            $json  = $this->request->getJSON(true) ?? [];
+            $email = trim((string) ($json['email'] ?? ''));
+            $otp   = trim((string) ($json['otp'] ?? ''));
+        }
+
+        // Clean OTP to strictly numeric characters
+        $otp = preg_replace('/[^0-9]/', '', $otp);
+
+        $rules = [
+            'email' => 'required|valid_email',
+            'otp'   => 'required|min_length[6]|max_length[6]|regex_match[/^[0-9]{6}$/]',
+        ];
+        $messages = [
+            'email' => [
+                'required'    => 'Email address is required.',
+                'valid_email' => 'Please provide a valid email address.',
+            ],
+            'otp' => [
+                'required'    => 'Verification code is required.',
+                'min_length'  => 'Verification code must be exactly 6 digits.',
+                'max_length'  => 'Verification code must be exactly 6 digits.',
+                'regex_match' => 'Verification code must contain only numbers.',
+            ],
+        ];
+
+        if (!$this->validateData(['email' => $email, 'otp' => $otp], $rules, $messages)) {
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(422)
+                    ->setJSON([
+                        'status' => 'error',
+                        'errors' => $this->validator->getErrors(),
+                    ]);
+            }
+
+            return redirect()->to('/verify-email?email=' . rawurlencode($email))
+                ->withInput()
+                ->with('error', implode(' ', $this->validator->getErrors()));
+        }
+
+        $user = $this->userModel->where('email', strtolower($email))->first();
+
+        // User not found
+        if ($user === null) {
+            $genericError = 'Invalid verification code or email address.';
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(400)
+                    ->setJSON(['status' => 'error', 'message' => $genericError]);
+            }
+
+            return redirect()->to('/verify-email?email=' . rawurlencode($email))
+                ->withInput()
+                ->with('error', $genericError);
+        }
+
+        // Account is already verified
+        if (!empty($user['email_verified_at'])) {
+            $alreadyVerifiedNotice = 'Your email address is already verified. Please sign in.';
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(200)
+                    ->setJSON(['status' => 'success', 'message' => $alreadyVerifiedNotice]);
+            }
+
+            return redirect()->to('/login')
+                ->with('success', $alreadyVerifiedNotice);
+        }
+
+        // Check failed attempts limit (max 5)
+        $attempts = (int) ($user['email_verification_otp_attempts'] ?? 0);
+        if ($attempts >= 5) {
+            // Invalidate OTP hash
+            $this->userModel->update($user['id'], [
+                'email_verification_otp_hash'       => null,
+                'email_verification_otp_expires_at' => null,
+            ]);
+
+            $lockoutError = 'Maximum verification attempts exceeded. Please request a new verification code.';
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(429)
+                    ->setJSON(['status' => 'error', 'message' => $lockoutError]);
+            }
+
+            return redirect()->to('/verify-email?email=' . rawurlencode($email))
+                ->withInput()
+                ->with('error', $lockoutError);
+        }
+
+        // Check expiry (10 minutes)
+        if (
+            empty($user['email_verification_otp_expires_at'])
+            || strtotime($user['email_verification_otp_expires_at']) < time()
+        ) {
+            $expiredError = 'Verification code has expired. Please request a new code.';
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(410)
+                    ->setJSON(['status' => 'error', 'message' => $expiredError]);
+            }
+
+            return redirect()->to('/verify-email?email=' . rawurlencode($email))
+                ->withInput()
+                ->with('error', $expiredError);
+        }
+
+        // Verify SHA-256 hash using timing-safe comparison
+        $submittedHash = hash('sha256', $otp);
+        if (
+            empty($user['email_verification_otp_hash'])
+            || !hash_equals((string) $user['email_verification_otp_hash'], $submittedHash)
+        ) {
+            $newAttempts = $attempts + 1;
+            $updateData  = ['email_verification_otp_attempts' => $newAttempts];
+            if ($newAttempts >= 5) {
+                $updateData['email_verification_otp_hash'] = null;
+            }
+            $this->userModel->update($user['id'], $updateData);
+
+            $remaining = max(0, 5 - $newAttempts);
+            $mismatchError = 'Invalid verification code. ' . ($remaining > 0 ? "{$remaining} attempt(s) remaining." : 'Please request a new code.');
+
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(400)
+                    ->setJSON(['status' => 'error', 'message' => $mismatchError]);
+            }
+
+            return redirect()->to('/verify-email?email=' . rawurlencode($email))
+                ->withInput()
+                ->with('error', $mismatchError);
+        }
+
+        // Verification successful: mark verified and invalidate single-use OTP
+        $this->userModel->update($user['id'], [
+            'email_verified_at'                 => date('Y-m-d H:i:s'),
+            'email_verification_otp_hash'       => null,
+            'email_verification_otp_expires_at' => null,
+            'email_verification_otp_attempts'   => 0,
+            'email_verification_otp_sent_at'    => null,
+        ]);
+
+        $this->session->remove('verification_email');
+
+        $verifiedSuccess = 'Email verified successfully! You can now sign in to your MeetSpace account.';
+
+        if ($this->isJsonRequest()) {
+            return $this->response->setJSON([
+                'status'  => 'success',
+                'message' => $verifiedSuccess,
+            ]);
+        }
+
+        return redirect()->to('/login')
+            ->with('success', $verifiedSuccess);
+    }
+
+    /**
+     * Resend registration email verification OTP with 60-second cooldown.
+     */
+    public function resendOtp(): ResponseInterface
     {
         if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
             return redirect()->to('/');
@@ -633,17 +745,229 @@ class Auth extends BaseController
             $email = trim((string) ($json['email'] ?? ''));
         }
 
-        $rules = [
-            'email' => 'required|valid_email',
-        ];
-        $messages = [
-            'email' => [
-                'required'    => 'Email address is required.',
-                'valid_email' => 'Please provide a valid email address.',
-            ],
+        $rules = ['email' => 'required|valid_email'];
+        if (!$this->validateData(['email' => $email], $rules)) {
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(422)
+                    ->setJSON(['status' => 'error', 'message' => 'Please provide a valid email address.']);
+            }
+
+            return redirect()->to('/verify-email?email=' . rawurlencode($email))
+                ->with('error', 'Please provide a valid email address.');
+        }
+
+        $genericNotice = 'If an unverified account exists for this email address, a new verification code has been sent. Please check your inbox.';
+
+        $user = $this->userModel->where('email', strtolower($email))->first();
+
+        if ($user !== null && empty($user['email_verified_at'])) {
+            // Check 60-second cooldown
+            $sentAt  = !empty($user['email_verification_otp_sent_at']) ? strtotime($user['email_verification_otp_sent_at']) : 0;
+            $elapsed = time() - $sentAt;
+
+            if ($elapsed < 60) {
+                $wait = 60 - $elapsed;
+                $cooldownMsg = "Please wait {$wait} seconds before requesting another code.";
+
+                if ($this->isJsonRequest()) {
+                    return $this->response
+                        ->setStatusCode(429)
+                        ->setJSON(['status' => 'error', 'message' => $cooldownMsg]);
+                }
+
+                return redirect()->to('/verify-email?email=' . rawurlencode($email))
+                    ->with('error', $cooldownMsg);
+            }
+
+            // Generate new OTP, hash, and set 10-minute expiry
+            $otp       = $this->generateOtp();
+            $hashedOtp = hash('sha256', $otp);
+            $expiresAt = date('Y-m-d H:i:s', time() + 600);
+
+            $this->userModel->update($user['id'], [
+                'email_verification_otp_hash'       => $hashedOtp,
+                'email_verification_otp_expires_at' => $expiresAt,
+                'email_verification_otp_attempts'   => 0,
+                'email_verification_otp_sent_at'    => date('Y-m-d H:i:s'),
+            ]);
+
+            $this->sendVerificationEmail($user['first_name'], $user['email'], $otp);
+        }
+
+        $this->session->set('verification_email', $email);
+
+        if ($this->isJsonRequest()) {
+            return $this->response->setJSON([
+                'status'  => 'success',
+                'message' => $genericNotice,
+            ]);
+        }
+
+        return redirect()->to('/verify-email?email=' . rawurlencode($email))
+            ->with('success', $genericNotice);
+    }
+
+    /**
+     * Legacy token URL handler: redirects gracefully to OTP verification page.
+     */
+    public function verifyEmailLegacy(string $token): ResponseInterface
+    {
+        return redirect()->to('/verify-email')
+            ->with('error', 'Email verification now uses a 6-digit code. Please enter your verification code below.');
+    }
+
+    /**
+     * Render the Forgot Password page.
+     */
+    public function forgotPassword(): string|ResponseInterface
+    {
+        if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            return redirect()->to('/');
+        }
+
+        return view('auth/forgot_password', [
+            'title'   => 'Forgot Password',
+            'error'   => $this->session->getFlashdata('error'),
+            'success' => $this->session->getFlashdata('success'),
+        ]);
+    }
+
+    /**
+     * Process Forgot Password submission: generate recovery OTP and send email.
+     */
+    public function attemptForgotPassword(): ResponseInterface
+    {
+        if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            return redirect()->to('/');
+        }
+
+        $email = trim((string) ($this->request->getPost('email') ?? ''));
+
+        if (empty($email) && $this->request->is('json')) {
+            $json  = $this->request->getJSON(true) ?? [];
+            $email = trim((string) ($json['email'] ?? ''));
+        }
+
+        $rules = ['email' => 'required|valid_email'];
+        if (!$this->validateData(['email' => $email], $rules)) {
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(422)
+                    ->setJSON(['status' => 'error', 'message' => 'Please provide a valid email address.']);
+            }
+
+            return redirect()->to('/forgot-password')
+                ->withInput()
+                ->with('error', 'Please provide a valid email address.');
+        }
+
+        // Generic anti-enumeration response
+        $genericNotice = 'If an account exists for that email, a password recovery code has been sent. Please check your inbox.';
+
+        $user = $this->userModel->where('email', strtolower($email))->first();
+
+        if ($user !== null && (int) ($user['is_active'] ?? 1) === 1) {
+            $sentAt  = !empty($user['password_reset_otp_sent_at']) ? strtotime($user['password_reset_otp_sent_at']) : 0;
+            $elapsed = time() - $sentAt;
+
+            // Only generate new recovery code if cooldown has passed
+            if ($elapsed >= 60) {
+                $otp       = $this->generateOtp();
+                $hashedOtp = hash('sha256', $otp);
+                $expiresAt = date('Y-m-d H:i:s', time() + 600); // 10 minutes
+
+                $this->userModel->update($user['id'], [
+                    'password_reset_otp_hash'       => $hashedOtp,
+                    'password_reset_otp_expires_at' => $expiresAt,
+                    'password_reset_otp_attempts'   => 0,
+                    'password_reset_otp_sent_at'    => date('Y-m-d H:i:s'),
+                ]);
+
+                $this->sendPasswordResetEmail($user['first_name'], $user['email'], $otp);
+            }
+        }
+
+        $this->session->set('reset_email', $email);
+
+        if ($this->isJsonRequest()) {
+            return $this->response->setJSON([
+                'status'  => 'success',
+                'message' => $genericNotice,
+                'email'   => $email,
+            ]);
+        }
+
+        return redirect()->to('/reset-password?email=' . rawurlencode($email))
+            ->with('success', $genericNotice);
+    }
+
+    /**
+     * Render the Reset Password page.
+     */
+    public function resetPassword(): string|ResponseInterface
+    {
+        if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            return redirect()->to('/');
+        }
+
+        $email = (string) (
+            $this->request->getGet('email')
+            ?? $this->session->get('reset_email')
+            ?? old('email')
+            ?? ''
+        );
+
+        $cooldownRemaining = 0;
+        if (!empty($email)) {
+            $user = $this->userModel->where('email', strtolower($email))->first();
+            if ($user && !empty($user['password_reset_otp_sent_at'])) {
+                $elapsed = time() - strtotime($user['password_reset_otp_sent_at']);
+                if ($elapsed < 60) {
+                    $cooldownRemaining = 60 - $elapsed;
+                }
+            }
+        }
+
+        return view('auth/reset_password', [
+            'title'             => 'Reset Password',
+            'email'             => $email,
+            'cooldownRemaining' => $cooldownRemaining,
+            'error'             => $this->session->getFlashdata('error'),
+            'errors'            => $this->session->getFlashdata('errors') ?? [],
+            'success'           => $this->session->getFlashdata('success'),
+        ]);
+    }
+
+    /**
+     * Process Reset Password submission: validate recovery OTP and update password.
+     */
+    public function attemptResetPassword(): ResponseInterface
+    {
+        if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            return redirect()->to('/');
+        }
+
+        $data = [
+            'email'            => trim((string) ($this->request->getPost('email') ?? '')),
+            'otp'              => trim((string) ($this->request->getPost('otp') ?? '')),
+            'password'         => (string) ($this->request->getPost('password') ?? ''),
+            'password_confirm' => (string) ($this->request->getPost('password_confirm') ?? ''),
         ];
 
-        if (!$this->validateData(['email' => $email], $rules, $messages)) {
+        if (empty($data['email']) && empty($data['otp']) && $this->request->is('json')) {
+            $json = $this->request->getJSON(true) ?? [];
+            $data = [
+                'email'            => trim((string) ($json['email'] ?? '')),
+                'otp'              => trim((string) ($json['otp'] ?? '')),
+                'password'         => (string) ($json['password'] ?? ''),
+                'password_confirm' => (string) ($json['password_confirm'] ?? ''),
+            ];
+        }
+
+        $data['otp'] = preg_replace('/[^0-9]/', '', $data['otp']);
+
+        if (!$this->validateData($data, $this->userModel->passwordResetRules, $this->userModel->passwordResetMessages)) {
             if ($this->isJsonRequest()) {
                 return $this->response
                     ->setStatusCode(422)
@@ -653,29 +977,179 @@ class Auth extends BaseController
                     ]);
             }
 
-            return redirect()->to('/resend-verification')
+            return redirect()->to('/reset-password?email=' . rawurlencode($data['email']))
                 ->withInput()
-                ->with('error', 'Please enter a valid email address.');
+                ->with('errors', $this->validator->getErrors());
         }
 
-        $genericNotice = 'If an unverified account exists for this email address, a fresh verification link has been sent. Please check your inbox.';
+        $user = $this->userModel->where('email', strtolower($data['email']))->first();
 
-        $user = $this->userModel
-            ->where('email', strtolower($email))
-            ->first();
+        if ($user === null) {
+            $genericError = 'Invalid recovery code or email address.';
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(400)
+                    ->setJSON(['status' => 'error', 'message' => $genericError]);
+            }
 
-        if ($user !== null && empty($user['email_verified_at'])) {
-            $rawToken    = bin2hex(random_bytes(32));
-            $hashedToken = hash('sha256', $rawToken);
-            $expiresAt   = date('Y-m-d H:i:s', time() + (24 * 3600));
+            return redirect()->to('/reset-password?email=' . rawurlencode($data['email']))
+                ->withInput()
+                ->with('error', $genericError);
+        }
 
+        // Check failed attempts limit (max 5)
+        $attempts = (int) ($user['password_reset_otp_attempts'] ?? 0);
+        if ($attempts >= 5) {
             $this->userModel->update($user['id'], [
-                'email_verification_token'      => $hashedToken,
-                'email_verification_expires_at' => $expiresAt,
+                'password_reset_otp_hash'       => null,
+                'password_reset_otp_expires_at' => null,
             ]);
 
-            $this->sendVerificationEmail($user['first_name'], $user['email'], $rawToken);
+            $lockoutError = 'Maximum recovery attempts exceeded. Please request a new recovery code.';
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(429)
+                    ->setJSON(['status' => 'error', 'message' => $lockoutError]);
+            }
+
+            return redirect()->to('/reset-password?email=' . rawurlencode($data['email']))
+                ->withInput()
+                ->with('error', $lockoutError);
         }
+
+        // Check expiry (10 minutes)
+        if (
+            empty($user['password_reset_otp_expires_at'])
+            || strtotime($user['password_reset_otp_expires_at']) < time()
+        ) {
+            $expiredError = 'Recovery code has expired. Please request a new code.';
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(410)
+                    ->setJSON(['status' => 'error', 'message' => $expiredError]);
+            }
+
+            return redirect()->to('/reset-password?email=' . rawurlencode($data['email']))
+                ->withInput()
+                ->with('error', $expiredError);
+        }
+
+        // Verify SHA-256 hash
+        $submittedHash = hash('sha256', $data['otp']);
+        if (
+            empty($user['password_reset_otp_hash'])
+            || !hash_equals((string) $user['password_reset_otp_hash'], $submittedHash)
+        ) {
+            $newAttempts = $attempts + 1;
+            $updateData  = ['password_reset_otp_attempts' => $newAttempts];
+            if ($newAttempts >= 5) {
+                $updateData['password_reset_otp_hash'] = null;
+            }
+            $this->userModel->update($user['id'], $updateData);
+
+            $remaining = max(0, 5 - $newAttempts);
+            $mismatchError = 'Invalid recovery code. ' . ($remaining > 0 ? "{$remaining} attempt(s) remaining." : 'Please request a new code.');
+
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(400)
+                    ->setJSON(['status' => 'error', 'message' => $mismatchError]);
+            }
+
+            return redirect()->to('/reset-password?email=' . rawurlencode($data['email']))
+                ->withInput()
+                ->with('error', $mismatchError);
+        }
+
+        // Reset password: update hash, invalidate recovery OTP, preserve role, department, verified status
+        $this->userModel->update($user['id'], [
+            'password_hash'                 => password_hash($data['password'], PASSWORD_DEFAULT),
+            'password_reset_otp_hash'       => null,
+            'password_reset_otp_expires_at' => null,
+            'password_reset_otp_attempts'   => 0,
+            'password_reset_otp_sent_at'    => null,
+        ]);
+
+        $this->session->remove('reset_email');
+
+        $resetSuccess = 'Your password has been reset successfully! You can now sign in with your new password.';
+
+        if ($this->isJsonRequest()) {
+            return $this->response->setJSON([
+                'status'  => 'success',
+                'message' => $resetSuccess,
+            ]);
+        }
+
+        return redirect()->to('/login')
+            ->with('success', $resetSuccess);
+    }
+
+    /**
+     * Resend password reset OTP with 60-second cooldown.
+     */
+    public function resendPasswordResetOtp(): ResponseInterface
+    {
+        if ($this->session->get('isLoggedIn') === true && !empty($this->session->get('user_id'))) {
+            return redirect()->to('/');
+        }
+
+        $email = trim((string) ($this->request->getPost('email') ?? ''));
+
+        if (empty($email) && $this->request->is('json')) {
+            $json  = $this->request->getJSON(true) ?? [];
+            $email = trim((string) ($json['email'] ?? ''));
+        }
+
+        $rules = ['email' => 'required|valid_email'];
+        if (!$this->validateData(['email' => $email], $rules)) {
+            if ($this->isJsonRequest()) {
+                return $this->response
+                    ->setStatusCode(422)
+                    ->setJSON(['status' => 'error', 'message' => 'Please provide a valid email address.']);
+            }
+
+            return redirect()->to('/reset-password?email=' . rawurlencode($email))
+                ->with('error', 'Please provide a valid email address.');
+        }
+
+        $genericNotice = 'If an account exists for that email, a new password recovery code has been sent.';
+
+        $user = $this->userModel->where('email', strtolower($email))->first();
+
+        if ($user !== null && (int) ($user['is_active'] ?? 1) === 1) {
+            $sentAt  = !empty($user['password_reset_otp_sent_at']) ? strtotime($user['password_reset_otp_sent_at']) : 0;
+            $elapsed = time() - $sentAt;
+
+            if ($elapsed < 60) {
+                $wait = 60 - $elapsed;
+                $cooldownMsg = "Please wait {$wait} seconds before requesting another recovery code.";
+
+                if ($this->isJsonRequest()) {
+                    return $this->response
+                        ->setStatusCode(429)
+                        ->setJSON(['status' => 'error', 'message' => $cooldownMsg]);
+                }
+
+                return redirect()->to('/reset-password?email=' . rawurlencode($email))
+                    ->with('error', $cooldownMsg);
+            }
+
+            $otp       = $this->generateOtp();
+            $hashedOtp = hash('sha256', $otp);
+            $expiresAt = date('Y-m-d H:i:s', time() + 600);
+
+            $this->userModel->update($user['id'], [
+                'password_reset_otp_hash'       => $hashedOtp,
+                'password_reset_otp_expires_at' => $expiresAt,
+                'password_reset_otp_attempts'   => 0,
+                'password_reset_otp_sent_at'    => date('Y-m-d H:i:s'),
+            ]);
+
+            $this->sendPasswordResetEmail($user['first_name'], $user['email'], $otp);
+        }
+
+        $this->session->set('reset_email', $email);
 
         if ($this->isJsonRequest()) {
             return $this->response->setJSON([
@@ -684,8 +1158,16 @@ class Auth extends BaseController
             ]);
         }
 
-        return redirect()->to('/resend-verification')
+        return redirect()->to('/reset-password?email=' . rawurlencode($email))
             ->with('success', $genericNotice);
+    }
+
+    /**
+     * Generate a cryptographically secure 6-digit numeric OTP.
+     */
+    protected function generateOtp(): string
+    {
+        return str_pad((string) random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -706,25 +1188,43 @@ class Auth extends BaseController
     }
 
     /**
-     * Send verification email via Gmail SMTP.
+     * Send registration verification email with 6-digit OTP.
      */
-    protected function sendVerificationEmail(string $firstName, string $toEmail, string $rawToken): bool
+    protected function sendVerificationEmail(string $firstName, string $toEmail, string $otp): bool
     {
-        $verificationUrl = base_url('verify-email/' . $rawToken);
-
         $email = service('email');
         $email->setTo($toEmail);
         $email->setSubject('Verify your MeetSpace account');
         $email->setMessage(view('emails/verify_email', [
-            'firstName'       => $firstName,
-            'verificationUrl' => $verificationUrl,
-            'expiresHours'    => 24,
+            'firstName' => $firstName,
+            'otp'       => $otp,
         ]));
 
         try {
             return (bool) $email->send(false);
         } catch (\Throwable $e) {
             log_message('error', 'Failed to send verification email to ' . $toEmail . ': ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Send password reset recovery email with 6-digit OTP.
+     */
+    protected function sendPasswordResetEmail(string $firstName, string $toEmail, string $otp): bool
+    {
+        $email = service('email');
+        $email->setTo($toEmail);
+        $email->setSubject('Reset your MeetSpace password');
+        $email->setMessage(view('emails/reset_password', [
+            'firstName' => $firstName,
+            'otp'       => $otp,
+        ]));
+
+        try {
+            return (bool) $email->send(false);
+        } catch (\Throwable $e) {
+            log_message('error', 'Failed to send password reset email to ' . $toEmail . ': ' . $e->getMessage());
             return false;
         }
     }

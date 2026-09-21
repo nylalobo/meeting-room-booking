@@ -15,10 +15,23 @@ $routes->get('login', 'Auth::login');
 $routes->post('login', 'Auth::attemptLogin');
 $routes->get('register', 'Auth::register');
 $routes->post('register', 'Auth::attemptRegister');
-$routes->get('verify-email/(:any)', 'Auth::verifyEmail/$1');
-$routes->get('resend-verification', 'Auth::resendVerificationForm');
-$routes->post('resend-verification', 'Auth::resendVerification');
-$routes->match(['get', 'post'], 'logout', 'Auth::logout');
+
+// Registration Email OTP Verification
+$routes->get('verify-email', 'Auth::verifyEmailForm');
+$routes->post('verify-email', 'Auth::attemptVerifyEmail');
+$routes->post('verify-email/resend', 'Auth::resendOtp');
+$routes->get('verify-email/(:any)', 'Auth::verifyEmailLegacy/$1');
+$routes->get('resend-verification', 'Auth::verifyEmailForm');
+$routes->post('resend-verification', 'Auth::resendOtp');
+
+// Password Reset / Forgot Password
+$routes->get('forgot-password', 'Auth::forgotPassword');
+$routes->post('forgot-password', 'Auth::attemptForgotPassword');
+$routes->post('forgot-password/resend', 'Auth::resendPasswordResetOtp');
+$routes->get('reset-password', 'Auth::resetPassword');
+$routes->post('reset-password', 'Auth::attemptResetPassword');
+
+$routes->match(['GET', 'POST'], 'logout', 'Auth::logout');
 $routes->get('check-in/room/(:segment)', 'Room::checkInLanding/$1');
 
 

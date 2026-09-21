@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify your MeetSpace account</title>
+    <title>Reset your MeetSpace password</title>
     <style>
         body {
             margin: 0;
@@ -78,15 +78,15 @@
         .otp-box {
             display: inline-block;
             background: #090e2b;
-            border: 2px solid #38bdf8;
+            border: 2px solid #a855f7;
             border-radius: 10px;
             padding: 16px 32px;
             letter-spacing: 10px;
             font-size: 32px;
             font-weight: 800;
-            color: #38bdf8;
+            color: #c084fc;
             font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
-            box-shadow: 0 4px 20px rgba(56, 189, 248, 0.2);
+            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.2);
         }
         .expiry-notice {
             text-align: center;
@@ -128,7 +128,7 @@
                 <div class="greeting">Hello <?= esc($firstName) ?>,</div>
 
                 <p style="margin-top: 0;">
-                    Thank you for registering with <strong>MeetSpace Enterprise Suite</strong>. To verify your email address and activate your account, please enter the 6-digit verification code below:
+                    We received a request to reset your password for <strong>MeetSpace Enterprise Suite</strong>. Enter the 6-digit recovery code below to proceed with setting a new password:
                 </p>
 
                 <div class="otp-container">
@@ -136,11 +136,11 @@
                 </div>
 
                 <div class="expiry-notice">
-                    This verification code expires in <strong>10 minutes</strong>.
+                    This recovery code expires in <strong>10 minutes</strong>.
                 </div>
 
                 <div class="notice">
-                    If you did not create a MeetSpace account, no further action is required; you can safely ignore this email.
+                    If you did not request a password reset, you can safely ignore this email. Your current password will remain active and unchanged.
                 </div>
             </td>
         </tr>

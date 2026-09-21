@@ -90,6 +90,7 @@ class Services extends BaseService
                     $deliveryRecord = [
                         'to'      => $this->recipients,
                         'subject' => $this->archive['subject'] ?? '',
+                        'body'    => $this->archive['body'] ?? ($this->body ?? ''),
                         'time'    => date('Y-m-d H:i:s'),
                     ];
 
