@@ -2,9 +2,16 @@
 
 <?= $this->section('content') ?>
 
+<?php
+$userGreeting = (string) (session()->get('first_name') ?? '');
+if (trim($userGreeting) === '') {
+    $userGreeting = 'User';
+}
+?>
+
 <!-- Welcome Header -->
 <div class="dashboard-header">
-    <h1 class="welcome-heading">Welcome back, Admin! 👋</h1>
+    <h1 class="welcome-heading">Welcome back, <?= esc($userGreeting) ?>! 👋</h1>
     <p class="welcome-subtitle">Here's what's happening today in MeetSpace.</p>
 </div>
 
@@ -87,45 +94,11 @@
                             <th scope="col" style="width: 18%;" class="text-end">STATUS</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="upcomingMeetingsBody">
                         <tr>
-                            <td class="fw-semibold text-white">Team Standup</td>
-                            <td class="text-muted-blue">Huddle Room 1</td>
-                            <td class="text-muted-blue">09:00 AM</td>
-                            <td class="text-end">
-                                <span class="badge-status badge-active">Active</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="fw-semibold text-white">Project Planning</td>
-                            <td class="text-muted-blue">Boardroom A</td>
-                            <td class="text-muted-blue">11:00 AM</td>
-                            <td class="text-end">
-                                <span class="badge-status badge-upcoming">Upcoming</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="fw-semibold text-white">Client Presentation</td>
-                            <td class="text-muted-blue">Boardroom A</td>
-                            <td class="text-muted-blue">02:00 PM</td>
-                            <td class="text-end">
-                                <span class="badge-status badge-upcoming">Upcoming</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="fw-semibold text-white">HR Interview</td>
-                            <td class="text-muted-blue">Focus Pod 2</td>
-                            <td class="text-muted-blue">03:30 PM</td>
-                            <td class="text-end">
-                                <span class="badge-status badge-upcoming">Upcoming</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="fw-semibold text-white">Marketing Sync</td>
-                            <td class="text-muted-blue">Huddle Room 1</td>
-                            <td class="text-muted-blue">04:30 PM</td>
-                            <td class="text-end">
-                                <span class="badge-status badge-upcoming">Upcoming</span>
+                            <td colspan="4" class="text-center py-4 text-muted-blue">
+                                <i class="bi bi-arrow-repeat spin d-inline-block me-1"></i>
+                                <span>Loading upcoming meetings...</span>
                             </td>
                         </tr>
                     </tbody>
@@ -148,44 +121,11 @@
                 </h2>
             </div>
 
-            <div class="room-availability-list">
-
-                <!-- Room 1 -->
-                <div class="room-avail-item">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <span class="room-name">Boardroom A</span>
-                        <span class="avail-badge avail-now">Available Now</span>
-                    </div>
-                    <div class="room-features">
-                        <span><i class="bi bi-person-fill"></i> 12 Seats</span>
-                        <span><i class="bi bi-display"></i> VC Equipped</span>
-                    </div>
+            <div class="room-availability-list" id="quickAvailabilityList">
+                <div class="text-muted-blue small py-2 text-center">
+                    <i class="bi bi-arrow-repeat spin d-inline-block me-1"></i>
+                    <span>Loading room availability...</span>
                 </div>
-
-                <!-- Room 2 -->
-                <div class="room-avail-item">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <span class="room-name">Huddle Room 1</span>
-                        <span class="avail-badge avail-busy">In Use (Free in 15m)</span>
-                    </div>
-                    <div class="room-features">
-                        <span><i class="bi bi-person-fill"></i> 4 Seats</span>
-                        <span><i class="bi bi-tv"></i> Display</span>
-                    </div>
-                </div>
-
-                <!-- Room 3 -->
-                <div class="room-avail-item mb-0">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <span class="room-name">Focus Pod 2</span>
-                        <span class="avail-badge avail-now">Available Now</span>
-                    </div>
-                    <div class="room-features">
-                        <span><i class="bi bi-person-fill"></i> 1 Seat</span>
-                        <span><i class="bi bi-volume-mute"></i> Soundproof</span>
-                    </div>
-                </div>
-
             </div>
 
         </div>
