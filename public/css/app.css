@@ -4809,3 +4809,169 @@ input#recurrenceUntilDate {
     border-color: rgba(255, 255, 255, 0.08) !important;
     color: #64748b !important;
 }
+
+/* ==========================================================================
+   Booking Catering Badges & Actions (Feature 4.5 Milestone 2)
+   ========================================================================== */
+
+.badge-catering-pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(234, 179, 8, 0.14);
+    color: #facc15;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.badge-catering-approved {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(56, 189, 248, 0.14);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.badge-catering-completed {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-catering-rejected {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(239, 68, 68, 0.14);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-catering-cancelled {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(148, 163, 184, 0.14);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.btn-catering-action {
+    padding: 4px 9px;
+    border-radius: 5px;
+    font-size: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.btn-catering-approve {
+    background: rgba(34, 197, 94, 0.15);
+    border-color: rgba(34, 197, 94, 0.35);
+    color: #4ade80;
+}
+
+.btn-catering-approve:hover {
+    background: rgba(34, 197, 94, 0.28);
+    color: #86efac;
+}
+
+.btn-catering-reject {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #f87171;
+}
+
+.btn-catering-reject:hover {
+    background: rgba(239, 68, 68, 0.28);
+    color: #fca5a5;
+}
+
+.btn-catering-complete {
+    background: rgba(20, 184, 166, 0.15);
+    border-color: rgba(20, 184, 166, 0.35);
+    color: #2dd4bf;
+}
+
+.btn-catering-complete:hover {
+    background: rgba(20, 184, 166, 0.28);
+    color: #5eead4;
+}
+
+.btn-catering-edit {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.3);
+    color: #38bdf8;
+}
+
+.btn-catering-edit:hover {
+    background: rgba(56, 189, 248, 0.24);
+    color: #7dd3fc;
+}
+
+.btn-catering-cancel {
+    background: transparent;
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #f87171;
+}
+
+.btn-catering-cancel:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.cal-catering-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: 4px;
+    font-size: 12px;
+    color: #fcd34d;
+    margin-right: 6px;
+    margin-bottom: 4px;
+}
+
+.cat-rejection-info {
+    margin-top: 4px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    font-size: 11.5px;
+    color: #f87171;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    word-break: break-word;
+}
