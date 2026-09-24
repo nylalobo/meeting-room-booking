@@ -180,6 +180,7 @@ function renderRooms(rooms) {
             document.createElement(
                 'tr'
             );
+        row.className = 'hover-lift';
 
         const isActive =
             String(

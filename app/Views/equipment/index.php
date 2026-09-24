@@ -86,8 +86,16 @@ $canManage  = ($roleId === 1 || $roleId === 6 || in_array($roleName, ['Admin', '
 
     <!-- Loading State -->
     <div id="equipmentLoading" class="bookings-state">
-        <i class="bi bi-arrow-repeat spin"></i>
-        <span>Loading equipment inventory...</span>
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">Loading equipment inventory</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
     </div>
 
     <!-- Error State -->

@@ -37,8 +37,16 @@
 <div class="panel-card rooms-panel">
 
     <div id="roomsLoading" class="bookings-state">
-        <i class="bi bi-arrow-repeat spin"></i>
-        Loading rooms...
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">Loading rooms</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
     </div>
 
     <div id="roomsError" class="bookings-state bookings-error d-none">
@@ -294,8 +302,16 @@
         <div class="room-qr-modal-body">
 
             <div id="roomQrLoading" class="bookings-state">
-                <i class="bi bi-arrow-repeat spin"></i>
-                <span>Loading room QR code...</span>
+                <div class="meetspace-loader" role="status" aria-live="polite">
+                    <div class="meetspace-loader-track" style="width: 150px; height: 8px;">
+                        <div class="meetspace-loader-bar">
+                            <div class="meetspace-loader-highlights"></div>
+                        </div>
+                    </div>
+                    <div class="meetspace-loader-text" style="font-size: 12.5px;">
+                        <span class="loader-label">Loading room QR code</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+                    </div>
+                </div>
             </div>
 
             <div id="roomQrError" class="booking-form-alert booking-form-error d-none">

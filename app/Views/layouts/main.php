@@ -54,6 +54,11 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
 
 <div class="app-wrapper" id="appWrapper">
 
+    <!-- Ambient Background Depth Orbs -->
+    <div class="ambient-orb ambient-orb-1" aria-hidden="true"></div>
+    <div class="ambient-orb ambient-orb-2" aria-hidden="true"></div>
+    <div class="ambient-orb ambient-orb-3" aria-hidden="true"></div>
+
     <!-- Mobile Sidebar Backdrop Overlay -->
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
@@ -173,11 +178,19 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
             </div>
 
             <div class="topbar-actions">
-                <button type="button" class="theme-toggle-btn" id="themeToggleBtn" aria-label="Toggle theme mode" title="Switch Theme">
-                    <span class="theme-icon-box">
-                        <i class="bi bi-moon-stars theme-icon-dark"></i>
-                        <i class="bi bi-sun theme-icon-light"></i>
-                    </span>
+                <button type="button" class="theme-toggle-btn cosmic-toggle" id="themeToggleBtn" aria-label="Toggle theme mode" title="Switch Theme" role="switch" aria-checked="true">
+                    <div class="cosmic-track" aria-hidden="true">
+                        <span class="cosmic-star star-1"></span>
+                        <span class="cosmic-star star-2"></span>
+                        <span class="cosmic-star star-3"></span>
+                        <span class="cosmic-star star-4"></span>
+                        <div class="cosmic-orb">
+                            <div class="cosmic-orb-inner">
+                                <span class="cosmic-crater crater-1"></span>
+                                <span class="cosmic-crater crater-2"></span>
+                            </div>
+                        </div>
+                    </div>
                     <span class="theme-label" id="themeLabel">Dark</span>
                 </button>
             </div>

@@ -29,8 +29,16 @@
 <div class="panel-card departments-panel">
 
     <div id="departmentsLoading" class="bookings-state">
-        <i class="bi bi-arrow-repeat spin"></i>
-        Loading departments...
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">Loading departments</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
     </div>
 
     <div id="departmentsError" class="bookings-state bookings-error d-none">

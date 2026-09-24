@@ -37,8 +37,16 @@
 <div class="panel-card facilities-panel">
 
     <div id="facilitiesLoading" class="bookings-state">
-        <i class="bi bi-arrow-repeat spin"></i>
-        Loading facilities...
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">Loading facilities</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
     </div>
 
     <div id="facilitiesError" class="bookings-state bookings-error d-none">

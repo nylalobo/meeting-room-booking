@@ -37,8 +37,16 @@
 <div class="panel-card locations-panel">
 
     <div id="locationsLoading" class="bookings-state">
-        <i class="bi bi-arrow-repeat spin"></i>
-        Loading locations...
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">Loading locations</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
     </div>
 
     <div id="locationsError" class="bookings-state bookings-error d-none">

@@ -385,6 +385,7 @@
 
             const row =
                 document.createElement('tr');
+            row.className = 'hover-lift';
 
             const roomData =
                 roomsMap.get(Number(booking.room_id));
@@ -2997,7 +2998,15 @@
         errorBox?.classList.add('d-none');
 
         if (successText) {
-            successText.textContent = message;
+            successText.innerHTML = `
+                <span class="d-inline-flex align-items-center gap-2">
+                    <svg class="success-checkmark-svg" style="width: 20px; height: 20px; margin: 0; display: inline-block; vertical-align: middle;" viewBox="0 0 52 52">
+                        <circle class="success-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                        <path class="success-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                    </svg>
+                    <span>${escapeHtml(message)}</span>
+                </span>
+            `;
         }
 
         successBox?.classList.remove('d-none');

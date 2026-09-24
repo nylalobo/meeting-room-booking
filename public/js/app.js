@@ -250,20 +250,22 @@ function injectAppNotificationStyles() {
 
             padding: 16px 18px;
 
-            background: #111827;
-            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(17, 24, 39, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
 
             border-radius: 12px;
 
             box-shadow:
-                0 20px 50px rgba(0,0,0,0.35);
+                0 20px 50px rgba(0, 0, 0, 0.4);
 
             transform: translateX(120%);
             opacity: 0;
 
             transition:
-                transform 0.3s ease,
-                opacity 0.3s ease;
+                transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.35s ease;
 
             pointer-events: auto;
         }
@@ -380,28 +382,31 @@ function injectAppNotificationStyles() {
             padding: 24px;
 
             background:
-                rgba(3, 7, 18, 0.72);
+                rgba(3, 7, 18, 0.78);
 
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
         }
 
         .app-confirm-modal {
             width: min(440px, 100%);
 
-            background: #111827;
+            background: rgba(17, 24, 39, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
 
             border:
-                1px solid rgba(255,255,255,0.10);
+                1px solid rgba(255,255,255,0.12);
 
             border-radius: 16px;
 
             padding: 28px;
 
             box-shadow:
-                0 30px 80px rgba(0,0,0,0.50);
+                0 30px 80px rgba(0,0,0,0.55);
 
             animation:
-                appConfirmAppear 0.2s ease;
+                appConfirmAppear 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         @keyframes appConfirmAppear {
@@ -800,8 +805,33 @@ function escapeHtml(value) {
    ========================================================================== */
 
 /**
+ * Global MeetSpace Loading Indicator (Uiverse Inspired)
+ * Generates reusable progress-bar loader markup with animated track,
+ * highlight bars, and staggered typography dots.
+ *
+ * @param {string} labelText - Text description (e.g. "Loading bookings")
+ * @returns {string} HTML string
+ */
+window.createMeetSpaceLoader = function(labelText = 'Loading') {
+    const cleanLabel = String(labelText).replace(/\.{3,}$/, '').trim();
+    return `
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">${cleanLabel}</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
+    `;
+};
+
+/**
  * Light / Dark mode theme toggle
  * Supports instant anti-flash rendering and persists selection in localStorage.
+ * Integrates Cosmic Toggle animations.
  */
 function initializeThemeToggle() {
     const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -817,6 +847,7 @@ function initializeThemeToggle() {
             const nextMode = activeTheme === 'light' ? 'dark' : 'light';
             themeToggleBtn.setAttribute('aria-label', `Switch to ${nextMode} theme`);
             themeToggleBtn.title = `Switch to ${nextMode} theme`;
+            themeToggleBtn.setAttribute('aria-checked', activeTheme === 'dark' ? 'true' : 'false');
         }
         if (persist) {
             try {

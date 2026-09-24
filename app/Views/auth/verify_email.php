@@ -19,12 +19,22 @@
 
     <style>
         :root {
-            --bg-main: #070b28;
-            --bg-card: #0f1535;
+            --bg-primary: #080D1A;
+            --bg-secondary: #0D1424;
+            --surface: #111A2E;
+            --surface-elevated: #16213A;
+            --primary: #6366F1;
+            --primary-hover: #818CF8;
+            --secondary: #7C3AED;
+            --accent-blue: #38BDF8;
+            --text-primary: #F8FAFC;
+            --text-secondary: #CBD5E1;
+            --text-muted: #94A3B8;
+            --border-glass: rgba(129, 140, 248, 0.16);
             --border-subtle: rgba(255, 255, 255, 0.08);
-            --border-focus: #38bdf8;
-            --color-text-white: #ffffff;
-            --color-text-muted: #7b8cae;
+            --border-focus: #6366F1;
+            --color-text-white: #F8FAFC;
+            --color-text-muted: #94A3B8;
             --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
@@ -36,21 +46,74 @@
 
         body {
             font-family: var(--font-family);
-            background-color: var(--bg-main);
-            color: var(--color-text-white);
+            background-color: var(--bg-primary);
+            color: var(--text-primary, #F8FAFC);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px;
+            padding: 28px 20px;
+            position: relative;
+            overflow-x: hidden;
             background-image:
-                radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.07) 0%, transparent 40%),
-                radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.07) 0%, transparent 40%);
+                radial-gradient(circle at 18% 18%, rgba(99, 102, 241, 0.15) 0%, transparent 42%),
+                radial-gradient(circle at 82% 82%, rgba(56, 189, 248, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 50% 10%, rgba(124, 58, 237, 0.08) 0%, transparent 35%);
+            animation: authPageFadeIn 0.3s ease-out;
+        }
+
+        @keyframes authPageFadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Ambient Depth Orbs */
+        .ambient-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        .ambient-orb-1 {
+            width: 340px;
+            height: 340px;
+            top: -60px;
+            left: -60px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, rgba(124, 58, 237, 0.1) 70%, transparent 100%);
+        }
+
+        .ambient-orb-2 {
+            width: 380px;
+            height: 380px;
+            bottom: -80px;
+            right: -80px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(99, 102, 241, 0.08) 70%, transparent 100%);
         }
 
         .auth-container {
             width: 100%;
             max-width: 440px;
+            position: relative;
+            z-index: 1;
+            animation: authCardEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes authCardEntrance {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .auth-brand {
@@ -65,16 +128,16 @@
         .brand-logo-box {
             width: 44px;
             height: 44px;
-            background: #040921;
-            border-radius: 11px;
+            background: #0D1424;
+            border-radius: 12px;
             position: relative;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            border: 1px solid rgba(56, 189, 248, 0.28);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 16px rgba(56, 189, 248, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.32);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 16px rgba(99, 102, 241, 0.2);
         }
 
         .brand-logo-crop {
@@ -101,7 +164,10 @@
         }
 
         .brand-title-accent {
-            color: #38bdf8;
+            background: linear-gradient(135deg, #6366F1 0%, #38BDF8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: #6366F1;
         }
 
         .brand-subtitle {
@@ -114,11 +180,13 @@
         }
 
         .auth-card {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-subtle);
+            background: rgba(17, 26, 46, 0.72);
+            border: 1px solid var(--border-glass, rgba(129, 140, 248, 0.16));
             border-radius: 16px;
             padding: 36px 32px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.05);
+            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.55), 0 0 24px rgba(99, 102, 241, 0.08);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
         }
 
         .auth-header {
@@ -236,28 +304,29 @@
 
         .form-control-custom {
             width: 100%;
-            background: #090e2b;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 8px;
-            color: #ffffff;
+            background: #0D1424;
+            border: 1px solid rgba(129, 140, 248, 0.2);
+            border-radius: 10px;
+            color: var(--text-primary, #F8FAFC);
             font-size: 14px;
-            padding: 10px 14px;
+            padding: 11px 16px 11px 40px;
             outline: none;
-            transition: all 0.15s ease;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             font-family: inherit;
         }
 
         .form-control-custom:focus {
-            border-color: var(--border-focus);
-            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+            border-color: var(--primary, #6366F1);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), 0 0 16px rgba(99, 102, 241, 0.15);
+            background: #111A2E;
         }
 
         .btn-primary-auth {
             width: 100%;
-            background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
-            color: #ffffff;
+            background: linear-gradient(135deg, #6366F1 0%, #7C3AED 100%);
+            color: #FFFFFF;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             padding: 12px 20px;
             font-size: 14.5px;
             font-weight: 600;
@@ -266,15 +335,18 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: all 0.15s ease;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
             margin-top: 24px;
+            text-decoration: none;
         }
 
         .btn-primary-auth:hover {
-            background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
-            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
-            transform: translateY(-1px);
+            background: linear-gradient(135deg, #4F46E5 0%, #6D28D9 100%);
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5), 0 0 12px rgba(56, 189, 248, 0.25);
+            transform: translateY(-2px);
+            color: #FFFFFF;
+            text-decoration: none;
         }
 
         .resend-section {
@@ -337,9 +409,25 @@
             font-size: 12px;
             color: #64748b;
         }
+
+        @media (prefers-reduced-motion: reduce) {
+            body {
+                animation: none !important;
+            }
+            .auth-container, .register-container, .login-container, .resend-container, .status-container {
+                animation: none !important;
+            }
+            .btn-signin, .btn-register, .btn-primary-auth, .btn-submit, .btn-action {
+                transition: none !important;
+                transform: none !important;
+            }
+        }
     </style>
 </head>
 <body>
+
+<div class="ambient-orb ambient-orb-1" aria-hidden="true"></div>
+<div class="ambient-orb ambient-orb-2" aria-hidden="true"></div>
 
 <div class="auth-container">
 

@@ -64,8 +64,16 @@
 <div class="panel-card bookings-panel" id="bookingsListPanel">
 
     <div id="bookingsLoading" class="bookings-state">
-        <i class="bi bi-arrow-repeat spin"></i>
-        Loading bookings...
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">Loading bookings</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
     </div>
 
     <div id="bookingsError" class="bookings-state bookings-error d-none">
@@ -134,8 +142,16 @@
     <!-- Calendar Loading Indicator -->
     <div id="calendarLoading" class="calendar-loading-overlay d-none">
         <div class="calendar-loading-spinner">
-            <i class="bi bi-arrow-repeat spin"></i>
-            <span>Loading calendar events...</span>
+            <div class="meetspace-loader" role="status" aria-live="polite">
+                <div class="meetspace-loader-track" style="width: 170px; height: 9px;">
+                    <div class="meetspace-loader-bar">
+                        <div class="meetspace-loader-highlights"></div>
+                    </div>
+                </div>
+                <div class="meetspace-loader-text" style="font-size: 13px;">
+                    <span class="loader-label">Loading calendar events</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -932,8 +948,16 @@
         <div class="attendance-modal-body">
             <!-- Loading state -->
             <div id="attendanceLoading" class="attendance-state">
-                <i class="bi bi-arrow-repeat spin"></i>
-                <span>Loading attendance data...</span>
+                <div class="meetspace-loader" role="status" aria-live="polite">
+                    <div class="meetspace-loader-track" style="width: 160px; height: 8px;">
+                        <div class="meetspace-loader-bar">
+                            <div class="meetspace-loader-highlights"></div>
+                        </div>
+                    </div>
+                    <div class="meetspace-loader-text" style="font-size: 13px;">
+                        <span class="loader-label">Loading attendance data</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Error state -->
@@ -1057,8 +1081,16 @@
         <div class="visitors-modal-body">
             <!-- Loading state -->
             <div id="visitorsLoading" class="attendance-state">
-                <i class="bi bi-arrow-repeat spin"></i>
-                <span>Loading visitors data...</span>
+                <div class="meetspace-loader" role="status" aria-live="polite">
+                    <div class="meetspace-loader-track" style="width: 160px; height: 8px;">
+                        <div class="meetspace-loader-bar">
+                            <div class="meetspace-loader-highlights"></div>
+                        </div>
+                    </div>
+                    <div class="meetspace-loader-text" style="font-size: 13px;">
+                        <span class="loader-label">Loading visitors data</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Error state -->
@@ -1212,8 +1244,16 @@
         <div class="resources-modal-body" style="padding: 20px 24px;">
             <!-- Loading state -->
             <div id="resourcesLoading" class="attendance-state">
-                <i class="bi bi-arrow-repeat spin"></i>
-                <span>Loading assigned resources...</span>
+                <div class="meetspace-loader" role="status" aria-live="polite">
+                    <div class="meetspace-loader-track" style="width: 160px; height: 8px;">
+                        <div class="meetspace-loader-bar">
+                            <div class="meetspace-loader-highlights"></div>
+                        </div>
+                    </div>
+                    <div class="meetspace-loader-text" style="font-size: 13px;">
+                        <span class="loader-label">Loading assigned resources</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Error state -->
@@ -1398,8 +1438,16 @@
         <div class="catering-modal-body" style="padding: 20px 24px;">
             <!-- Loading state -->
             <div id="cateringLoading" class="attendance-state">
-                <i class="bi bi-arrow-repeat spin"></i>
-                <span>Loading catering requests...</span>
+                <div class="meetspace-loader" role="status" aria-live="polite">
+                    <div class="meetspace-loader-track" style="width: 160px; height: 8px;">
+                        <div class="meetspace-loader-bar">
+                            <div class="meetspace-loader-highlights"></div>
+                        </div>
+                    </div>
+                    <div class="meetspace-loader-text" style="font-size: 13px;">
+                        <span class="loader-label">Loading catering requests</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+                    </div>
+                </div>
             </div>
 
             <!-- Error state -->
