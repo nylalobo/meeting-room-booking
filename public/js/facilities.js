@@ -887,9 +887,7 @@
                         : 'Facility created successfully.'
                 );
 
-            showFacilityFormSuccess(
-                successMessage
-            );
+            closeFacilityModalWindow();
 
             showAppNotification(
                 successMessage,
@@ -900,12 +898,6 @@
             );
 
             await loadFacilities();
-
-            setTimeout(() => {
-
-                closeFacilityModalWindow();
-
-            }, 800);
 
         } catch (error) {
 
@@ -1229,8 +1221,13 @@
                 message;
         }
 
-        successBox?.classList.remove(
+        successBox?.classList.add(
             'd-none'
+        );
+
+        showAppNotification(
+            message,
+            'success'
         );
     }
 

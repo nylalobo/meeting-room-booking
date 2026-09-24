@@ -97,12 +97,12 @@
 
             <input type="hidden" id="departmentId">
 
-            <div id="departmentFormError" class="booking-form-alert booking-form-error d-none">
+            <div id="departmentFormError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="departmentFormErrorText"></span>
             </div>
 
-            <div id="departmentFormSuccess" class="booking-form-alert booking-form-success d-none">
+            <div id="departmentFormSuccess" class="booking-form-alert booking-form-success d-none" role="status" aria-live="polite">
                 <i class="bi bi-check-circle"></i>
                 <span id="departmentFormSuccessText"></span>
             </div>

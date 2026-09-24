@@ -642,7 +642,7 @@
                     ? 'Department updated successfully.'
                     : 'Department created successfully.');
 
-            showDepartmentFormSuccess(successMessage);
+            closeDepartmentModalWindow();
 
             showAppNotification(
                 successMessage,
@@ -651,10 +651,6 @@
             );
 
             await loadDepartments();
-
-            setTimeout(() => {
-                closeDepartmentModalWindow();
-            }, 800);
 
         } catch (error) {
 
@@ -843,7 +839,9 @@
             successText.textContent = message;
         }
 
-        successBox?.classList.remove('d-none');
+        successBox?.classList.add('d-none');
+
+        showAppNotification(message, 'success');
     }
 
 

@@ -1025,9 +1025,7 @@ async function handleRoomFormSubmit(
                     : 'Room created successfully.'
             );
 
-        showRoomFormSuccess(
-            successMessage
-        );
+        closeRoomModalWindow();
 
         showAppNotification(
             successMessage,
@@ -1038,12 +1036,6 @@ async function handleRoomFormSubmit(
         );
 
         await loadRooms();
-
-        setTimeout(() => {
-
-            closeRoomModalWindow();
-
-        }, 800);
 
     } catch (error) {
 
@@ -1349,8 +1341,13 @@ function showRoomFormSuccess(
             message;
     }
 
-    successBox?.classList.remove(
+    successBox?.classList.add(
         'd-none'
+    );
+
+    showAppNotification(
+        message,
+        'success'
     );
 }
 

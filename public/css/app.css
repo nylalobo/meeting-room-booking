@@ -1039,6 +1039,24 @@ body {
     overflow-x: hidden;
 }
 
+.sidebar-nav-section {
+    padding: 14px 14px 4px;
+    user-select: none;
+}
+
+.sidebar-nav-section:first-child {
+    padding-top: 4px;
+}
+
+.nav-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted, #94A3B8);
+    opacity: 0.78;
+}
+
 .nav-item {
     display: flex;
     align-items: center;
@@ -2367,8 +2385,16 @@ body {
     margin-right: 4px;
 }
 
-.bookings-error {
-    color: #f87171;
+.bookings-error,
+.attendance-error,
+.availability-error {
+    color: #fda4af;
+}
+
+.bookings-error i,
+.attendance-error i,
+.availability-error i {
+    color: #fb7185;
 }
 
 .booking-status {
@@ -2393,15 +2419,15 @@ body {
 }
 
 .booking-status-rejected {
-    background-color: rgba(248, 113, 113, 0.12);
-    color: #f87171;
-    border: 1px solid rgba(248, 113, 113, 0.25);
+    background-color: rgba(248, 113, 113, 0.14);
+    color: #fda4af;
+    border: 1px solid rgba(251, 113, 133, 0.35);
 }
 
 .booking-status-cancelled {
-    background-color: rgba(148, 163, 184, 0.12);
-    color: #94a3b8;
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    background-color: rgba(148, 163, 184, 0.14);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
 .booking-status-completed {
@@ -2597,25 +2623,61 @@ body {
 
 .booking-form-alert {
     margin: 20px 26px 0;
-    padding: 11px 13px;
-    border-radius: 6px;
+    padding: 12px 16px;
+    border-radius: 8px;
     display: flex;
     align-items: flex-start;
-    gap: 9px;
-    font-size: 12.5px;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
     line-height: 1.5;
+    transition: all 0.2s var(--ease-out-smooth);
+}
+
+.booking-form-alert i {
+    font-size: 17px;
+    flex-shrink: 0;
+    margin-top: 1px;
 }
 
 .booking-form-error {
-    background-color: rgba(239, 68, 68, 0.10);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-    color: #fca5a5;
+    background-color: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(251, 113, 133, 0.35);
+    color: #fda4af;
+}
+
+.booking-form-error i {
+    color: #fb7185;
 }
 
 .booking-form-success {
-    background-color: rgba(45, 212, 191, 0.10);
-    border: 1px solid rgba(45, 212, 191, 0.25);
-    color: #5eead4;
+    background-color: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    color: #6ee7b7;
+}
+
+.booking-form-success i {
+    color: #34d399;
+}
+
+.booking-form-warning {
+    background-color: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #fde68a;
+}
+
+.booking-form-warning i {
+    color: #fbbf24;
+}
+
+.booking-form-info {
+    background-color: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #bae6fd;
+}
+
+.booking-form-info i {
+    color: #38bdf8;
 }
 
 .booking-modal-footer {
@@ -2777,6 +2839,511 @@ body {
     background-color: #ede9fe;
     color: #6366f1;
     border: 1px solid #c7d2fe;
+}
+
+/* ==========================================================================
+   Global Feedback System & Accessibility Contrast Overrides
+   ========================================================================== */
+
+/* --- Modal Form Alerts: Light Mode Overrides --- */
+/* Inline form success alerts are retired globally in favor of toast notifications */
+.booking-form-alert.booking-form-success {
+    display: none !important;
+}
+
+[data-theme="light"] .booking-form-alert {
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .booking-form-error {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+[data-theme="light"] .booking-form-error i {
+    color: #dc2626;
+}
+
+[data-theme="light"] .booking-form-success {
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+[data-theme="light"] .booking-form-success i {
+    color: #059669;
+}
+
+[data-theme="light"] .booking-form-warning {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+[data-theme="light"] .booking-form-warning i {
+    color: #d97706;
+}
+
+[data-theme="light"] .booking-form-info {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+
+[data-theme="light"] .booking-form-info i {
+    color: #2563eb;
+}
+
+/* --- Sub-form Inline Alerts (Visitors, Resources, Catering) --- */
+.visitor-form-alert {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(251, 113, 133, 0.35);
+    border-radius: 8px;
+    color: #fda4af;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.45;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.visitor-form-alert::before {
+    content: "\F33A";
+    font-family: "bootstrap-icons";
+    font-size: 15px;
+    color: #fb7185;
+    flex-shrink: 0;
+}
+
+.visitor-form-alert.success {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(52, 211, 153, 0.35);
+    color: #6ee7b7;
+}
+
+.visitor-form-alert.success::before {
+    content: "\F26A";
+    color: #34d399;
+}
+
+[data-theme="light"] .visitor-form-alert {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+[data-theme="light"] .visitor-form-alert::before {
+    color: #dc2626;
+}
+
+[data-theme="light"] .visitor-form-alert.success {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+[data-theme="light"] .visitor-form-alert.success::before {
+    color: #059669;
+}
+
+/* --- In-Page Notification Toast: Theme & Contrast --- */
+.app-notification {
+    min-width: 340px;
+    max-width: 460px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    background: rgba(17, 26, 46, 0.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(129, 140, 248, 0.18);
+    border-radius: 12px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+}
+
+.app-notification.success {
+    border-left: 4px solid #10b981;
+}
+
+.app-notification.error {
+    border-left: 4px solid #ef4444;
+}
+
+.app-notification.warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.app-notification.info {
+    border-left: 4px solid #38bdf8;
+}
+
+.app-notification-title {
+    color: #f8fafc;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.app-notification-message {
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.app-notification-close {
+    border: 0;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    transition: color 0.2s ease;
+}
+
+.app-notification-close:hover {
+    color: #f8fafc;
+}
+
+.app-notification.success .app-notification-icon {
+    color: #34d399;
+}
+
+.app-notification.error .app-notification-icon {
+    color: #fb7185;
+}
+
+.app-notification.warning .app-notification-icon {
+    color: #fbbf24;
+}
+
+.app-notification.info .app-notification-icon {
+    color: #38bdf8;
+}
+
+[data-theme="light"] .app-notification {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .app-notification-title {
+    color: #0f172a;
+}
+
+[data-theme="light"] .app-notification-message {
+    color: #334155;
+}
+
+[data-theme="light"] .app-notification-close {
+    color: #64748b;
+}
+
+[data-theme="light"] .app-notification-close:hover {
+    color: #0f172a;
+}
+
+[data-theme="light"] .app-notification.success {
+    border-left: 4px solid #059669;
+}
+
+[data-theme="light"] .app-notification.success .app-notification-icon {
+    color: #059669;
+}
+
+[data-theme="light"] .app-notification.error {
+    border-left: 4px solid #dc2626;
+}
+
+[data-theme="light"] .app-notification.error .app-notification-icon {
+    color: #dc2626;
+}
+
+[data-theme="light"] .app-notification.warning {
+    border-left: 4px solid #d97706;
+}
+
+[data-theme="light"] .app-notification.warning .app-notification-icon {
+    color: #d97706;
+}
+
+[data-theme="light"] .app-notification.info {
+    border-left: 4px solid #2563eb;
+}
+
+[data-theme="light"] .app-notification.info .app-notification-icon {
+    color: #2563eb;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-notification {
+        transition: opacity 0.15s ease !important;
+        transform: none !important;
+    }
+}
+
+/* --- Universal Bootstrap Alerts --- */
+.alert {
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.alert-success {
+    background-color: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    color: #6ee7b7;
+}
+
+.alert-danger {
+    background-color: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(251, 113, 133, 0.35);
+    color: #fda4af;
+}
+
+.alert-warning {
+    background-color: rgba(245, 158, 11, 0.14);
+    border: 1px solid rgba(251, 191, 36, 0.35);
+    color: #fde68a;
+}
+
+.alert-info {
+    background-color: rgba(56, 189, 248, 0.14);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #bae6fd;
+}
+
+.alert-secondary {
+    background-color: rgba(148, 163, 184, 0.14);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #cbd5e1;
+}
+
+[data-theme="light"] .alert-success {
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+[data-theme="light"] .alert-danger {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+[data-theme="light"] .alert-warning {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+[data-theme="light"] .alert-info {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+
+[data-theme="light"] .alert-secondary {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+
+/* --- Panel & State Feedback: Light Mode --- */
+[data-theme="light"] .bookings-error,
+[data-theme="light"] .attendance-error,
+[data-theme="light"] .availability-error {
+    color: #b91c1c;
+    font-weight: 500;
+}
+
+[data-theme="light"] .bookings-error i,
+[data-theme="light"] .attendance-error i,
+[data-theme="light"] .availability-error i {
+    color: #dc2626;
+}
+
+[data-theme="light"] .bookings-state,
+[data-theme="light"] .attendance-state,
+[data-theme="light"] .availability-state {
+    color: #475569;
+}
+
+[data-theme="light"] .bookings-state i,
+[data-theme="light"] .attendance-state i,
+[data-theme="light"] .availability-state i {
+    color: #64748b;
+}
+
+/* --- Status Badges & Chips: Light Mode Overrides --- */
+[data-theme="light"] .badge-active,
+[data-theme="light"] .badge-approved {
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+[data-theme="light"] .badge-upcoming {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+
+[data-theme="light"] .badge-pending {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+[data-theme="light"] .badge-rejected,
+[data-theme="light"] .badge-cancelled {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+[data-theme="light"] .avail-now {
+    background-color: #ecfdf5;
+    color: #065f46;
+}
+
+[data-theme="light"] .avail-busy {
+    background-color: #fffbeb;
+    color: #92400e;
+}
+
+[data-theme="light"] .booking-status-pending {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+[data-theme="light"] .booking-status-approved {
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+[data-theme="light"] .booking-status-rejected {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+[data-theme="light"] .booking-status-cancelled {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+[data-theme="light"] .booking-status-completed {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1e40af;
+}
+
+[data-theme="light"] .badge-equip-available,
+[data-theme="light"] .badge-resource-returned,
+[data-theme="light"] .badge-catering-completed {
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+
+[data-theme="light"] .badge-equip-maintenance,
+[data-theme="light"] .badge-resource-reserved,
+[data-theme="light"] .badge-catering-pending {
+    background-color: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+[data-theme="light"] .badge-equip-damaged,
+[data-theme="light"] .badge-catering-rejected {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+[data-theme="light"] .badge-equip-retired,
+[data-theme="light"] .badge-resource-cancelled,
+[data-theme="light"] .badge-catering-cancelled {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+[data-theme="light"] .badge-resource-checked-out {
+    background-color: #f0f9ff;
+    border-color: #bae6fd;
+    color: #0369a1;
+}
+
+[data-theme="light"] .badge-catering-approved {
+    background-color: #eef2ff;
+    border-color: #c7d2fe;
+    color: #4338ca;
+}
+
+/* --- Form Validation Text --- */
+[data-theme="dark"] .invalid-feedback,
+[data-theme="dark"] .text-danger {
+    color: #fda4af !important;
+}
+
+[data-theme="light"] .invalid-feedback,
+[data-theme="light"] .text-danger {
+    color: #dc2626 !important;
+    font-weight: 500;
+}
+
+[data-theme="light"] .text-muted-blue {
+    color: #475569 !important;
+}
+
+/* --- Auth Page Alerts (Fallback & High-Contrast) --- */
+.login-alert,
+.auth-alert,
+.alert-custom {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(251, 113, 133, 0.35);
+    color: #fda4af;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13.5px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+.login-alert i,
+.auth-alert i,
+.alert-custom i {
+    color: #fb7185;
+    font-size: 17px;
+    flex-shrink: 0;
+}
+
+.login-alert-success,
+.auth-alert-success,
+.alert-custom.alert-success {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(52, 211, 153, 0.35);
+    color: #6ee7b7;
+}
+
+.login-alert-success i,
+.auth-alert-success i,
+.alert-custom.alert-success i {
+    color: #34d399;
 }
 
 /* ==========================================================================
@@ -3239,8 +3806,16 @@ body {
     border-color: #fecaca;
 }
 
+[data-theme="light"] .requested-room-alert .requested-room-alert-icon {
+    color: #dc2626;
+}
+
 [data-theme="light"] .requested-room-alert-content h4 {
     color: #991b1b;
+}
+
+[data-theme="light"] .requested-room-alert-content p {
+    color: #475569;
 }
 
 [data-theme="light"] .conflict-interval-item {
@@ -3254,8 +3829,16 @@ body {
     border-color: #bbf7d0;
 }
 
+[data-theme="light"] .requested-room-success .requested-room-alert-icon {
+    color: #16a34a;
+}
+
 [data-theme="light"] .requested-room-success .requested-room-alert-content h4 {
     color: #166534;
+}
+
+[data-theme="light"] .requested-room-success .requested-room-alert-content p {
+    color: #15803d;
 }
 
 [data-theme="light"] .room-card {
@@ -6294,3 +6877,417 @@ input#recurrenceUntilDate {
     background: rgba(251, 191, 36, 0.20) !important;
     color: #FDE047 !important;
 }
+
+/* ==========================================================================
+   Meeting-Centric Participants Dashboard Styles
+   ========================================================================== */
+
+.participants-metrics-row {
+    margin-bottom: 24px;
+}
+
+.participants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .participants-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.meeting-participant-card {
+    background: rgba(17, 26, 46, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(129, 140, 248, 0.14);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: transform var(--duration-normal) var(--ease-out-smooth),
+                box-shadow var(--duration-normal) var(--ease-out-smooth),
+                border-color var(--duration-normal) var(--ease-out-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.meeting-participant-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(129, 140, 248, 0.28);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.meeting-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.meeting-card-main-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.meeting-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.meeting-card-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 6px 0;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.meeting-card-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.meeting-card-meta .meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.meeting-card-meta .meta-dot {
+    color: #475569;
+}
+
+.meeting-count-pill {
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--accent-blue);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.meeting-today-pill {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary-hover);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+.btn-card-action {
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(129, 140, 248, 0.22);
+    color: var(--primary-hover);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.btn-card-action:hover {
+    background: rgba(99, 102, 241, 0.25);
+    color: #ffffff;
+    border-color: rgba(129, 140, 248, 0.45);
+}
+
+/* Sections inside card */
+.meeting-section-group {
+    border-radius: 10px;
+    padding: 12px 14px;
+}
+
+.organizer-section {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.10) 0%, rgba(124, 58, 237, 0.06) 100%);
+    border: 1px solid rgba(129, 140, 248, 0.24);
+    box-shadow: 0 0 16px rgba(99, 102, 241, 0.08) inset;
+}
+
+.participants-section {
+    background: rgba(13, 20, 36, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.meeting-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--primary-hover);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.participants-section .meeting-section-label {
+    color: var(--text-muted);
+}
+
+/* Attendee rows */
+.attendee-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.attendee-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: background 0.15s ease;
+}
+
+.attendee-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.organizer-row {
+    padding: 4px 6px;
+}
+
+.attendee-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-weight: 700;
+    flex-shrink: 0;
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.organizer-avatar {
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+.attendee-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.attendee-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+}
+
+.attendee-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attendee-meta {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attendee-meta .meta-dot {
+    color: #475569;
+}
+
+.attendee-tag {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.tag-organizer {
+    background: rgba(99, 102, 241, 0.22);
+    color: #c7d2fe;
+    border: 1px solid rgba(99, 102, 241, 0.4);
+}
+
+.tag-guest {
+    background: rgba(251, 191, 36, 0.16);
+    color: #fde047;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.response-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.response-status-badge.status-accepted {
+    background: rgba(52, 211, 153, 0.14);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.response-status-badge.status-pending {
+    background: rgba(251, 191, 36, 0.14);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.response-status-badge.status-declined {
+    background: rgba(251, 113, 133, 0.14);
+    color: #fb7185;
+    border: 1px solid rgba(251, 113, 133, 0.3);
+}
+
+.response-status-badge.status-tentative {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.attendee-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.6;
+    transition: opacity 0.15s ease;
+}
+
+.attendee-row:hover .attendee-actions {
+    opacity: 1;
+}
+
+.attendee-empty-state {
+    padding: 14px 10px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Light mode overrides */
+[data-theme="light"] .meeting-participant-card {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .meeting-participant-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .meeting-card-title {
+    color: #0f172a;
+}
+
+[data-theme="light"] .meeting-card-meta {
+    color: #64748b;
+}
+
+[data-theme="light"] .organizer-section {
+    background: #f5f3ff;
+    border-color: #c7d2fe;
+    box-shadow: none;
+}
+
+[data-theme="light"] .participants-section {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .attendee-row:hover {
+    background: #f1f5f9;
+}
+
+[data-theme="light"] .attendee-name {
+    color: #0f172a;
+}
+
+[data-theme="light"] .attendee-meta {
+    color: #64748b;
+}
+
+[data-theme="light"] .attendee-avatar {
+    background: #e2e8f0;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+[data-theme="light"] .tag-organizer {
+    background: #ede9fe;
+    color: #6366f1;
+    border-color: #c7d2fe;
+}
+
+[data-theme="light"] .btn-card-action {
+    background: #ede9fe;
+    color: #4f46e5;
+    border-color: #c7d2fe;
+}
+
+[data-theme="light"] .btn-card-action:hover {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4338ca;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .meeting-participant-card,
+    .stat-card,
+    .btn-card-action,
+    .attendee-row,
+    .attendee-actions {
+        transition: none !important;
+    }
+    .meeting-participant-card:hover,
+    .stat-card:hover {
+        transform: none !important;
+    }
+}
+

@@ -162,12 +162,12 @@ $canManage  = ($roleId === 1 || $roleId === 6 || in_array($roleName, ['Admin', '
         <form id="equipmentForm">
             <input type="hidden" id="equipmentId">
 
-            <div id="equipmentFormError" class="booking-form-alert booking-form-error d-none">
+            <div id="equipmentFormError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="equipmentFormErrorText"></span>
             </div>
 
-            <div id="equipmentFormSuccess" class="booking-form-alert booking-form-success d-none">
+            <div id="equipmentFormSuccess" class="booking-form-alert booking-form-success d-none" role="status" aria-live="polite">
                 <i class="bi bi-check-circle"></i>
                 <span id="equipmentFormSuccessText"></span>
             </div>

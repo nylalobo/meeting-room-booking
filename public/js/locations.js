@@ -941,9 +941,7 @@ async function handleLocationFormSubmit(
                     : 'Location created successfully.'
             );
 
-        showLocationFormSuccess(
-            successMessage
-        );
+        closeLocationModalWindow();
 
         showAppNotification(
             successMessage,
@@ -954,12 +952,6 @@ async function handleLocationFormSubmit(
         );
 
         await loadLocations();
-
-        setTimeout(() => {
-
-            closeLocationModalWindow();
-
-        }, 800);
 
     } catch (error) {
 
@@ -1275,8 +1267,13 @@ function showLocationFormSuccess(
             message;
     }
 
-    successBox?.classList.remove(
+    successBox?.classList.add(
         'd-none'
+    );
+
+    showAppNotification(
+        message,
+        'success'
     );
 }
 

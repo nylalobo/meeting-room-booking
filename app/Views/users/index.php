@@ -128,12 +128,12 @@
 
             <input type="hidden" id="userId">
 
-            <div id="userFormError" class="booking-form-alert booking-form-error d-none">
+            <div id="userFormError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="userFormErrorText"></span>
             </div>
 
-            <div id="userFormSuccess" class="booking-form-alert booking-form-success d-none">
+            <div id="userFormSuccess" class="booking-form-alert booking-form-success d-none" role="status" aria-live="polite">
                 <i class="bi bi-check-circle"></i>
                 <span id="userFormSuccessText"></span>
             </div>

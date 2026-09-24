@@ -120,12 +120,12 @@
 
             <input type="hidden" id="locationId">
 
-            <div id="locationFormError" class="booking-form-alert booking-form-error d-none">
+            <div id="locationFormError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="locationFormErrorText"></span>
             </div>
 
-            <div id="locationFormSuccess" class="booking-form-alert booking-form-success d-none">
+            <div id="locationFormSuccess" class="booking-form-alert booking-form-success d-none" role="status" aria-live="polite">
                 <i class="bi bi-check-circle"></i>
                 <span id="locationFormSuccessText"></span>
             </div>

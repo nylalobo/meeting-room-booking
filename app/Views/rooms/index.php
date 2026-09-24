@@ -120,12 +120,12 @@
 
             <input type="hidden" id="roomId">
 
-            <div id="roomFormError" class="booking-form-alert booking-form-error d-none">
+            <div id="roomFormError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="roomFormErrorText"></span>
             </div>
 
-            <div id="roomFormSuccess" class="booking-form-alert booking-form-success d-none">
+            <div id="roomFormSuccess" class="booking-form-alert booking-form-success d-none" role="status" aria-live="polite">
                 <i class="bi bi-check-circle"></i>
                 <span id="roomFormSuccessText"></span>
             </div>
@@ -314,7 +314,7 @@
                 </div>
             </div>
 
-            <div id="roomQrError" class="booking-form-alert booking-form-error d-none">
+            <div id="roomQrError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="roomQrErrorText"></span>
             </div>

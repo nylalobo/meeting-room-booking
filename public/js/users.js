@@ -1349,9 +1349,7 @@
                         : 'User created successfully.'
                 );
 
-            showUserFormSuccess(
-                successMessage
-            );
+            closeUserModalWindow();
 
             showAppNotification(
                 successMessage,
@@ -1362,12 +1360,6 @@
             );
 
             await loadUsersData();
-
-            setTimeout(() => {
-
-                closeUserModalWindow();
-
-            }, 800);
 
         } catch (error) {
 
@@ -1697,8 +1689,13 @@
                 message;
         }
 
-        successBox?.classList.remove(
+        successBox?.classList.add(
             'd-none'
+        );
+
+        showAppNotification(
+            message,
+            'success'
         );
     }
 

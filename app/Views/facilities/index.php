@@ -117,12 +117,12 @@
 
             <input type="hidden" id="facilityId">
 
-            <div id="facilityFormError" class="booking-form-alert booking-form-error d-none">
+            <div id="facilityFormError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="facilityFormErrorText"></span>
             </div>
 
-            <div id="facilityFormSuccess" class="booking-form-alert booking-form-success d-none">
+            <div id="facilityFormSuccess" class="booking-form-alert booking-form-success d-none" role="status" aria-live="polite">
                 <i class="bi bi-check-circle"></i>
                 <span id="facilityFormSuccessText"></span>
             </div>

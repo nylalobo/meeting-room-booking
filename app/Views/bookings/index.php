@@ -216,12 +216,12 @@
 
             <input type="hidden" id="bookingId">
 
-            <div id="bookingFormError" class="booking-form-alert booking-form-error d-none">
+            <div id="bookingFormError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="bookingFormErrorText"></span>
             </div>
 
-            <div id="bookingFormSuccess" class="booking-form-alert booking-form-success d-none">
+            <div id="bookingFormSuccess" class="booking-form-alert booking-form-success d-none" role="status" aria-live="polite">
                 <i class="bi bi-check-circle"></i>
                 <span id="bookingFormSuccessText"></span>
             </div>
@@ -562,7 +562,7 @@
 
             <input type="hidden" id="rejectionBookingId" name="booking_id">
 
-            <div id="bookingRejectionError" class="booking-form-alert booking-form-error d-none">
+            <div id="bookingRejectionError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="bookingRejectionErrorText"></span>
             </div>
@@ -640,7 +640,7 @@
 
         <form id="availabilityForm">
 
-            <div id="availabilityError" class="booking-form-alert booking-form-error d-none">
+            <div id="availabilityError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="availabilityErrorText"></span>
             </div>
@@ -1173,7 +1173,7 @@
                                     <input type="text" id="visitorNotes" name="notes" placeholder="e.g. Needs parking pass, guest Wi-Fi" maxlength="1000">
                                 </div>
                             </div>
-                            <div id="visitorFormError" class="visitor-form-alert d-none"></div>
+                            <div id="visitorFormError" class="visitor-form-alert d-none" role="alert" aria-live="polite"></div>
                             <div class="visitor-form-actions">
                                 <button type="button" class="btn-visitor-cancel" id="cancelVisitorBtn">Cancel</button>
                                 <button type="submit" class="btn-visitor-submit" id="submitVisitorBtn">
@@ -1365,7 +1365,7 @@
                             </div>
 
                             <!-- Form Error / Conflict Alert -->
-                            <div id="resourceFormError" class="visitor-form-alert d-none"></div>
+                            <div id="resourceFormError" class="visitor-form-alert d-none" role="alert" aria-live="polite"></div>
 
                             <div class="visitor-form-actions">
                                 <button type="button" class="btn-visitor-cancel" id="cancelResourceBtn">Cancel</button>
@@ -1573,7 +1573,7 @@
                             </div>
 
                             <!-- Form Error Alert -->
-                            <div id="cateringFormError" class="visitor-form-alert d-none"></div>
+                            <div id="cateringFormError" class="visitor-form-alert d-none" role="alert" aria-live="polite"></div>
 
                             <div class="visitor-form-actions">
                                 <button type="button" class="btn-visitor-cancel" id="cancelCateringBtn">Cancel</button>
@@ -1644,7 +1644,7 @@
         <form id="cateringRejectionForm">
             <input type="hidden" id="cateringRejectionId" name="catering_id">
 
-            <div id="cateringRejectionError" class="booking-form-alert booking-form-error d-none">
+            <div id="cateringRejectionError" class="booking-form-alert booking-form-error d-none" role="alert" aria-live="polite">
                 <i class="bi bi-exclamation-circle"></i>
                 <span id="cateringRejectionErrorText"></span>
             </div>
@@ -2225,12 +2225,20 @@
 
 .visitor-form-alert {
     margin-top: 10px;
-    padding: 8px 12px;
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: 6px;
-    color: #f87171;
-    font-size: 12px;
+    padding: 10px 14px;
+    background: rgba(239, 68, 68, 0.14);
+    border: 1px solid rgba(251, 113, 133, 0.35);
+    border-radius: 8px;
+    color: #fda4af;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.45;
+}
+
+[data-theme="light"] .visitor-form-alert {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
 }
 
 .visitor-form-actions {

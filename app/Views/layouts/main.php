@@ -41,15 +41,58 @@
 <body>
 
 <?php
-$isLoggedIn    = session()->get('isLoggedIn') === true && !empty(session()->get('user_id'));
-$userFirstName = (string) (session()->get('first_name') ?? '');
-$userLastName  = (string) (session()->get('last_name') ?? '');
-$userFullName  = trim($userFirstName . ' ' . $userLastName);
-if (empty($userFullName)) {
-    $userFullName = 'User';
+$isLoggedIn = session()->get('isLoggedIn') === true && !empty(session()->get('user_id'));
+$userId     = $isLoggedIn ? (int) session()->get('user_id') : null;
+
+$userFirstName = '';
+$userLastName  = '';
+$userFullName  = '';
+$userRole      = '';
+$userInitials  = '';
+$dbUser        = null;
+
+if ($isLoggedIn && $userId) {
+    // Authoritatively resolve user from database to ensure fresh identity on profile/role update
+    $userModel = model('App\Models\UserModel');
+    $dbUser    = $userModel ? $userModel->find($userId) : null;
+
+    if ($dbUser) {
+        $userFirstName = (string) ($dbUser['first_name'] ?? '');
+        $userLastName  = (string) ($dbUser['last_name'] ?? '');
+        $userFullName  = trim($userFirstName . ' ' . $userLastName);
+
+        if (!empty($dbUser['role_id'])) {
+            $roleModel = model('App\Models\RoleModel');
+            $role      = $roleModel ? $roleModel->find($dbUser['role_id']) : null;
+            if ($role && !empty($role['name'])) {
+                $userRole = (string) $role['name'];
+            }
+        }
+    }
+
+    // Fallbacks to session data if DB record is temporarily unavailable
+    if (empty($userFullName)) {
+        $userFirstName = (string) (session()->get('first_name') ?? '');
+        $userLastName  = (string) (session()->get('last_name') ?? '');
+        $userFullName  = trim($userFirstName . ' ' . $userLastName);
+    }
+    if (empty($userFullName)) {
+        $userFullName = 'User';
+    }
+    if (empty($userRole)) {
+        $userRole = (string) (session()->get('role_name') ?? 'Member');
+    }
+
+    // Dynamic initials: First letter of first name + first letter of last name (e.g. Nyla Lobo -> NL)
+    $parts = preg_split('/\s+/', trim($userFullName));
+    if (count($parts) >= 2) {
+        $userInitials = strtoupper(mb_substr($parts[0], 0, 1) . mb_substr(end($parts), 0, 1));
+    } elseif (!empty($parts[0])) {
+        $userInitials = strtoupper(mb_substr($parts[0], 0, 2));
+    } else {
+        $userInitials = 'U';
+    }
 }
-$userRole    = (string) (session()->get('role_name') ?? 'Member');
-$userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
 ?>
 
 <div class="app-wrapper" id="appWrapper">
@@ -92,10 +135,18 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
         <!-- Navigation Menu -->
         <nav class="sidebar-nav">
 
+            <div class="sidebar-nav-section">
+                <span class="nav-section-label">MAIN</span>
+            </div>
+
             <a href="<?= base_url('/') ?>" class="nav-item <?= (uri_string() === '' || uri_string() === '/') ? 'active' : '' ?>" title="Dashboard">
                 <i class="bi bi-grid-fill nav-icon"></i>
                 <span class="nav-text">Dashboard</span>
             </a>
+
+            <div class="sidebar-nav-section">
+                <span class="nav-section-label">BOOKING &amp; MEETINGS</span>
+            </div>
 
             <a href="<?= base_url('locations') ?>" class="nav-item <?= str_starts_with(uri_string(), 'locations') ? 'active' : '' ?>" title="Locations">
                 <i class="bi bi-geo-alt nav-icon"></i>
@@ -107,9 +158,14 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
                 <span class="nav-text">Rooms</span>
             </a>
 
-            <a href="<?= base_url('bookings') ?>" class="nav-item <?= str_starts_with(uri_string(), 'bookings') ? 'active' : '' ?>" title="Bookings">
+            <a href="<?= base_url('bookings') ?>" class="nav-item <?= (str_starts_with(uri_string(), 'bookings') && (!isset($_GET['view']) || $_GET['view'] !== 'calendar')) ? 'active' : '' ?>" title="Bookings">
                 <i class="bi bi-calendar-check nav-icon"></i>
                 <span class="nav-text">Bookings</span>
+            </a>
+
+            <a href="<?= base_url('bookings?view=calendar') ?>" class="nav-item <?= (str_starts_with(uri_string(), 'bookings') && (isset($_GET['view']) && $_GET['view'] === 'calendar')) ? 'active' : '' ?>" title="Calendar">
+                <i class="bi bi-calendar3 nav-icon"></i>
+                <span class="nav-text">Calendar</span>
             </a>
 
             <a href="<?= base_url('participants') ?>" class="nav-item <?= str_starts_with(uri_string(), 'participants') ? 'active' : '' ?>" title="Participants">
@@ -117,15 +173,23 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
                 <span class="nav-text">Participants</span>
             </a>
 
-            <a href="<?= base_url('facilities') ?>" class="nav-item <?= str_starts_with(uri_string(), 'facilities') ? 'active' : '' ?>" title="Facilities">
-                <i class="bi bi-building-gear nav-icon"></i>
-                <span class="nav-text">Facilities</span>
-            </a>
+            <div class="sidebar-nav-section">
+                <span class="nav-section-label">RESOURCES</span>
+            </div>
 
             <a href="<?= base_url('equipment') ?>" class="nav-item <?= str_starts_with(uri_string(), 'equipment') ? 'active' : '' ?>" title="Equipment">
                 <i class="bi bi-tools nav-icon"></i>
                 <span class="nav-text">Equipment</span>
             </a>
+
+            <a href="<?= base_url('facilities') ?>" class="nav-item <?= str_starts_with(uri_string(), 'facilities') ? 'active' : '' ?>" title="Facilities">
+                <i class="bi bi-building-gear nav-icon"></i>
+                <span class="nav-text">Facilities</span>
+            </a>
+
+            <div class="sidebar-nav-section">
+                <span class="nav-section-label">ADMINISTRATION</span>
+            </div>
 
             <a href="<?= base_url('users') ?>" class="nav-item <?= str_starts_with(uri_string(), 'users') ? 'active' : '' ?>" title="Users">
                 <i class="bi bi-person nav-icon"></i>
@@ -145,7 +209,7 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
             <div class="sidebar-account">
                 <div class="account-profile" title="<?= esc($userFullName) ?> (<?= esc($userRole) ?>)">
                     <div class="account-avatar" aria-hidden="true">
-                        <?= esc($userInitial) ?>
+                        <?= esc($userInitials) ?>
                     </div>
                     <div class="account-info">
                         <span class="account-name"><?= esc($userFullName) ?></span>
@@ -208,14 +272,14 @@ $userInitial = strtoupper(substr($userFirstName ?: 'U', 0, 1));
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     window.MeetSpaceUser = <?= json_encode([
-        'id'            => session()->get('user_id') ? (int) session()->get('user_id') : null,
-        'email'         => session()->get('email'),
-        'first_name'    => session()->get('first_name'),
-        'last_name'     => session()->get('last_name'),
-        'role_id'       => session()->get('role_id') ? (int) session()->get('role_id') : null,
-        'role_name'     => session()->get('role_name'),
-        'department_id' => session()->get('department_id') ? (int) session()->get('department_id') : null,
-        'isLoggedIn'    => session()->get('isLoggedIn') === true,
+        'id'            => $userId,
+        'email'         => $dbUser['email'] ?? session()->get('email'),
+        'first_name'    => $userFirstName ?: session()->get('first_name'),
+        'last_name'     => $userLastName ?: session()->get('last_name'),
+        'role_id'       => !empty($dbUser['role_id']) ? (int) $dbUser['role_id'] : (session()->get('role_id') ? (int) session()->get('role_id') : null),
+        'role_name'     => $userRole,
+        'department_id' => !empty($dbUser['department_id']) ? (int) $dbUser['department_id'] : (session()->get('department_id') ? (int) session()->get('department_id') : null),
+        'isLoggedIn'    => $isLoggedIn,
     ]) ?>;
 </script>
 <script src="<?= base_url('js/app.js') ?>"></script>

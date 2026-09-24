@@ -1935,7 +1935,7 @@
                 }
             }
 
-            showBookingFormSuccess(successMessage);
+            closeBookingModalWindow();
 
             showAppNotification(
                 successMessage,
@@ -1948,10 +1948,6 @@
             if (activeViewMode === 'calendar') {
                 fetchCalendarEvents();
             }
-
-            setTimeout(() => {
-                closeBookingModalWindow();
-            }, 800);
 
         } catch (error) {
 
@@ -3009,7 +3005,9 @@
             `;
         }
 
-        successBox?.classList.remove('d-none');
+        successBox?.classList.add('d-none');
+
+        showAppNotification(message, 'success');
     }
 
 
@@ -3159,6 +3157,12 @@
         calendarViewBtn?.addEventListener('click', () => {
             switchToCalendarView();
         });
+
+        // Initialize view based on URL query parameter (?view=calendar)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('view') === 'calendar') {
+            switchToCalendarView();
+        }
 
         // Navigation
         prevBtn?.addEventListener('click', () => {
