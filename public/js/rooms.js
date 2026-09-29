@@ -26,106 +26,89 @@ document.addEventListener('DOMContentLoaded', () => {
    ========================================================================== */
 
 let allRooms = [];
+let currentPage = 1;
+let currentPerPage = 10;
+let currentPagination = { page: 1, per_page: 10, total: 0, total_pages: 1 };
+let roomSearchDebounceTimer = null;
 
 
 async function loadRooms() {
-
-    const loading =
-        document.getElementById(
-            'roomsLoading'
-        );
-
-    const error =
-        document.getElementById(
-            'roomsError'
-        );
-
-    const empty =
-        document.getElementById(
-            'roomsEmpty'
-        );
-
-    const tableWrapper =
-        document.getElementById(
-            'roomsTableWrapper'
-        );
+    const loading = document.getElementById('roomsLoading');
+    const error = document.getElementById('roomsError');
+    const empty = document.getElementById('roomsEmpty');
+    const tableWrapper = document.getElementById('roomsTableWrapper');
 
     try {
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        empty?.classList.add('d-none');
 
-        loading?.classList.remove(
-            'd-none'
-        );
+        const searchInput = document.getElementById('roomSearch');
+        const statusFilter = document.getElementById('roomStatusFilter');
 
-        error?.classList.add(
-            'd-none'
-        );
+        const search = (searchInput?.value || '').trim();
+        const status = statusFilter?.value || '';
 
-        empty?.classList.add(
-            'd-none'
-        );
+        const params = new URLSearchParams({
+            page: String(currentPage),
+            per_page: String(currentPerPage),
+        });
+        if (search) params.append('search', search);
+        if (status !== '') params.append('status', status);
 
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        const response =
-            await fetch(
-                '/api/rooms'
-            );
+        const response = await fetch(`/api/rooms?${params.toString()}`);
 
         if (!response.ok) {
-
-            throw new Error(
-                `HTTP error: ${response.status}`
-            );
+            throw new Error(`HTTP error: ${response.status}`);
         }
 
-        const result =
-            await response.json();
+        const result = await response.json();
 
-        if (
-            result.status !==
-            'success'
-        ) {
-
-            throw new Error(
-                'Rooms request failed.'
-            );
+        if (result.status !== 'success') {
+            throw new Error(result.message || 'Rooms request failed.');
         }
 
-        allRooms =
-            result.data || [];
+        allRooms = result.data || [];
+        currentPagination = {
+            page: result.page || currentPage,
+            per_page: result.per_page || currentPerPage,
+            total: result.total || 0,
+            total_pages: result.total_pages || 1,
+        };
 
-        loading?.classList.add(
-            'd-none'
-        );
+        loading?.classList.add('d-none');
 
-        renderRooms(
-            allRooms
-        );
+        if (allRooms.length === 0) {
+            tableWrapper?.classList.add('d-none');
+            empty?.classList.remove('d-none');
+        } else {
+            empty?.classList.add('d-none');
+            tableWrapper?.classList.remove('d-none');
+            renderRooms(allRooms);
+        }
+
+        if (typeof window.renderPagination === 'function') {
+            window.renderPagination(
+                '#roomsPagination',
+                currentPagination,
+                (newPage) => {
+                    currentPage = newPage;
+                    loadRooms();
+                },
+                (newPerPage) => {
+                    currentPerPage = newPerPage;
+                    currentPage = 1;
+                    loadRooms();
+                }
+            );
+        }
 
     } catch (err) {
-
-        console.error(
-            'Unable to load rooms:',
-            err
-        );
-
-        loading?.classList.add(
-            'd-none'
-        );
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.add(
-            'd-none'
-        );
-
-        error?.classList.remove(
-            'd-none'
-        );
+        console.error('Unable to load rooms:', err);
+        loading?.classList.add('d-none');
+        tableWrapper?.classList.add('d-none');
+        empty?.classList.add('d-none');
+        error?.classList.remove('d-none');
     }
 }
 
@@ -330,91 +313,28 @@ function renderRooms(rooms) {
    ========================================================================== */
 
 function setupRoomFilters() {
+    const searchInput = document.getElementById('roomSearch');
+    const statusFilter = document.getElementById('roomStatusFilter');
 
-    const searchInput =
-        document.getElementById(
-            'roomSearch'
-        );
+    searchInput?.addEventListener('input', () => {
+        clearTimeout(roomSearchDebounceTimer);
+        roomSearchDebounceTimer = setTimeout(() => {
+            currentPage = 1;
+            loadRooms();
+        }, 250);
+    });
 
-    const statusFilter =
-        document.getElementById(
-            'roomStatusFilter'
-        );
-
-    searchInput?.addEventListener(
-        'input',
-        applyRoomFilters
-    );
-
-    statusFilter?.addEventListener(
-        'change',
-        applyRoomFilters
-    );
+    statusFilter?.addEventListener('change', () => {
+        currentPage = 1;
+        loadRooms();
+    });
 }
-
 
 function applyRoomFilters() {
-
-    const searchInput =
-        document.getElementById(
-            'roomSearch'
-        );
-
-    const statusFilter =
-        document.getElementById(
-            'roomStatusFilter'
-        );
-
-    const searchTerm =
-        searchInput
-            ? searchInput.value
-                .trim()
-                .toLowerCase()
-            : '';
-
-    const selectedStatus =
-        statusFilter
-            ? statusFilter.value
-            : '';
-
-    const filteredRooms =
-        allRooms.filter(
-            (room) => {
-
-                const searchableText = [
-                    room.name,
-                    room.room_code,
-                    room.floor,
-                    room.description
-                ]
-                    .filter(Boolean)
-                    .join(' ')
-                    .toLowerCase();
-
-                const matchesSearch =
-                    !searchTerm ||
-                    searchableText.includes(
-                        searchTerm
-                    );
-
-                const matchesStatus =
-                    !selectedStatus ||
-                    String(
-                        room.is_active
-                    ) ===
-                    selectedStatus;
-
-                return (
-                    matchesSearch &&
-                    matchesStatus
-                );
-            }
-        );
-
-    renderRooms(
-        filteredRooms
-    );
+    currentPage = 1;
+    loadRooms();
 }
+
 
 
 /* ==========================================================================

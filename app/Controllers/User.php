@@ -15,7 +15,7 @@ class User extends BaseController
     }
 
     /**
-     * List all users.
+     * List users with server-side pagination, search, and filtering.
      */
     public function index(): ResponseInterface
     {
@@ -23,16 +23,70 @@ class User extends BaseController
             return $this->select2();
         }
 
-        $users = $this->userModel
-            ->select('id, department_id, role_id, first_name, last_name, email, phone, is_active, created_at, updated_at')
-            ->orderBy('id', 'ASC')
-            ->findAll();
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $roleId = $this->request->getGet('role_id');
+        $deptId = $this->request->getGet('department_id');
+        $status = $this->request->getGet('status');
+
+        $builder = $this->userModel->builder();
+        $builder->select('id, department_id, role_id, first_name, last_name, email, phone, is_active, created_at, updated_at');
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('first_name', $search)
+                ->orLike('last_name', $search)
+                ->orLike('email', $search)
+                ->orLike('phone', $search)
+                ->groupEnd();
+        }
+
+        if ($roleId !== null && $roleId !== '') {
+            $builder->where('role_id', (int) $roleId);
+        }
+
+        if ($deptId !== null && $deptId !== '') {
+            $builder->where('department_id', (int) $deptId);
+        }
+
+        if ($status !== null && $status !== '') {
+            $builder->where('is_active', (int) $status);
+        }
+
+        $total = (clone $builder)->countAllResults();
+
+        if ($all) {
+            $users = $builder->orderBy('id', 'ASC')->get()->getResultArray();
+            return $this->response->setJSON([
+                'status'      => 'success',
+                'data'        => $users,
+                'page'        => 1,
+                'per_page'    => $total > 0 ? $total : 1,
+                'total'       => $total,
+                'total_pages' => 1,
+            ]);
+        }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        $users = $builder->orderBy('id', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
 
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $users,
+            'status'      => 'success',
+            'data'        => $users,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
+
 
     /**
      * Select2 AJAX data source for users.

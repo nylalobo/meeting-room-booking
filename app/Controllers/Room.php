@@ -40,15 +40,63 @@ class Room extends BaseController
             return $this->select2();
         }
 
-        $rooms = $this->roomModel
-            ->orderBy('id', 'ASC')
-            ->findAll();
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $status = $this->request->getGet('status');
+        $locationId = $this->request->getGet('location_id');
+
+        $builder = $this->roomModel->builder();
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('name', $search)
+                ->orLike('room_code', $search)
+                ->orLike('description', $search)
+                ->groupEnd();
+        }
+
+        if ($status !== null && $status !== '') {
+            $builder->where('is_active', (int) $status);
+        }
+
+        if ($locationId !== null && $locationId !== '') {
+            $builder->where('location_id', (int) $locationId);
+        }
+
+        $total = (clone $builder)->countAllResults();
+
+        if ($all) {
+            $rooms = $builder->orderBy('id', 'ASC')->get()->getResultArray();
+            return $this->response->setJSON([
+                'status'      => 'success',
+                'data'        => $rooms,
+                'page'        => 1,
+                'per_page'    => $total > 0 ? $total : 1,
+                'total'       => $total,
+                'total_pages' => 1,
+            ]);
+        }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        $rooms = $builder->orderBy('id', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
 
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $rooms,
+            'status'      => 'success',
+            'data'        => $rooms,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
+
 
     /**
      * Select2 AJAX data source for rooms.

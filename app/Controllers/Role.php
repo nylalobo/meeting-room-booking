@@ -110,13 +110,41 @@ class Role extends BaseController
             ]);
         }
 
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+
         // Fetch roles with assigned user count
         $db = \Config\Database::connect();
+
+        $countBuilder = $db->table('roles');
+        if ($search !== '') {
+            $countBuilder->groupStart()
+                ->like('roles.name', $search)
+                ->orLike('roles.description', $search)
+                ->groupEnd();
+        }
+        $total = $countBuilder->countAllResults();
+
         $builder = $db->table('roles');
         $builder->select('roles.id, roles.name, roles.description, roles.created_at, roles.updated_at, COUNT(users.id) as user_count')
-                ->join('users', 'users.role_id = roles.id', 'left')
-                ->groupBy('roles.id')
+                ->join('users', 'users.role_id = roles.id', 'left');
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('roles.name', $search)
+                ->orLike('roles.description', $search)
+                ->groupEnd();
+        }
+
+        $builder->groupBy('roles.id')
                 ->orderBy('roles.id', 'ASC');
+
+        if (!$all) {
+            $offset = ($page - 1) * $perPage;
+            $builder->limit($perPage, $offset);
+        }
 
         $rows = $builder->get()->getResultArray();
         $roles = array_map(static function ($r) {
@@ -125,10 +153,16 @@ class Role extends BaseController
             return $r;
         }, $rows);
 
+        $totalPages = $total > 0 ? (int) ceil($total / ($all ? max(1, $total) : $perPage)) : 1;
+
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $roles,
-            'roles'  => $roles,
+            'status'      => 'success',
+            'data'        => $roles,
+            'roles'       => $roles,
+            'page'        => $all ? 1 : $page,
+            'per_page'    => $all ? ($total > 0 ? $total : 1) : $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
 

@@ -7480,3 +7480,205 @@ input#recurrenceUntilDate {
     color: #4338CA !important;
 }
 
+/* ==========================================================================
+   MeetSpace Server-Side Pagination Component
+   ========================================================================== */
+
+.meetspace-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px 20px;
+    margin-top: 14px;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--border-radius-base, 10px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.meetspace-pagination-info {
+    font-size: 13px;
+    color: var(--color-text-muted, #94a3b8);
+    line-height: 1.5;
+}
+
+.meetspace-pagination-info .highlight {
+    font-weight: 600;
+    color: var(--color-text-light, #f8fafc);
+}
+
+.meetspace-pagination-controls {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+}
+
+.meetspace-pagination-per-page {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-text-muted, #94a3b8);
+}
+
+.meetspace-per-page-select {
+    padding: 4px 28px 4px 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-light, #f8fafc);
+    background-color: rgba(30, 41, 59, 0.8);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.meetspace-per-page-select:focus {
+    border-color: rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+}
+
+.meetspace-pagination-nav {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.meetspace-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-text-muted, #94a3b8);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.meetspace-page-btn:hover:not(:disabled):not(.active) {
+    color: var(--color-text-light, #ffffff);
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.35);
+}
+
+.meetspace-page-btn.active {
+    color: #ffffff;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.7);
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+}
+
+.meetspace-page-btn:disabled,
+.meetspace-page-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.meetspace-page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 32px;
+    font-size: 12.5px;
+    color: var(--color-text-muted, #94a3b8);
+}
+
+/* Light Theme Overrides for Pagination */
+[data-theme="light"] .meetspace-pagination {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .meetspace-pagination-info {
+    color: #64748b;
+}
+
+[data-theme="light"] .meetspace-pagination-info .highlight {
+    color: #0f172a;
+}
+
+[data-theme="light"] .meetspace-pagination-per-page {
+    color: #64748b;
+}
+
+[data-theme="light"] .meetspace-per-page-select {
+    color: #0f172a;
+    background-color: #f8fafc;
+    border-color: #cbd5e1;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+[data-theme="light"] .meetspace-page-btn {
+    color: #475569;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .meetspace-page-btn:hover:not(:disabled):not(.active) {
+    color: #1e293b;
+    background: #eef2ff;
+    border-color: #c7d2fe;
+}
+
+[data-theme="light"] .meetspace-page-btn.active {
+    color: #ffffff;
+    background: #6366f1;
+    border-color: #6366f1;
+    box-shadow: 0 2px 4px rgba(99, 102, 241, 0.25);
+}
+
+[data-theme="light"] .meetspace-page-btn:disabled,
+[data-theme="light"] .meetspace-page-btn.disabled {
+    opacity: 0.4;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .meetspace-page-ellipsis {
+    color: #94a3b8;
+}
+
+@media (max-width: 640px) {
+    .meetspace-pagination {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .meetspace-pagination-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .meetspace-pagination-nav {
+        justify-content: center;
+    }
+}
+

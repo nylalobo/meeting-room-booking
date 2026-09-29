@@ -29,6 +29,10 @@
        ========================================================================== */
 
     let allDepartments = [];
+    let currentPage = 1;
+    let currentPerPage = 10;
+    let currentPagination = { page: 1, per_page: 10, total: 0, total_pages: 1 };
+    let departmentSearchDebounceTimer = null;
 
 
     /* ==========================================================================
@@ -36,93 +40,81 @@
        ========================================================================== */
 
     async function loadDepartments() {
-
-        const loading =
-            document.getElementById(
-                'departmentsLoading'
-            );
-
-        const error =
-            document.getElementById(
-                'departmentsError'
-            );
-
-        const empty =
-            document.getElementById(
-                'departmentsEmpty'
-            );
-
-        const tableWrapper =
-            document.getElementById(
-                'departmentsTableWrapper'
-            );
+        const loading = document.getElementById('departmentsLoading');
+        const error = document.getElementById('departmentsError');
+        const empty = document.getElementById('departmentsEmpty');
+        const tableWrapper = document.getElementById('departmentsTableWrapper');
 
         try {
+            loading?.classList.remove('d-none');
+            error?.classList.add('d-none');
+            empty?.classList.add('d-none');
 
-            loading?.classList.remove(
-                'd-none'
-            );
+            const searchInput = document.getElementById('departmentSearch');
+            const search = (searchInput?.value || '').trim();
 
-            error?.classList.add(
-                'd-none'
-            );
+            const params = new URLSearchParams({
+                page: String(currentPage),
+                per_page: String(currentPerPage),
+            });
+            if (search) params.append('search', search);
 
-            empty?.classList.add(
-                'd-none'
-            );
-
-            tableWrapper?.classList.add(
-                'd-none'
-            );
-
-            const response =
-                await fetch('/api/departments');
+            const response = await fetch(`/api/departments?${params.toString()}`);
 
             if (!response.ok) {
-                throw new Error(
-                    `HTTP error: ${response.status}`
-                );
+                throw new Error(`HTTP error: ${response.status}`);
             }
 
-            const result =
-                await response.json();
+            const result = await response.json();
 
             if (result.status !== 'success') {
-                throw new Error(
-                    'Departments request failed.'
+                throw new Error(result.message || 'Departments request failed.');
+            }
+
+            allDepartments = result.data || [];
+            currentPagination = {
+                page: result.page || currentPage,
+                per_page: result.per_page || currentPerPage,
+                total: result.total || 0,
+                total_pages: result.total_pages || 1,
+            };
+
+            loading?.classList.add('d-none');
+
+            if (allDepartments.length === 0) {
+                tableWrapper?.classList.add('d-none');
+                empty?.classList.remove('d-none');
+            } else {
+                empty?.classList.add('d-none');
+                tableWrapper?.classList.remove('d-none');
+                renderDepartments(allDepartments);
+            }
+
+            if (typeof window.renderPagination === 'function') {
+                window.renderPagination(
+                    '#departmentsPagination',
+                    currentPagination,
+                    (newPage) => {
+                        currentPage = newPage;
+                        loadDepartments();
+                    },
+                    (newPerPage) => {
+                        currentPerPage = newPerPage;
+                        currentPage = 1;
+                        loadDepartments();
+                    }
                 );
             }
 
-            allDepartments =
-                result.data || [];
-
-            loading?.classList.add(
-                'd-none'
-            );
-
-            renderDepartments(
-                allDepartments
-            );
-
         } catch (err) {
-
-            loading?.classList.add(
-                'd-none'
-            );
-
-            tableWrapper?.classList.add(
-                'd-none'
-            );
-
-            empty?.classList.add(
-                'd-none'
-            );
-
-            error?.classList.remove(
-                'd-none'
-            );
+            console.error('Error loading departments:', err);
+            loading?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
+            empty?.classList.add('d-none');
+            error?.classList.remove('d-none');
         }
     }
+
 
 
     /* ==========================================================================
@@ -239,42 +231,16 @@
        ========================================================================== */
 
     function setupDepartmentSearch() {
+        const searchInput = document.getElementById('departmentSearch');
+        if (!searchInput) return;
 
-        const searchInput =
-            document.getElementById(
-                'departmentSearch'
-            );
-
-        searchInput?.addEventListener(
-            'input',
-            () => {
-
-                const query =
-                    searchInput.value.trim().toLowerCase();
-
-                if (!query) {
-                    renderDepartments(allDepartments);
-                    return;
-                }
-
-                const filtered =
-                    allDepartments.filter((dept) => {
-
-                        const name =
-                            String(dept.name || '').toLowerCase();
-
-                        const desc =
-                            String(dept.description || '').toLowerCase();
-
-                        return (
-                            name.includes(query) ||
-                            desc.includes(query)
-                        );
-                    });
-
-                renderDepartments(filtered);
-            }
-        );
+        searchInput.addEventListener('input', () => {
+            clearTimeout(departmentSearchDebounceTimer);
+            departmentSearchDebounceTimer = setTimeout(() => {
+                currentPage = 1;
+                loadDepartments();
+            }, 250);
+        });
     }
 
 

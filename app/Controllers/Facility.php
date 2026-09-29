@@ -16,15 +16,57 @@ class Facility extends BaseController
 
     public function index(): ResponseInterface
     {
-        $facilities = $this->facilityModel
-            ->orderBy('id', 'ASC')
-            ->findAll();
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $status = $this->request->getGet('status');
+
+        $builder = $this->facilityModel->builder();
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('name', $search)
+                ->orLike('description', $search)
+                ->groupEnd();
+        }
+
+        if ($status !== null && $status !== '') {
+            $builder->where('is_active', (int) $status);
+        }
+
+        $total = (clone $builder)->countAllResults();
+
+        if ($all) {
+            $facilities = $builder->orderBy('id', 'ASC')->get()->getResultArray();
+            return $this->response->setJSON([
+                'status'      => 'success',
+                'data'        => $facilities,
+                'page'        => 1,
+                'per_page'    => $total > 0 ? $total : 1,
+                'total'       => $total,
+                'total_pages' => 1,
+            ]);
+        }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        $facilities = $builder->orderBy('id', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
 
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $facilities,
+            'status'      => 'success',
+            'data'        => $facilities,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
+
 
     public function show(int $id): ResponseInterface
     {

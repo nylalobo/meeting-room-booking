@@ -33,133 +33,141 @@
     let rolesMap = new Map();
     let departmentsMap = new Map();
 
+    let currentPage = 1;
+    let currentPerPage = 10;
+    let currentPagination = { page: 1, per_page: 10, total: 0, total_pages: 1 };
+    let userSearchDebounceTimer = null;
+
 
     /* ==========================================================================
        DATA LOADING
        ========================================================================== */
 
     async function loadUsersData() {
-
-        const loading =
-            document.getElementById(
-                'usersLoading'
-            );
-
-        const error =
-            document.getElementById(
-                'usersError'
-            );
-
-        const empty =
-            document.getElementById(
-                'usersEmpty'
-            );
-
-        const tableWrapper =
-            document.getElementById(
-                'usersTableWrapper'
-            );
+        const loading = document.getElementById('usersLoading');
+        const error = document.getElementById('usersError');
+        const empty = document.getElementById('usersEmpty');
+        const tableWrapper = document.getElementById('usersTableWrapper');
 
         try {
-
-            loading?.classList.remove(
-                'd-none'
-            );
-
-            error?.classList.add(
-                'd-none'
-            );
-
-            empty?.classList.add(
-                'd-none'
-            );
-
-            tableWrapper?.classList.add(
-                'd-none'
-            );
+            loading?.classList.remove('d-none');
+            error?.classList.add('d-none');
+            empty?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
 
             const [
-                usersRes,
                 rolesRes,
                 departmentsRes
             ] = await Promise.all([
-                fetch('/api/users'),
-                fetch('/roles'),
-                fetch('/api/departments')
+                fetch('/roles?all=1'),
+                fetch('/api/departments?all=1')
             ]);
 
-            if (
-                !usersRes.ok ||
-                !rolesRes.ok ||
-                !departmentsRes.ok
-            ) {
-
-                throw new Error(
-                    'One or more user data sources failed to load.'
-                );
+            if (!rolesRes.ok || !departmentsRes.ok) {
+                throw new Error('One or more user data dependencies failed to load.');
             }
 
             const [
-                usersResult,
                 rolesResult,
                 departmentsResult
             ] = await Promise.all([
-                usersRes.json(),
                 rolesRes.json(),
                 departmentsRes.json()
             ]);
 
-            allUsers =
-                usersResult.data || [];
-
-            allRoles =
-                rolesResult.data || [];
-
-            allDepartments =
-                departmentsResult.data || [];
+            allRoles = rolesResult.data || rolesResult.roles || [];
+            allDepartments = departmentsResult.data || [];
 
             rolesMap = new Map(
-                allRoles.map((r) => [
-                    Number(r.id),
-                    r.name
-                ])
+                allRoles.map((r) => [Number(r.id), r.name])
             );
 
             departmentsMap = new Map(
-                allDepartments.map((d) => [
-                    Number(d.id),
-                    d.name
-                ])
+                allDepartments.map((d) => [Number(d.id), d.name])
             );
 
             populateFilterDropdowns();
             populateModalDropdowns();
 
-            loading?.classList.add(
-                'd-none'
-            );
-
-            renderUsers(
-                allUsers
-            );
+            await fetchUsersPage();
 
         } catch (err) {
+            console.error('Unable to load users data:', err);
+            loading?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
+            empty?.classList.add('d-none');
+            error?.classList.remove('d-none');
+        }
+    }
 
-            loading?.classList.add(
-                'd-none'
-            );
+    async function fetchUsersPage() {
+        const loading = document.getElementById('usersLoading');
+        const error = document.getElementById('usersError');
+        const empty = document.getElementById('usersEmpty');
+        const tableWrapper = document.getElementById('usersTableWrapper');
 
-            tableWrapper?.classList.add(
-                'd-none'
-            );
+        try {
+            loading?.classList.remove('d-none');
+            error?.classList.add('d-none');
 
-            empty?.classList.add(
-                'd-none'
-            );
+            const search = document.getElementById('userSearch')?.value.trim() || '';
+            const roleId = document.getElementById('userRoleFilter')?.value || '';
+            const deptId = document.getElementById('userDepartmentFilter')?.value || '';
+            const status = document.getElementById('userStatusFilter')?.value || '';
 
-            error?.classList.remove(
-                'd-none'
-            );
+            const params = new URLSearchParams({
+                page: String(currentPage),
+                per_page: String(currentPerPage),
+            });
+
+            if (search) params.append('search', search);
+            if (roleId) params.append('role_id', roleId);
+            if (deptId) params.append('department_id', deptId);
+            if (status !== '') params.append('status', status);
+
+            const res = await fetch(`/api/users?${params.toString()}`);
+            if (!res.ok) {
+                throw new Error(`Failed to load users: ${res.status}`);
+            }
+
+            const result = await res.json();
+            if (result.status !== 'success') {
+                throw new Error(result.message || 'Users request failed.');
+            }
+
+            allUsers = result.data || [];
+            currentPagination = {
+                page: result.page || currentPage,
+                per_page: result.per_page || currentPerPage,
+                total: result.total || 0,
+                total_pages: result.total_pages || 1,
+            };
+
+            loading?.classList.add('d-none');
+            renderUsers(allUsers);
+
+            if (typeof window.renderPagination === 'function') {
+                window.renderPagination(
+                    '#usersPagination',
+                    currentPagination,
+                    (newPage) => {
+                        currentPage = newPage;
+                        fetchUsersPage();
+                    },
+                    (newPerPage) => {
+                        currentPerPage = newPerPage;
+                        currentPage = 1;
+                        fetchUsersPage();
+                    }
+                );
+            }
+
+        } catch (err) {
+            console.error('Failed to fetch users page:', err);
+            loading?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
+            empty?.classList.add('d-none');
+            error?.classList.remove('d-none');
         }
     }
 
@@ -520,150 +528,32 @@
        ========================================================================== */
 
     function setupUserFilters() {
+        const searchInput = document.getElementById('userSearch');
+        const roleFilter = document.getElementById('userRoleFilter');
+        const departmentFilter = document.getElementById('userDepartmentFilter');
+        const statusFilter = document.getElementById('userStatusFilter');
 
-        const searchInput =
-            document.getElementById(
-                'userSearch'
-            );
+        searchInput?.addEventListener('input', () => {
+            clearTimeout(userSearchDebounceTimer);
+            userSearchDebounceTimer = setTimeout(() => {
+                currentPage = 1;
+                fetchUsersPage();
+            }, 250);
+        });
 
-        const roleFilter =
-            document.getElementById(
-                'userRoleFilter'
-            );
+        const onFilterChange = () => {
+            currentPage = 1;
+            fetchUsersPage();
+        };
 
-        const departmentFilter =
-            document.getElementById(
-                'userDepartmentFilter'
-            );
-
-        const statusFilter =
-            document.getElementById(
-                'userStatusFilter'
-            );
-
-        searchInput?.addEventListener(
-            'input',
-            applyUserFilters
-        );
-
-        roleFilter?.addEventListener(
-            'change',
-            applyUserFilters
-        );
-
-        departmentFilter?.addEventListener(
-            'change',
-            applyUserFilters
-        );
-
-        statusFilter?.addEventListener(
-            'change',
-            applyUserFilters
-        );
+        roleFilter?.addEventListener('change', onFilterChange);
+        departmentFilter?.addEventListener('change', onFilterChange);
+        statusFilter?.addEventListener('change', onFilterChange);
     }
 
-
     function applyUserFilters() {
-
-        const searchInput =
-            document.getElementById(
-                'userSearch'
-            );
-
-        const roleFilter =
-            document.getElementById(
-                'userRoleFilter'
-            );
-
-        const departmentFilter =
-            document.getElementById(
-                'userDepartmentFilter'
-            );
-
-        const statusFilter =
-            document.getElementById(
-                'userStatusFilter'
-            );
-
-        const searchTerm =
-            searchInput
-                ? searchInput.value
-                    .trim()
-                    .toLowerCase()
-                : '';
-
-        const selectedRole =
-            roleFilter
-                ? roleFilter.value
-                : '';
-
-        const selectedDepartment =
-            departmentFilter
-                ? departmentFilter.value
-                : '';
-
-        const selectedStatus =
-            statusFilter
-                ? statusFilter.value
-                : '';
-
-        const filteredUsers =
-            allUsers.filter((user) => {
-
-                const fullName =
-                    `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
-
-                const email =
-                    String(
-                        user.email || ''
-                    ).toLowerCase();
-
-                const phone =
-                    String(
-                        user.phone || ''
-                    ).toLowerCase();
-
-                const matchesSearch =
-                    !searchTerm ||
-                    fullName.includes(
-                        searchTerm
-                    ) ||
-                    email.includes(
-                        searchTerm
-                    ) ||
-                    phone.includes(
-                        searchTerm
-                    );
-
-                const matchesRole =
-                    !selectedRole ||
-                    String(
-                        user.role_id || ''
-                    ) === selectedRole;
-
-                const matchesDepartment =
-                    !selectedDepartment ||
-                    String(
-                        user.department_id || ''
-                    ) === selectedDepartment;
-
-                const matchesStatus =
-                    !selectedStatus ||
-                    String(
-                        user.is_active
-                    ) === selectedStatus;
-
-                return (
-                    matchesSearch &&
-                    matchesRole &&
-                    matchesDepartment &&
-                    matchesStatus
-                );
-            });
-
-        renderUsers(
-            filteredUsers
-        );
+        currentPage = 1;
+        fetchUsersPage();
     }
 
 

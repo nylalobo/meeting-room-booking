@@ -22,15 +22,77 @@ class BookingParticipant extends BaseController
 
     public function index(): ResponseInterface
     {
-        $participants = $this->bookingParticipantModel
-            ->orderBy('booking_id', 'ASC')
-            ->findAll();
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $bookingId = $this->request->getGet('booking_id');
+        $userId = $this->request->getGet('user_id');
+        $type = $this->request->getGet('participant_type') ?? $this->request->getGet('type');
+        $status = $this->request->getGet('response_status') ?? $this->request->getGet('status');
+
+        $builder = $this->bookingParticipantModel->builder();
+        $builder->select('booking_participants.*');
+        $builder->join('users', 'users.id = booking_participants.user_id', 'left');
+        $builder->join('bookings', 'bookings.id = booking_participants.booking_id', 'left');
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('users.first_name', $search)
+                ->orLike('users.last_name', $search)
+                ->orLike('users.email', $search)
+                ->orLike('bookings.title', $search)
+                ->groupEnd();
+        }
+
+        if ($bookingId !== null && $bookingId !== '') {
+            $builder->where('booking_participants.booking_id', (int) $bookingId);
+        }
+
+        if ($userId !== null && $userId !== '') {
+            $builder->where('booking_participants.user_id', (int) $userId);
+        }
+
+        if ($type !== null && $type !== '') {
+            $builder->where('booking_participants.participant_type', strtolower(trim((string) $type)));
+        }
+
+        if ($status !== null && $status !== '') {
+            $builder->where('booking_participants.response_status', strtolower(trim((string) $status)));
+        }
+
+        $total = (clone $builder)->countAllResults();
+
+        if ($all) {
+            $participants = $builder->orderBy('booking_participants.booking_id', 'ASC')->get()->getResultArray();
+            return $this->response->setJSON([
+                'status'      => 'success',
+                'data'        => $participants,
+                'page'        => 1,
+                'per_page'    => $total > 0 ? $total : 1,
+                'total'       => $total,
+                'total_pages' => 1,
+            ]);
+        }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        $participants = $builder->orderBy('booking_participants.booking_id', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
 
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $participants,
+            'status'      => 'success',
+            'data'        => $participants,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
+
 
     public function show(int $bookingId, int $userId): ResponseInterface
     {

@@ -50,145 +50,168 @@
     let activeViewMode = 'list'; // 'list' | 'calendar'
     let currentSelectedCalendarEvent = null;
 
+    let currentBookingsPage = 1;
+    let currentBookingsPerPage = 10;
+    let bookingsPaginationMeta = { page: 1, per_page: 10, total: 0, total_pages: 1 };
+    let bookingSearchDebounceTimer = null;
+
 
     /* ==========================================================================
        DATA LOADING
        ========================================================================== */
 
     async function loadBookingsData() {
-
-        const loading =
-            document.getElementById(
-                'bookingsLoading'
-            );
-
-        const error =
-            document.getElementById(
-                'bookingsError'
-            );
-
-        const empty =
-            document.getElementById(
-                'bookingsEmpty'
-            );
-
-        const tableWrapper =
-            document.getElementById(
-                'bookingsTableWrapper'
-            );
+        const loading = document.getElementById('bookingsLoading');
+        const error = document.getElementById('bookingsError');
+        const empty = document.getElementById('bookingsEmpty');
+        const tableWrapper = document.getElementById('bookingsTableWrapper');
 
         try {
-
-            loading?.classList.remove(
-                'd-none'
-            );
-
-            error?.classList.add(
-                'd-none'
-            );
-
-            empty?.classList.add(
-                'd-none'
-            );
-
-            tableWrapper?.classList.add(
-                'd-none'
-            );
+            loading?.classList.remove('d-none');
+            error?.classList.add('d-none');
+            empty?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
 
             const [
-                bookingsRes,
                 roomsRes,
                 usersRes
             ] = await Promise.all([
-                fetch('/api/bookings'),
-                fetch('/api/rooms'),
-                fetch('/api/users')
+                fetch('/api/rooms?all=1'),
+                fetch('/api/users?all=1')
             ]);
 
-            if (
-                !bookingsRes.ok ||
-                !roomsRes.ok ||
-                !usersRes.ok
-            ) {
-
-                throw new Error(
-                    'Failed to load booking dependencies.'
-                );
+            if (!roomsRes.ok || !usersRes.ok) {
+                throw new Error('Failed to load booking dependencies.');
             }
 
             const [
-                bookingsResult,
                 roomsResult,
                 usersResult
             ] = await Promise.all([
-                bookingsRes.json(),
                 roomsRes.json(),
                 usersRes.json()
             ]);
 
-            allBookings =
-                bookingsResult.data || [];
-
-            allRooms =
-                roomsResult.data || [];
-
-            allUsers =
-                usersResult.data || [];
+            allRooms = roomsResult.data || [];
+            allUsers = usersResult.data || [];
 
             roomsMap = new Map(
-                allRooms.map((r) => [
-                    Number(r.id),
-                    r
-                ])
+                allRooms.map((r) => [Number(r.id), r])
             );
 
             usersMap = new Map(
-                allUsers.map((u) => [
-                    Number(u.id),
-                    u
-                ])
+                allUsers.map((u) => [Number(u.id), u])
             );
 
             populateFilterDropdowns();
             populateModalDropdowns();
 
-            loading?.classList.add(
-                'd-none'
-            );
-
             updatePendingApprovalsCount();
 
-            if (pendingApprovalsOnly) {
-                applyBookingFilters();
-            } else {
-                renderBookings(
-                    allBookings
-                );
-            }
+            await fetchBookingsPage();
 
             if (activeViewMode === 'calendar') {
                 fetchCalendarEvents();
             }
 
         } catch (err) {
-
-            loading?.classList.add(
-                'd-none'
-            );
-
-            tableWrapper?.classList.add(
-                'd-none'
-            );
-
-            empty?.classList.add(
-                'd-none'
-            );
-
-            error?.classList.remove(
-                'd-none'
-            );
+            console.error('Error in loadBookingsData:', err);
+            loading?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
+            empty?.classList.add('d-none');
+            error?.classList.remove('d-none');
         }
     }
+
+    async function fetchBookingsPage() {
+        const loading = document.getElementById('bookingsLoading');
+        const error = document.getElementById('bookingsError');
+        const empty = document.getElementById('bookingsEmpty');
+        const tableWrapper = document.getElementById('bookingsTableWrapper');
+        const paginationWrapper = document.getElementById('bookingsPagination');
+
+        try {
+            if (activeViewMode === 'calendar') {
+                paginationWrapper?.classList.add('d-none');
+                return;
+            }
+
+            loading?.classList.remove('d-none');
+            error?.classList.add('d-none');
+
+            const searchInput = document.getElementById('bookingSearch');
+            const roomFilter = document.getElementById('bookingRoomFilter');
+            const statusFilter = document.getElementById('statusFilter');
+
+            const search = (searchInput?.value || '').trim();
+            const roomId = roomFilter?.value || '';
+            let status = (statusFilter?.value || '').trim();
+            if (pendingApprovalsOnly) {
+                status = 'pending';
+            }
+
+            const params = new URLSearchParams({
+                page: String(currentBookingsPage),
+                per_page: String(currentBookingsPerPage),
+            });
+            if (search) params.append('search', search);
+            if (roomId) params.append('room_id', roomId);
+            if (status) params.append('status', status);
+
+            const res = await fetch(`/api/bookings?${params.toString()}`);
+            if (!res.ok) {
+                throw new Error(`Failed to load bookings: ${res.status}`);
+            }
+
+            const result = await res.json();
+            if (result.status !== 'success') {
+                throw new Error(result.message || 'Bookings request failed.');
+            }
+
+            allBookings = result.data || [];
+            bookingsPaginationMeta = {
+                page: result.page || currentBookingsPage,
+                per_page: result.per_page || currentBookingsPerPage,
+                total: result.total || 0,
+                total_pages: result.total_pages || 1,
+            };
+
+            loading?.classList.add('d-none');
+
+            if (allBookings.length === 0) {
+                tableWrapper?.classList.add('d-none');
+                empty?.classList.remove('d-none');
+            } else {
+                empty?.classList.add('d-none');
+                tableWrapper?.classList.remove('d-none');
+                renderBookings(allBookings);
+            }
+
+            if (typeof window.renderPagination === 'function') {
+                window.renderPagination(
+                    '#bookingsPagination',
+                    bookingsPaginationMeta,
+                    (newPage) => {
+                        currentBookingsPage = newPage;
+                        fetchBookingsPage();
+                    },
+                    (newPerPage) => {
+                        currentBookingsPerPage = newPerPage;
+                        currentBookingsPage = 1;
+                        fetchBookingsPage();
+                    }
+                );
+            }
+
+        } catch (err) {
+            console.error('Failed to fetch bookings page:', err);
+            loading?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
+            empty?.classList.add('d-none');
+            error?.classList.remove('d-none');
+        }
+    }
+
 
 
     /* ==========================================================================
@@ -715,126 +738,45 @@
        ========================================================================== */
 
     function setupBookingFilters() {
+        const searchInput = document.getElementById('bookingSearch');
+        const roomFilter = document.getElementById('bookingRoomFilter');
+        const statusFilter = document.getElementById('statusFilter');
 
-        const searchInput =
-            document.getElementById(
-                'bookingSearch'
-            );
-
-        const roomFilter =
-            document.getElementById(
-                'bookingRoomFilter'
-            );
-
-        const statusFilter =
-            document.getElementById(
-                'statusFilter'
-            );
-
-        searchInput?.addEventListener(
-            'input',
-            applyBookingFilters
-        );
-
-        roomFilter?.addEventListener(
-            'change',
-            applyBookingFilters
-        );
-
-        statusFilter?.addEventListener(
-            'change',
-            () => {
-                if (pendingApprovalsOnly) {
-                    pendingApprovalsOnly = false;
-                    document.getElementById('pendingApprovalsBtn')?.classList.remove('active');
+        searchInput?.addEventListener('input', () => {
+            clearTimeout(bookingSearchDebounceTimer);
+            bookingSearchDebounceTimer = setTimeout(() => {
+                currentBookingsPage = 1;
+                fetchBookingsPage();
+                if (activeViewMode === 'calendar') {
+                    fetchCalendarEvents();
                 }
-                applyBookingFilters();
+            }, 250);
+        });
+
+        roomFilter?.addEventListener('change', () => {
+            currentBookingsPage = 1;
+            fetchBookingsPage();
+            if (activeViewMode === 'calendar') {
+                fetchCalendarEvents();
             }
-        );
+        });
+
+        statusFilter?.addEventListener('change', () => {
+            if (pendingApprovalsOnly) {
+                pendingApprovalsOnly = false;
+                document.getElementById('pendingApprovalsBtn')?.classList.remove('active');
+            }
+            currentBookingsPage = 1;
+            fetchBookingsPage();
+            if (activeViewMode === 'calendar') {
+                fetchCalendarEvents();
+            }
+        });
     }
 
-
     function applyBookingFilters() {
-
-        const searchInput =
-            document.getElementById(
-                'bookingSearch'
-            );
-
-        const roomFilter =
-            document.getElementById(
-                'bookingRoomFilter'
-            );
-
-        const statusFilter =
-            document.getElementById(
-                'statusFilter'
-            );
-
-        const searchTerm =
-            searchInput
-                ? searchInput.value.trim().toLowerCase()
-                : '';
-
-        const selectedRoom =
-            roomFilter
-                ? roomFilter.value
-                : '';
-
-        const selectedStatus =
-            statusFilter
-                ? statusFilter.value.toLowerCase()
-                : '';
-
-        const filtered =
-            allBookings.filter((booking) => {
-
-                if (pendingApprovalsOnly) {
-                    if (String(booking.status || '').toLowerCase() !== 'pending' || !booking.can_approve) {
-                        return false;
-                    }
-                }
-
-                const title =
-                    String(booking.title || '').toLowerCase();
-
-                const desc =
-                    String(booking.description || '').toLowerCase();
-
-                const roomName =
-                    String(booking.room_name || '').toLowerCase();
-
-                const roomCode =
-                    String(booking.room_code || '').toLowerCase();
-
-                const organizerName =
-                    String(booking.organizer_name || '').toLowerCase();
-
-                const matchesSearch =
-                    !searchTerm ||
-                    title.includes(searchTerm) ||
-                    desc.includes(searchTerm) ||
-                    roomName.includes(searchTerm) ||
-                    roomCode.includes(searchTerm) ||
-                    organizerName.includes(searchTerm);
-
-                const matchesRoom =
-                    !selectedRoom ||
-                    String(booking.room_id) === selectedRoom;
-
-                const matchesStatus =
-                    !selectedStatus ||
-                    String(booking.status || '').toLowerCase() === selectedStatus;
-
-                return (
-                    matchesSearch &&
-                    matchesRoom &&
-                    matchesStatus
-                );
-            });
-
-        renderBookings(filtered);
-
+        currentBookingsPage = 1;
+        fetchBookingsPage();
         if (activeViewMode === 'calendar') {
             fetchCalendarEvents();
         }
@@ -2631,7 +2573,7 @@
         // Load locations if not loaded
         if (locationSelect && !cachedLocations) {
             try {
-                const res = await fetch('/api/locations');
+                const res = await fetch('/api/locations?all=1');
                 if (res.ok) {
                     const data = await res.json();
                     cachedLocations = data.data || [];
@@ -2653,7 +2595,7 @@
         // Load facilities if not loaded
         if (facilitiesList && !cachedFacilities) {
             try {
-                const res = await fetch('/api/facilities');
+                const res = await fetch('/api/facilities?all=1');
                 if (res.ok) {
                     const data = await res.json();
                     cachedFacilities = data.data || [];

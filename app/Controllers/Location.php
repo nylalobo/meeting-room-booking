@@ -22,15 +22,60 @@ class Location extends BaseController
     */
     public function index(): ResponseInterface
     {
-        $locations = $this->locationModel
-            ->orderBy('id', 'ASC')
-            ->findAll();
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $status = $this->request->getGet('status');
+
+        $builder = $this->locationModel->builder();
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('name', $search)
+                ->orLike('address', $search)
+                ->orLike('city', $search)
+                ->orLike('state', $search)
+                ->orLike('country', $search)
+                ->groupEnd();
+        }
+
+        if ($status !== null && $status !== '') {
+            $builder->where('is_active', (int) $status);
+        }
+
+        $total = (clone $builder)->countAllResults();
+
+        if ($all) {
+            $locations = $builder->orderBy('id', 'ASC')->get()->getResultArray();
+            return $this->response->setJSON([
+                'status'      => 'success',
+                'data'        => $locations,
+                'page'        => 1,
+                'per_page'    => $total > 0 ? $total : 1,
+                'total'       => $total,
+                'total_pages' => 1,
+            ]);
+        }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        $locations = $builder->orderBy('id', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
 
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $locations,
+            'status'      => 'success',
+            'data'        => $locations,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
+
 
 
     /*

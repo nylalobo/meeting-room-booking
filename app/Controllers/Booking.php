@@ -139,7 +139,7 @@ class Booking extends BaseController
     }
 
     /**
-     * Get all bookings with room and organizer details.
+     * Get bookings with room and organizer details, supporting server-side pagination and filters.
      *
      * Used by the frontend bookings page.
      */
@@ -151,9 +151,52 @@ class Booking extends BaseController
         $currentUserRecord = !empty($currentUserId) ? $this->userModel->find($currentUserId) : null;
         $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
 
-        $bookings = $this->bookingModel
-            ->orderBy('start_time', 'ASC')
-            ->findAll();
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $roomId = $this->request->getGet('room_id');
+        $status = $this->request->getGet('status');
+        $userIdFilter = $this->request->getGet('user_id');
+
+        $builder = $this->bookingModel->builder();
+        $builder->select('bookings.*');
+        $builder->join('rooms', 'rooms.id = bookings.room_id', 'left');
+        $builder->join('users', 'users.id = bookings.user_id', 'left');
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('bookings.title', $search)
+                ->orLike('bookings.description', $search)
+                ->orLike('rooms.name', $search)
+                ->orLike('users.first_name', $search)
+                ->orLike('users.last_name', $search)
+                ->orLike('users.email', $search)
+                ->groupEnd();
+        }
+
+        if ($roomId !== null && $roomId !== '') {
+            $builder->where('bookings.room_id', (int) $roomId);
+        }
+
+        if ($status !== null && $status !== '') {
+            $builder->where('bookings.status', strtolower(trim((string) $status)));
+        }
+
+        if ($userIdFilter !== null && $userIdFilter !== '') {
+            $builder->where('bookings.user_id', (int) $userIdFilter);
+        }
+
+        $total = (clone $builder)->countAllResults();
+
+        if (!$all) {
+            $offset = ($page - 1) * $perPage;
+            $builder->limit($perPage, $offset);
+        }
+
+        $bookings = $builder->orderBy('bookings.start_time', 'ASC')
+            ->get()
+            ->getResultArray();
 
         $data = [];
 
@@ -209,9 +252,15 @@ class Booking extends BaseController
             $data[] = $booking;
         }
 
+        $totalPages = $total > 0 ? (int) ceil($total / ($all ? max(1, $total) : $perPage)) : 1;
+
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $data,
+            'status'      => 'success',
+            'data'        => $data,
+            'page'        => $all ? 1 : $page,
+            'per_page'    => $all ? ($total > 0 ? $total : 1) : $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
 

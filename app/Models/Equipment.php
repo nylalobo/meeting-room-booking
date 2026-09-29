@@ -131,9 +131,11 @@ class Equipment extends Model
      *
      * @param int|null $id Optional specific equipment ID
      * @param array $filters Optional filter criteria (status, category, location_id, default_room_id, search)
+     * @param int|null $limit Optional query limit
+     * @param int|null $offset Optional query offset
      * @return array
      */
-    public function getEquipmentWithDetails(?int $id = null, array $filters = []): array
+    public function getEquipmentWithDetails(?int $id = null, array $filters = [], ?int $limit = null, ?int $offset = null): array
     {
         $builder = $this->builder();
         $builder->select('equipment.*, locations.name as location_name, rooms.name as default_room_name, rooms.room_code as default_room_code')
@@ -172,9 +174,57 @@ class Equipment extends Model
             ->groupEnd();
         }
 
-        $rows = $builder->orderBy('equipment.id', 'ASC')->get()->getResultArray();
+        $builder->orderBy('equipment.id', 'ASC');
+
+        if ($limit !== null) {
+            $builder->limit($limit, $offset ?? 0);
+        }
+
+        $rows = $builder->get()->getResultArray();
         return array_map([$this, 'formatEquipmentRow'], $rows);
     }
+
+    /**
+     * Count equipment records matching the given filters.
+     *
+     * @param array $filters
+     * @return int
+     */
+    public function countEquipmentWithDetails(array $filters = []): int
+    {
+        $builder = $this->builder();
+        $builder->join('locations', 'locations.id = equipment.location_id', 'left')
+            ->join('rooms', 'rooms.id = equipment.default_room_id', 'left');
+
+        if (!empty($filters['status'])) {
+            $builder->where('equipment.status', strtolower(trim((string) $filters['status'])));
+        }
+
+        if (!empty($filters['category'])) {
+            $builder->where('equipment.category', strtolower(trim((string) $filters['category'])));
+        }
+
+        if (!empty($filters['location_id'])) {
+            $builder->where('equipment.location_id', (int) $filters['location_id']);
+        }
+
+        if (!empty($filters['default_room_id'])) {
+            $builder->where('equipment.default_room_id', (int) $filters['default_room_id']);
+        }
+
+        if (!empty($filters['search'])) {
+            $search = trim((string) $filters['search']);
+            $builder->groupStart()
+                ->like('equipment.name', $search)
+                ->orLike('equipment.code', $search)
+                ->orLike('equipment.model_number', $search)
+                ->orLike('equipment.serial_number', $search)
+            ->groupEnd();
+        }
+
+        return $builder->countAllResults();
+    }
+
 
     /**
      * Format an equipment row with appropriate types and related details.

@@ -104,6 +104,8 @@
         </table>
     </div>
 
+    <div id="bookingsPagination" class="meetspace-pagination-wrapper d-none"></div>
+
 </div>
 
 <!-- ================================================================

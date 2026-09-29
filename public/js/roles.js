@@ -25,6 +25,10 @@
        ========================================================================== */
 
     let allRoles = [];
+    let currentPage = 1;
+    let currentPerPage = 10;
+    let currentPagination = { page: 1, per_page: 10, total: 0, total_pages: 1 };
+    let roleSearchDebounceTimer = null;
 
     /* ==========================================================================
        DATA LOADING
@@ -40,9 +44,17 @@
             loading?.classList.remove('d-none');
             error?.classList.add('d-none');
             empty?.classList.add('d-none');
-            tableWrapper?.classList.add('d-none');
 
-            const response = await fetch('/api/roles', {
+            const searchInput = document.getElementById('roleSearch');
+            const search = (searchInput?.value || '').trim();
+
+            const params = new URLSearchParams({
+                page: String(currentPage),
+                per_page: String(currentPerPage),
+            });
+            if (search) params.append('search', search);
+
+            const response = await fetch(`/api/roles?${params.toString()}`, {
                 headers: {
                     'Accept': 'application/json'
                 }
@@ -62,19 +74,44 @@
             }
 
             allRoles = result.data || [];
+            currentPagination = {
+                page: result.page || currentPage,
+                per_page: result.per_page || currentPerPage,
+                total: result.total || 0,
+                total_pages: result.total_pages || 1,
+            };
 
             loading?.classList.add('d-none');
 
             if (allRoles.length === 0) {
+                tableWrapper?.classList.add('d-none');
                 empty?.classList.remove('d-none');
             } else {
+                empty?.classList.add('d-none');
                 tableWrapper?.classList.remove('d-none');
-                applyFilterAndRender();
+                renderRolesTable(allRoles);
+            }
+
+            if (typeof window.renderPagination === 'function') {
+                window.renderPagination(
+                    '#rolesPagination',
+                    currentPagination,
+                    (newPage) => {
+                        currentPage = newPage;
+                        loadRoles();
+                    },
+                    (newPerPage) => {
+                        currentPerPage = newPerPage;
+                        currentPage = 1;
+                        loadRoles();
+                    }
+                );
             }
 
         } catch (err) {
             console.error('Error loading roles:', err);
             loading?.classList.add('d-none');
+            tableWrapper?.classList.add('d-none');
             if (error) {
                 error.classList.remove('d-none');
                 const span = error.querySelector('span');
@@ -92,21 +129,12 @@
         if (!searchInput) return;
 
         searchInput.addEventListener('input', () => {
-            applyFilterAndRender();
+            clearTimeout(roleSearchDebounceTimer);
+            roleSearchDebounceTimer = setTimeout(() => {
+                currentPage = 1;
+                loadRoles();
+            }, 250);
         });
-    }
-
-    function applyFilterAndRender() {
-        const searchInput = document.getElementById('roleSearch');
-        const query = (searchInput?.value || '').toLowerCase().trim();
-
-        const filtered = allRoles.filter(role => {
-            const name = (role.name || '').toLowerCase();
-            const desc = (role.description || '').toLowerCase();
-            return name.includes(query) || desc.includes(query);
-        });
-
-        renderRolesTable(filtered);
     }
 
     function renderRolesTable(roles) {

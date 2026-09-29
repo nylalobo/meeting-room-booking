@@ -81,6 +81,8 @@
 
     </div>
 
+    <div id="locationsPagination" class="meetspace-pagination-wrapper d-none"></div>
+
 </div>
 
 

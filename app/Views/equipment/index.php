@@ -130,6 +130,8 @@ $canManage  = ($roleId === 1 || $roleId === 6 || in_array($roleName, ['Admin', '
         </table>
     </div>
 
+    <div id="equipmentPagination" class="meetspace-pagination-wrapper d-none"></div>
+
 </div>
 
 

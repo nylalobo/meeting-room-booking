@@ -25,106 +25,89 @@ document.addEventListener('DOMContentLoaded', () => {
    ========================================================================== */
 
 let allLocations = [];
+let currentPage = 1;
+let currentPerPage = 10;
+let currentPagination = { page: 1, per_page: 10, total: 0, total_pages: 1 };
+let locationSearchDebounceTimer = null;
 
 
 async function loadLocations() {
-
-    const loading =
-        document.getElementById(
-            'locationsLoading'
-        );
-
-    const error =
-        document.getElementById(
-            'locationsError'
-        );
-
-    const empty =
-        document.getElementById(
-            'locationsEmpty'
-        );
-
-    const tableWrapper =
-        document.getElementById(
-            'locationsTableWrapper'
-        );
+    const loading = document.getElementById('locationsLoading');
+    const error = document.getElementById('locationsError');
+    const empty = document.getElementById('locationsEmpty');
+    const tableWrapper = document.getElementById('locationsTableWrapper');
 
     try {
+        loading?.classList.remove('d-none');
+        error?.classList.add('d-none');
+        empty?.classList.add('d-none');
 
-        loading?.classList.remove(
-            'd-none'
-        );
+        const searchInput = document.getElementById('locationSearch');
+        const statusFilter = document.getElementById('locationStatusFilter');
 
-        error?.classList.add(
-            'd-none'
-        );
+        const search = (searchInput?.value || '').trim();
+        const status = statusFilter?.value || '';
 
-        empty?.classList.add(
-            'd-none'
-        );
+        const params = new URLSearchParams({
+            page: String(currentPage),
+            per_page: String(currentPerPage),
+        });
+        if (search) params.append('search', search);
+        if (status !== '') params.append('status', status);
 
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        const response =
-            await fetch(
-                '/api/locations'
-            );
+        const response = await fetch(`/api/locations?${params.toString()}`);
 
         if (!response.ok) {
-
-            throw new Error(
-                `HTTP error: ${response.status}`
-            );
+            throw new Error(`HTTP error: ${response.status}`);
         }
 
-        const result =
-            await response.json();
+        const result = await response.json();
 
-        if (
-            result.status !==
-            'success'
-        ) {
-
-            throw new Error(
-                'Locations request failed.'
-            );
+        if (result.status !== 'success') {
+            throw new Error(result.message || 'Locations request failed.');
         }
 
-        allLocations =
-            result.data || [];
+        allLocations = result.data || [];
+        currentPagination = {
+            page: result.page || currentPage,
+            per_page: result.per_page || currentPerPage,
+            total: result.total || 0,
+            total_pages: result.total_pages || 1,
+        };
 
-        loading?.classList.add(
-            'd-none'
-        );
+        loading?.classList.add('d-none');
 
-        renderLocations(
-            allLocations
-        );
+        if (allLocations.length === 0) {
+            tableWrapper?.classList.add('d-none');
+            empty?.classList.remove('d-none');
+        } else {
+            empty?.classList.add('d-none');
+            tableWrapper?.classList.remove('d-none');
+            renderLocations(allLocations);
+        }
+
+        if (typeof window.renderPagination === 'function') {
+            window.renderPagination(
+                '#locationsPagination',
+                currentPagination,
+                (newPage) => {
+                    currentPage = newPage;
+                    loadLocations();
+                },
+                (newPerPage) => {
+                    currentPerPage = newPerPage;
+                    currentPage = 1;
+                    loadLocations();
+                }
+            );
+        }
 
     } catch (err) {
-
-        console.error(
-            'Unable to load locations:',
-            err
-        );
-
-        loading?.classList.add(
-            'd-none'
-        );
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.add(
-            'd-none'
-        );
-
-        error?.classList.remove(
-            'd-none'
-        );
+        console.error('Unable to load locations:', err);
+        loading?.classList.add('d-none');
+        tableWrapper?.classList.add('d-none');
+        empty?.classList.add('d-none');
+        error?.classList.remove('d-none');
     }
 }
 
@@ -310,91 +293,26 @@ function renderLocations(locations) {
    ========================================================================== */
 
 function setupLocationFilters() {
+    const searchInput = document.getElementById('locationSearch');
+    const statusFilter = document.getElementById('locationStatusFilter');
 
-    const searchInput =
-        document.getElementById(
-            'locationSearch'
-        );
+    searchInput?.addEventListener('input', () => {
+        clearTimeout(locationSearchDebounceTimer);
+        locationSearchDebounceTimer = setTimeout(() => {
+            currentPage = 1;
+            loadLocations();
+        }, 250);
+    });
 
-    const statusFilter =
-        document.getElementById(
-            'locationStatusFilter'
-        );
-
-    searchInput?.addEventListener(
-        'input',
-        applyLocationFilters
-    );
-
-    statusFilter?.addEventListener(
-        'change',
-        applyLocationFilters
-    );
+    statusFilter?.addEventListener('change', () => {
+        currentPage = 1;
+        loadLocations();
+    });
 }
 
-
 function applyLocationFilters() {
-
-    const searchInput =
-        document.getElementById(
-            'locationSearch'
-        );
-
-    const statusFilter =
-        document.getElementById(
-            'locationStatusFilter'
-        );
-
-    const searchTerm =
-        searchInput
-            ? searchInput.value
-                .trim()
-                .toLowerCase()
-            : '';
-
-    const selectedStatus =
-        statusFilter
-            ? statusFilter.value
-            : '';
-
-    const filteredLocations =
-        allLocations.filter(
-            (location) => {
-
-                const searchableText = [
-                    location.name,
-                    location.address,
-                    location.city,
-                    location.state,
-                    location.country
-                ]
-                    .filter(Boolean)
-                    .join(' ')
-                    .toLowerCase();
-
-                const matchesSearch =
-                    !searchTerm ||
-                    searchableText.includes(
-                        searchTerm
-                    );
-
-                const matchesStatus =
-                    !selectedStatus ||
-                    String(
-                        location.is_active
-                    ) ===
-                    selectedStatus;
-
-                return (
-                    matchesSearch &&
-                    matchesStatus
-                );
-            }
-        );
-
-    renderLocations(
-        filteredLocations
-    );
+    currentPage = 1;
+    loadLocations();
 }
 
 

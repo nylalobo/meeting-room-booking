@@ -27,13 +27,16 @@
        ========================================================================== */
 
     let allFacilities = [];
+    let currentPage = 1;
+    let currentPerPage = 10;
+    let searchDebounceTimer = null;
 
 
     /* ==========================================================================
        DATA LOADING
        ========================================================================== */
 
-    async function loadFacilities() {
+    async function loadFacilities(page = currentPage, perPage = currentPerPage) {
 
         const loading =
             document.getElementById(
@@ -73,9 +76,20 @@
                 'd-none'
             );
 
+            const searchInput = document.getElementById('facilitySearch');
+            const statusFilter = document.getElementById('facilityStatusFilter');
+            const search = searchInput ? searchInput.value.trim() : '';
+            const status = statusFilter ? statusFilter.value : '';
+
+            const params = new URLSearchParams();
+            params.append('page', page);
+            params.append('per_page', perPage);
+            if (search) params.append('search', search);
+            if (status !== '') params.append('status', status);
+
             const response =
                 await fetch(
-                    '/api/facilities'
+                    `/api/facilities?${params.toString()}`
                 );
 
             if (!response.ok) {
@@ -100,6 +114,8 @@
 
             allFacilities =
                 result.data || [];
+            currentPage = result.page || page;
+            currentPerPage = result.per_page || perPage;
 
             loading?.classList.add(
                 'd-none'
@@ -108,6 +124,25 @@
             renderFacilities(
                 allFacilities
             );
+
+            if (typeof window.renderPagination === 'function') {
+                window.renderPagination(
+                    '#facilitiesPagination',
+                    {
+                        page: result.page,
+                        per_page: result.per_page,
+                        total: result.total,
+                        total_pages: result.total_pages
+                    },
+                    (newPage) => {
+                        loadFacilities(newPage, currentPerPage);
+                    },
+                    (newPerPage) => {
+                        currentPerPage = newPerPage;
+                        loadFacilities(1, newPerPage);
+                    }
+                );
+            }
 
         } catch (err) {
 
@@ -293,75 +328,28 @@
 
         searchInput?.addEventListener(
             'input',
-            applyFacilityFilters
+            () => {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => {
+                    currentPage = 1;
+                    loadFacilities(1, currentPerPage);
+                }, 300);
+            }
         );
 
         statusFilter?.addEventListener(
             'change',
-            applyFacilityFilters
+            () => {
+                currentPage = 1;
+                loadFacilities(1, currentPerPage);
+            }
         );
     }
 
 
     function applyFacilityFilters() {
-
-        const searchInput =
-            document.getElementById(
-                'facilitySearch'
-            );
-
-        const statusFilter =
-            document.getElementById(
-                'facilityStatusFilter'
-            );
-
-        const searchTerm =
-            searchInput
-                ? searchInput.value
-                    .trim()
-                    .toLowerCase()
-                : '';
-
-        const selectedStatus =
-            statusFilter
-                ? statusFilter.value
-                : '';
-
-        const filteredFacilities =
-            allFacilities.filter(
-                (facility) => {
-
-                    const searchableText = [
-                        facility.name,
-                        facility.description
-                    ]
-                        .filter(Boolean)
-                        .join(' ')
-                        .toLowerCase();
-
-                    const matchesSearch =
-                        !searchTerm ||
-                        searchableText.includes(
-                            searchTerm
-                        );
-
-                    const matchesStatus =
-                        !selectedStatus ||
-                        String(
-                            facility.is_active
-                        ) ===
-                        selectedStatus;
-
-                    return (
-                        matchesSearch &&
-                        matchesStatus
-                    );
-                }
-            );
-
-        renderFacilities(
-            filteredFacilities
-        );
+        currentPage = 1;
+        loadFacilities(1, currentPerPage);
     }
 
 

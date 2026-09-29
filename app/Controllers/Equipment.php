@@ -44,19 +44,44 @@ class Equipment extends BaseController
             ]);
         }
 
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+
         $filters = [
             'status'          => $this->request->getGet('status'),
             'category'        => $this->request->getGet('category'),
             'location_id'     => $this->request->getGet('location_id'),
             'default_room_id' => $this->request->getGet('default_room_id'),
-            'search'          => $this->request->getGet('search'),
+            'search'          => $this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q'),
         ];
 
-        $equipment = $this->equipmentModel->getEquipmentWithDetails(null, $filters);
+        $total = $this->equipmentModel->countEquipmentWithDetails($filters);
+
+        if ($all) {
+            $equipment = $this->equipmentModel->getEquipmentWithDetails(null, $filters);
+            return $this->response->setJSON([
+                'status'      => 'success',
+                'data'        => $equipment,
+                'page'        => 1,
+                'per_page'    => $total > 0 ? $total : 1,
+                'total'       => $total,
+                'total_pages' => 1,
+            ]);
+        }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        $equipment = $this->equipmentModel->getEquipmentWithDetails(null, $filters, $perPage, $offset);
 
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $equipment,
+            'status'      => 'success',
+            'data'        => $equipment,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
 

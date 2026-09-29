@@ -40,6 +40,10 @@
     let rolesMap = new Map();
     let departmentsMap = new Map();
 
+    let currentPage = 1;
+    let currentPerPage = 10;
+    let searchDebounceTimer = null;
+
     /* ==========================================================================
        DATA LOADING
        ========================================================================== */
@@ -63,11 +67,11 @@
                 rolesRes,
                 departmentsRes
             ] = await Promise.all([
-                fetch('/booking-participants'),
-                fetch('/api/bookings'),
-                fetch('/api/users'),
-                fetch('/roles'),
-                fetch('/api/departments')
+                fetch('/booking-participants?all=1'),
+                fetch('/api/bookings?all=1'),
+                fetch('/api/users?all=1'),
+                fetch('/roles?all=1'),
+                fetch('/api/departments?all=1')
             ]);
 
             if (
@@ -173,11 +177,22 @@
         const typeFilter = document.getElementById('typeFilter');
         const bookingFilter = document.getElementById('bookingFilter');
 
-        searchInput?.addEventListener('input', applyParticipantFilters);
-        statusFilter?.addEventListener('change', applyParticipantFilters);
-        dateFilter?.addEventListener('change', applyParticipantFilters);
-        typeFilter?.addEventListener('change', applyParticipantFilters);
-        bookingFilter?.addEventListener('change', applyParticipantFilters);
+        const onFilterChanged = () => {
+            currentPage = 1;
+            applyParticipantFilters();
+        };
+
+        searchInput?.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => {
+                onFilterChanged();
+            }, 300);
+        });
+
+        statusFilter?.addEventListener('change', onFilterChanged);
+        dateFilter?.addEventListener('change', onFilterChanged);
+        typeFilter?.addEventListener('change', onFilterChanged);
+        bookingFilter?.addEventListener('change', onFilterChanged);
     }
 
     function applyParticipantFilters() {
@@ -280,7 +295,37 @@
             return true;
         });
 
-        renderMeetingCards(filtered);
+        const total = filtered.length;
+        const totalPages = Math.max(1, Math.ceil(total / currentPerPage));
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+
+        const startIndex = (currentPage - 1) * currentPerPage;
+        const pageSlice = filtered.slice(startIndex, startIndex + currentPerPage);
+
+        renderMeetingCards(pageSlice);
+
+        if (typeof window.renderPagination === 'function') {
+            window.renderPagination(
+                '#participantsPagination',
+                {
+                    page: currentPage,
+                    per_page: currentPerPage,
+                    total: total,
+                    total_pages: totalPages
+                },
+                (newPage) => {
+                    currentPage = newPage;
+                    applyParticipantFilters();
+                },
+                (newPerPage) => {
+                    currentPerPage = newPerPage;
+                    currentPage = 1;
+                    applyParticipantFilters();
+                }
+            );
+        }
     }
 
     /* ==========================================================================

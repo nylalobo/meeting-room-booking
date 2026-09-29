@@ -66,6 +66,8 @@
         </table>
     </div>
 
+    <div id="departmentsPagination" class="meetspace-pagination-wrapper d-none"></div>
+
 </div>
 
 

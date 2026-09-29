@@ -29,6 +29,8 @@
     let roomsList = [];
     let currentSelectedEquipment = null;
     let searchDebounceTimer = null;
+    let currentPage = 1;
+    let currentPerPage = 10;
 
     /* ==========================================================================
        RBAC HELPER
@@ -61,7 +63,7 @@
        DATA LOADING
        ========================================================================== */
 
-    async function loadEquipment() {
+    async function loadEquipment(page = currentPage, perPage = currentPerPage) {
         const loading = document.getElementById('equipmentLoading');
         const error = document.getElementById('equipmentError');
         const empty = document.getElementById('equipmentEmpty');
@@ -79,12 +81,14 @@
             const locationId = document.getElementById('equipmentLocationFilter')?.value || '';
 
             const params = new URLSearchParams();
+            params.append('page', page);
+            params.append('per_page', perPage);
             if (search) params.append('search', search);
             if (category) params.append('category', category);
             if (status) params.append('status', status);
             if (locationId) params.append('location_id', locationId);
 
-            const url = '/api/equipment' + (params.toString() ? `?${params.toString()}` : '');
+            const url = '/api/equipment?' + params.toString();
             const response = await fetch(url, {
                 headers: { 'Accept': 'application/json' }
             });
@@ -99,9 +103,30 @@
             }
 
             allEquipment = result.data || [];
+            currentPage = result.page || page;
+            currentPerPage = result.per_page || perPage;
             loading?.classList.add('d-none');
 
             renderEquipment(allEquipment);
+
+            if (typeof window.renderPagination === 'function') {
+                window.renderPagination(
+                    '#equipmentPagination',
+                    {
+                        page: result.page,
+                        per_page: result.per_page,
+                        total: result.total,
+                        total_pages: result.total_pages
+                    },
+                    (newPage) => {
+                        loadEquipment(newPage, currentPerPage);
+                    },
+                    (newPerPage) => {
+                        currentPerPage = newPerPage;
+                        loadEquipment(1, newPerPage);
+                    }
+                );
+            }
         } catch (err) {
             console.error('Unable to load equipment inventory:', err);
             loading?.classList.add('d-none');
@@ -114,7 +139,7 @@
     async function loadLocationsAndRooms() {
         try {
             // 1. Fetch Locations
-            const locRes = await fetch('/api/locations', {
+            const locRes = await fetch('/api/locations?all=1', {
                 headers: { 'Accept': 'application/json' }
             });
             if (locRes.ok) {
@@ -124,7 +149,7 @@
             }
 
             // 2. Fetch Rooms
-            const rmRes = await fetch('/api/rooms', {
+            const rmRes = await fetch('/api/rooms?all=1', {
                 headers: { 'Accept': 'application/json' }
             });
             if (rmRes.ok) {
@@ -352,14 +377,19 @@
         searchInput?.addEventListener('input', () => {
             clearTimeout(searchDebounceTimer);
             searchDebounceTimer = setTimeout(() => {
-                loadEquipment();
+                currentPage = 1;
+                loadEquipment(1, currentPerPage);
             }, 300);
         });
 
         // Dropdown filters
-        categoryFilter?.addEventListener('change', () => loadEquipment());
-        statusFilter?.addEventListener('change', () => loadEquipment());
-        locationFilter?.addEventListener('change', () => loadEquipment());
+        const onFilterChange = () => {
+            currentPage = 1;
+            loadEquipment(1, currentPerPage);
+        };
+        categoryFilter?.addEventListener('change', onFilterChange);
+        statusFilter?.addEventListener('change', onFilterChange);
+        locationFilter?.addEventListener('change', onFilterChange);
 
         // Clear filters
         clearBtn?.addEventListener('click', () => {
@@ -367,7 +397,8 @@
             if (categoryFilter) categoryFilter.value = '';
             if (statusFilter) statusFilter.value = '';
             if (locationFilter) locationFilter.value = '';
-            loadEquipment();
+            currentPage = 1;
+            loadEquipment(1, currentPerPage);
         });
 
         // Refresh & Retry buttons
