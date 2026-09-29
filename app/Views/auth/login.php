@@ -315,26 +315,6 @@
             color: #475569;
         }
 
-        .form-control-custom.is-invalid {
-            border-color: #ef4444 !important;
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
-        }
-
-        .invalid-feedback-custom {
-            display: none;
-            font-size: 12px;
-            font-weight: 500;
-            color: #f87171;
-            margin-top: 6px;
-            line-height: 1.35;
-        }
-
-        .invalid-feedback-custom.active {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
         .btn-signin {
             width: 100%;
             background: linear-gradient(135deg, #6366F1 0%, #7C3AED 100%);
@@ -429,7 +409,7 @@
             </div>
         <?php endif; ?>
 
-        <form id="loginForm" action="<?= base_url('login') ?>" method="POST" autocomplete="on" novalidate>
+        <form action="<?= base_url('login') ?>" method="POST" autocomplete="on">
             <?= csrf_field() ?>
             <?php if (!empty($returnUrl)): ?>
                 <input type="hidden" name="return_url" value="<?= esc($returnUrl) ?>">
@@ -449,11 +429,9 @@
                         autofocus
                         value="<?= esc(old('email')) ?>"
                         autocomplete="email"
-                        aria-describedby="email-error"
                     >
                     <i class="bi bi-envelope input-icon"></i>
                 </div>
-                <div id="email-error" class="invalid-feedback-custom" role="alert"></div>
             </div>
 
             <!-- Password -->
@@ -471,11 +449,9 @@
                         placeholder="••••••••"
                         required
                         autocomplete="current-password"
-                        aria-describedby="password-error"
                     >
                     <i class="bi bi-lock input-icon"></i>
                 </div>
-                <div id="password-error" class="invalid-feedback-custom" role="alert"></div>
             </div>
 
             <!-- Submit Button -->
@@ -502,101 +478,5 @@
 
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const loginForm = document.getElementById('loginForm');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const emailError = document.getElementById('email-error');
-    const passwordError = document.getElementById('password-error');
-
-    function isValidEmail(val) {
-        if (!val || typeof val !== 'string') return false;
-        val = val.trim();
-        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-        if (!emailRegex.test(val)) return false;
-        const domain = val.split('@')[1] || '';
-        if (/\.([a-zA-Z0-9-]+)\.\1$/i.test(domain)) return false;
-        return true;
-    }
-
-    function setFieldError(input, errorEl, message) {
-        input.classList.add('is-invalid');
-        input.setAttribute('aria-invalid', 'true');
-        if (errorEl) {
-            errorEl.innerHTML = '<i class="bi bi-exclamation-circle"></i> ' + message;
-            errorEl.classList.add('active');
-        }
-    }
-
-    function clearFieldError(input, errorEl) {
-        input.classList.remove('is-invalid');
-        input.removeAttribute('aria-invalid');
-        if (errorEl) {
-            errorEl.innerHTML = '';
-            errorEl.classList.remove('active');
-        }
-    }
-
-    if (emailInput) {
-        emailInput.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid')) {
-                const val = this.value.trim();
-                if (val !== '' && isValidEmail(val)) {
-                    clearFieldError(this, emailError);
-                }
-            }
-        });
-    }
-
-    if (passwordInput) {
-        passwordInput.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid')) {
-                if (this.value.length > 0) {
-                    clearFieldError(this, passwordError);
-                }
-            }
-        });
-    }
-
-    if (loginForm) {
-        loginForm.addEventListener('submit', function(e) {
-            let hasError = false;
-            let firstInvalid = null;
-
-            // Clear previous frontend error messages
-            clearFieldError(emailInput, emailError);
-            clearFieldError(passwordInput, passwordError);
-
-            // Validate Email
-            const emailVal = emailInput ? emailInput.value.trim() : '';
-            if (!emailVal) {
-                setFieldError(emailInput, emailError, 'Email address is required.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = emailInput;
-            } else if (!isValidEmail(emailVal)) {
-                setFieldError(emailInput, emailError, 'Please provide a valid email address.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = emailInput;
-            }
-
-            // Validate Password
-            const passwordVal = passwordInput ? passwordInput.value : '';
-            if (!passwordVal) {
-                setFieldError(passwordInput, passwordError, 'Password is required.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = passwordInput;
-            }
-
-            if (hasError) {
-                e.preventDefault();
-                if (firstInvalid) {
-                    firstInvalid.focus();
-                }
-            }
-        });
-    }
-});
-</script>
 </body>
 </html>

@@ -140,18 +140,13 @@ class Auth extends BaseController
             'password' => $password,
         ];
 
-        $isValidEmail = static::isValidEmailFormat($email);
-        if (!$this->validateData($data, $rules, $messages) || !$isValidEmail) {
+        if (!$this->validateData($data, $rules, $messages)) {
             if ($this->isJsonRequest()) {
-                $errors = $this->validator->getErrors();
-                if (empty($errors['email']) && !$isValidEmail) {
-                    $errors['email'] = 'Please provide a valid email address.';
-                }
                 return $this->response
                     ->setStatusCode(422)
                     ->setJSON([
                         'status' => 'error',
-                        'errors' => $errors,
+                        'errors' => $this->validator->getErrors(),
                     ]);
             }
 
@@ -352,25 +347,19 @@ class Auth extends BaseController
             $data['department_id'] = null;
         }
 
-        $isValidEmail = static::isValidEmailFormat($data['email']);
-        if (!$this->validateData($data, $this->userModel->registrationRules, $this->userModel->registrationMessages) || !$isValidEmail) {
-            $errors = $this->validator->getErrors();
-            if (empty($errors['email']) && !$isValidEmail) {
-                $errors['email'] = 'Please provide a valid email address.';
-            }
-
+        if (!$this->validateData($data, $this->userModel->registrationRules, $this->userModel->registrationMessages)) {
             if ($this->isJsonRequest()) {
                 return $this->response
                     ->setStatusCode(422)
                     ->setJSON([
                         'status' => 'error',
-                        'errors' => $errors,
+                        'errors' => $this->validator->getErrors(),
                     ]);
             }
 
             return redirect()->to('/register')
                 ->withInput()
-                ->with('errors', $errors);
+                ->with('errors', $this->validator->getErrors());
         }
 
         // Server-side security check: strictly enforce public registration role whitelist
@@ -1238,30 +1227,6 @@ class Auth extends BaseController
             log_message('error', 'Failed to send password reset email to ' . $toEmail . ': ' . $e->getMessage());
             return false;
         }
-    }
-
-    /**
-     * Narrow email format validation that ensures standard format and rejects
-     * obvious duplicate domain patterns like .com.com while permitting valid TLDs (.co.uk, etc.).
-     */
-    public static function isValidEmailFormat(?string $email): bool
-    {
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return false;
-        }
-        $parts = explode('@', $email);
-        if (count($parts) !== 2) {
-            return false;
-        }
-        $domain = strtolower($parts[1]);
-        if (!preg_match('/\.[a-z]{2,}$/i', $domain)) {
-            return false;
-        }
-        // Reject duplicate consecutive domain labels at the end (e.g. .com.com, .org.org, .net.net)
-        if (preg_match('/\.([a-z0-9-]+)\.\1$/i', $domain)) {
-            return false;
-        }
-        return true;
     }
 
     /**

@@ -196,6 +196,13 @@ if ($isLoggedIn && $userId) {
                 <span class="nav-text">Users</span>
             </a>
 
+            <?php if (strcasecmp((string) ($userRole ?? ''), 'Admin') === 0 || (int) (session()->get('role_id') ?? 0) === 1): ?>
+            <a href="<?= base_url('roles') ?>" class="nav-item <?= (str_starts_with(uri_string(), 'roles') || str_starts_with(uri_string(), 'admin/roles')) ? 'active' : '' ?>" title="User Roles">
+                <i class="bi bi-shield-lock nav-icon"></i>
+                <span class="nav-text">User Roles</span>
+            </a>
+            <?php endif; ?>
+
             <a href="<?= base_url('departments') ?>" class="nav-item <?= str_starts_with(uri_string(), 'departments') ? 'active' : '' ?>" title="Departments">
                 <i class="bi bi-diagram-3 nav-icon"></i>
                 <span class="nav-text">Departments</span>
@@ -291,6 +298,7 @@ if ($isLoggedIn && $userId) {
 <script src="<?= base_url('js/facilities.js') ?>"></script>
 <script src="<?= base_url('js/equipment.js') ?>"></script>
 <script src="<?= base_url('js/users.js') ?>"></script>
+<script src="<?= base_url('js/roles.js') ?>"></script>
 <script src="<?= base_url('js/departments.js') ?>"></script>
 
 </body>

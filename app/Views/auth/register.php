@@ -334,26 +334,6 @@
             display: block;
         }
 
-        .form-control-custom.is-invalid {
-            border-color: #ef4444 !important;
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
-        }
-
-        .invalid-feedback-custom {
-            display: none;
-            font-size: 12px;
-            font-weight: 500;
-            color: #f87171;
-            margin-top: 6px;
-            line-height: 1.35;
-        }
-
-        .invalid-feedback-custom.active {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
         .btn-register {
             width: 100%;
             background: linear-gradient(135deg, #6366F1 0%, #7C3AED 100%);
@@ -471,13 +451,13 @@
             </div>
         <?php endif; ?>
 
-        <form id="registerForm" action="<?= base_url('register') ?>" method="POST" autocomplete="on" novalidate>
+        <form action="<?= base_url('register') ?>" method="POST" autocomplete="on">
             <?= csrf_field() ?>
 
             <!-- Name Row -->
             <div class="form-row">
                 <div class="form-group">
-                    <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                    <label for="first_name" class="form-label">First Name</label>
                     <div class="input-group-custom">
                         <input
                             type="text"
@@ -489,15 +469,13 @@
                             autofocus
                             value="<?= esc(old('first_name')) ?>"
                             autocomplete="given-name"
-                            aria-describedby="first_name_error"
                         >
                         <i class="bi bi-person input-icon"></i>
                     </div>
-                    <div id="first_name_error" class="invalid-feedback-custom" role="alert"></div>
                 </div>
 
                 <div class="form-group">
-                    <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                    <label for="last_name" class="form-label">Last Name</label>
                     <div class="input-group-custom">
                         <input
                             type="text"
@@ -508,17 +486,15 @@
                             required
                             value="<?= esc(old('last_name')) ?>"
                             autocomplete="family-name"
-                            aria-describedby="last_name_error"
                         >
                         <i class="bi bi-person input-icon"></i>
                     </div>
-                    <div id="last_name_error" class="invalid-feedback-custom" role="alert"></div>
                 </div>
             </div>
 
             <!-- Email Address -->
             <div class="form-group">
-                <label for="email" class="form-label">Corporate Email Address <span class="text-danger">*</span></label>
+                <label for="email" class="form-label">Corporate Email Address</label>
                 <div class="input-group-custom">
                     <input
                         type="email"
@@ -529,11 +505,9 @@
                         required
                         value="<?= esc(old('email')) ?>"
                         autocomplete="email"
-                        aria-describedby="email_error"
                     >
                     <i class="bi bi-envelope input-icon"></i>
                 </div>
-                <div id="email_error" class="invalid-feedback-custom" role="alert"></div>
             </div>
 
             <!-- Phone Number (Optional) -->
@@ -563,7 +537,6 @@
                             name="role_id"
                             class="form-control-custom"
                             required
-                            aria-describedby="role_id_error"
                         >
                             <option value="" disabled <?= old('role_id') ? '' : 'selected' ?>>Select role...</option>
                             <?php if (!empty($allowedRoles)): ?>
@@ -578,7 +551,6 @@
                         </select>
                         <i class="bi bi-briefcase input-icon"></i>
                     </div>
-                    <div id="role_id_error" class="invalid-feedback-custom" role="alert"></div>
                 </div>
 
                 <div class="form-group">
@@ -605,7 +577,7 @@
 
             <!-- Password -->
             <div class="form-group">
-                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                <label for="password" class="form-label">Password</label>
                 <div class="input-group-custom">
                     <input
                         type="password"
@@ -615,17 +587,15 @@
                         placeholder="••••••••"
                         required
                         autocomplete="new-password"
-                        aria-describedby="password_error"
                     >
                     <i class="bi bi-lock input-icon"></i>
                 </div>
-                <div id="password_error" class="invalid-feedback-custom" role="alert"></div>
                 <span class="field-help">Must be at least 8 characters with 1 uppercase letter and 1 number.</span>
             </div>
 
             <!-- Confirm Password -->
             <div class="form-group">
-                <label for="password_confirm" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                <label for="password_confirm" class="form-label">Confirm Password</label>
                 <div class="input-group-custom">
                     <input
                         type="password"
@@ -635,11 +605,9 @@
                         placeholder="••••••••"
                         required
                         autocomplete="new-password"
-                        aria-describedby="password_confirm_error"
                     >
                     <i class="bi bi-shield-check input-icon"></i>
                 </div>
-                <div id="password_confirm_error" class="invalid-feedback-custom" role="alert"></div>
             </div>
 
             <!-- Submit Button -->
@@ -661,212 +629,5 @@
 
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const registerForm = document.getElementById('registerForm');
-    const firstNameInput = document.getElementById('first_name');
-    const lastNameInput = document.getElementById('last_name');
-    const emailInput = document.getElementById('email');
-    const roleSelect = document.getElementById('role_id');
-    const passwordInput = document.getElementById('password');
-    const confirmInput = document.getElementById('password_confirm');
-
-    const firstNameError = document.getElementById('first_name_error');
-    const lastNameError = document.getElementById('last_name_error');
-    const emailError = document.getElementById('email_error');
-    const roleError = document.getElementById('role_id_error');
-    const passwordError = document.getElementById('password_error');
-    const confirmError = document.getElementById('password_confirm_error');
-
-    function isValidEmail(val) {
-        if (!val || typeof val !== 'string') return false;
-        val = val.trim();
-        const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-        if (!emailRegex.test(val)) return false;
-        const domain = val.split('@')[1] || '';
-        if (/\.([a-zA-Z0-9-]+)\.\1$/i.test(domain)) return false;
-        return true;
-    }
-
-    function setFieldError(input, errorEl, message) {
-        input.classList.add('is-invalid');
-        input.setAttribute('aria-invalid', 'true');
-        if (errorEl) {
-            errorEl.innerHTML = '<i class="bi bi-exclamation-circle"></i> ' + message;
-            errorEl.classList.add('active');
-        }
-    }
-
-    function clearFieldError(input, errorEl) {
-        input.classList.remove('is-invalid');
-        input.removeAttribute('aria-invalid');
-        if (errorEl) {
-            errorEl.innerHTML = '';
-            errorEl.classList.remove('active');
-        }
-    }
-
-    // Dynamic field cleanup on input / change
-    if (firstNameInput) {
-        firstNameInput.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid') && this.value.trim().length > 0) {
-                clearFieldError(this, firstNameError);
-            }
-        });
-    }
-
-    if (lastNameInput) {
-        lastNameInput.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid') && this.value.trim().length > 0) {
-                clearFieldError(this, lastNameError);
-            }
-        });
-    }
-
-    if (emailInput) {
-        emailInput.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid')) {
-                const val = this.value.trim();
-                if (val.length > 0 && isValidEmail(val)) {
-                    clearFieldError(this, emailError);
-                }
-            }
-        });
-    }
-
-    if (roleSelect) {
-        roleSelect.addEventListener('change', function() {
-            if (this.value) {
-                clearFieldError(this, roleError);
-            }
-        });
-    }
-
-    if (passwordInput) {
-        passwordInput.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid')) {
-                const val = this.value;
-                if (val.length >= 8 && /[A-Z]/.test(val) && /[0-9]/.test(val)) {
-                    clearFieldError(this, passwordError);
-                }
-            }
-            if (confirmInput && confirmInput.classList.contains('is-invalid') && confirmInput.value === this.value) {
-                clearFieldError(confirmInput, confirmError);
-            }
-        });
-    }
-
-    if (confirmInput) {
-        confirmInput.addEventListener('input', function() {
-            if (this.classList.contains('is-invalid')) {
-                if (passwordInput && this.value === passwordInput.value) {
-                    clearFieldError(this, confirmError);
-                }
-            }
-        });
-    }
-
-    if (registerForm) {
-        registerForm.addEventListener('submit', function(e) {
-            let hasError = false;
-            let firstInvalid = null;
-
-            // Clear previous errors
-            clearFieldError(firstNameInput, firstNameError);
-            clearFieldError(lastNameInput, lastNameError);
-            clearFieldError(emailInput, emailError);
-            if (roleSelect) clearFieldError(roleSelect, roleError);
-            clearFieldError(passwordInput, passwordError);
-            clearFieldError(confirmInput, confirmError);
-
-            // First Name
-            const fnVal = firstNameInput ? firstNameInput.value.trim() : '';
-            if (!fnVal) {
-                setFieldError(firstNameInput, firstNameError, 'First name is required.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = firstNameInput;
-            } else if (fnVal.length > 100) {
-                setFieldError(firstNameInput, firstNameError, 'First name cannot exceed 100 characters.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = firstNameInput;
-            }
-
-            // Last Name
-            const lnVal = lastNameInput ? lastNameInput.value.trim() : '';
-            if (!lnVal) {
-                setFieldError(lastNameInput, lastNameError, 'Last name is required.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = lastNameInput;
-            } else if (lnVal.length > 100) {
-                setFieldError(lastNameInput, lastNameError, 'Last name cannot exceed 100 characters.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = lastNameInput;
-            }
-
-            // Email
-            const emailVal = emailInput ? emailInput.value.trim() : '';
-            if (!emailVal) {
-                setFieldError(emailInput, emailError, 'Email address is required.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = emailInput;
-            } else if (!isValidEmail(emailVal)) {
-                setFieldError(emailInput, emailError, 'Please provide a valid email address.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = emailInput;
-            } else if (emailVal.length > 255) {
-                setFieldError(emailInput, emailError, 'Email address cannot exceed 255 characters.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = emailInput;
-            }
-
-            // Company Role
-            if (roleSelect && !roleSelect.value) {
-                setFieldError(roleSelect, roleError, 'Please select a company role.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = roleSelect;
-            }
-
-            // Password
-            const pwVal = passwordInput ? passwordInput.value : '';
-            if (!pwVal) {
-                setFieldError(passwordInput, passwordError, 'Password is required.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = passwordInput;
-            } else if (pwVal.length < 8) {
-                setFieldError(passwordInput, passwordError, 'Password must be at least 8 characters long.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = passwordInput;
-            } else if (!/[A-Z]/.test(pwVal)) {
-                setFieldError(passwordInput, passwordError, 'Password must contain at least one uppercase letter.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = passwordInput;
-            } else if (!/[0-9]/.test(pwVal)) {
-                setFieldError(passwordInput, passwordError, 'Password must contain at least one number.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = passwordInput;
-            }
-
-            // Password Confirm
-            const confirmVal = confirmInput ? confirmInput.value : '';
-            if (!confirmVal) {
-                setFieldError(confirmInput, confirmError, 'Please confirm your password.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = confirmInput;
-            } else if (pwVal && confirmVal !== pwVal) {
-                setFieldError(confirmInput, confirmError, 'Passwords do not match.');
-                hasError = true;
-                if (!firstInvalid) firstInvalid = confirmInput;
-            }
-
-            if (hasError) {
-                e.preventDefault();
-                if (firstInvalid) {
-                    firstInvalid.focus();
-                }
-            }
-        });
-    }
-});
-</script>
 </body>
 </html>

@@ -55,11 +55,32 @@ $routes->group('', ['filter' => 'auth'], static function ($routes): void {
 
 /*
 |--------------------------------------------------------------------------
-| Roles
+| Roles (User Roles Management)
 |--------------------------------------------------------------------------
+|
+| /roles                 -> Roles frontend page / list
+| /admin/roles           -> Roles frontend page (alias)
+| /api/roles             -> List roles (JSON)
+| /api/roles/{id}        -> Get one role (JSON)
+| /api/roles             -> Create role (Admin only)
+| /api/roles/{id}        -> Update role (Admin only)
+| /api/roles/{id}        -> Delete role (Admin only)
+|
 */
 
 $routes->get('roles', 'Role::index');
+$routes->get('admin/roles', 'Role::index');
+
+$routes->get('api/roles', 'Role::index');
+$routes->get('api/roles/(:num)', 'Role::show/$1');
+$routes->post('api/roles', 'Role::create');
+$routes->put('api/roles/(:num)', 'Role::update/$1');
+$routes->delete('api/roles/(:num)', 'Role::delete/$1');
+
+// Legacy routes for backward compatibility
+$routes->post('roles', 'Role::create');
+$routes->put('roles/(:num)', 'Role::update/$1');
+$routes->delete('roles/(:num)', 'Role::delete/$1');
 
 
 /*
