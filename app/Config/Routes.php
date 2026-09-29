@@ -85,6 +85,25 @@ $routes->delete('roles/(:num)', 'Role::delete/$1');
 
 /*
 |--------------------------------------------------------------------------
+| Settings & Configuration (Admin only)
+|--------------------------------------------------------------------------
+|
+| /settings              -> Settings frontend page
+| /admin/settings        -> Settings frontend page (alias)
+| /api/settings          -> Get settings (JSON)
+| /api/settings          -> Update settings (Admin only)
+|
+*/
+
+$routes->get('settings', 'Settings::index');
+$routes->get('admin/settings', 'Settings::index');
+$routes->get('api/settings', 'Settings::index');
+$routes->post('api/settings', 'Settings::update');
+$routes->put('api/settings', 'Settings::update');
+
+
+/*
+|--------------------------------------------------------------------------
 | Users
 |--------------------------------------------------------------------------
 |

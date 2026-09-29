@@ -3,78 +3,91 @@
 namespace App\Controllers;
 
 use App\Models\Role as RoleModel;
-use App\Models\User as UserModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Role extends BaseController
 {
     protected RoleModel $roleModel;
-    protected UserModel $userModel;
 
     public function __construct()
     {
         $this->roleModel = new RoleModel();
-        $this->userModel = new UserModel();
     }
 
     /**
-     * Check if the authenticated user has Administrator privileges.
+     * Authoritative Admin check.
      */
     protected function isAdminUser(): bool
     {
         $session = service('session');
-        $userId  = (int) ($session->get('user_id') ?? 0);
+        $userId = (int) ($session->get('user_id') ?? 0);
         if ($userId <= 0) {
             return false;
         }
 
-        $roleId   = (int) ($session->get('role_id') ?? 0);
-        $roleName = (string) ($session->get('role_name') ?? '');
+        $roleName = (string) ($session->get('role') ?? '');
+        $roleId = (int) ($session->get('role_id') ?? 0);
 
-        if ($roleId === 1 || strcasecmp($roleName, 'Admin') === 0) {
+        if (strcasecmp($roleName, 'Admin') === 0 || $roleId === 1) {
             return true;
         }
 
-        // Authoritative database check
-        $db   = \Config\Database::connect();
-        $user = $db->table('users')->where('id', $userId)->get()->getRowArray();
-        if ($user && !empty($user['role_id'])) {
-            if ((int) $user['role_id'] === 1) {
-                return true;
-            }
-            $role = $db->table('roles')->where('id', $user['role_id'])->get()->getRowArray();
-            if ($role && strcasecmp((string) $role['name'], 'Admin') === 0) {
-                return true;
-            }
+        // Authoritative DB verification fallback
+        $db = \Config\Database::connect();
+        $user = $db->table('users')
+                   ->select('users.id, roles.name as role_name')
+                   ->join('roles', 'roles.id = users.role_id', 'left')
+                   ->where('users.id', $userId)
+                   ->get()
+                   ->getRowArray();
+
+        if ($user && strcasecmp((string) ($user['role_name'] ?? ''), 'Admin') === 0) {
+            $session->set('role', 'Admin');
+            return true;
         }
 
         return false;
     }
 
     /**
-     * Check if the incoming request expects a JSON response.
+     * Check if incoming request expects JSON.
      */
     protected function isJsonRequest(): bool
     {
-        return $this->request->isAJAX()
-            || str_starts_with($this->request->getUri()->getPath(), 'api/')
-            || str_contains((string) $this->request->getHeaderLine('Accept'), 'application/json');
+        if ($this->request->isAJAX()) {
+            return true;
+        }
+
+        $acceptHeader = $this->request->getHeaderLine('Accept');
+        if (str_contains($acceptHeader, 'application/json')) {
+            return true;
+        }
+
+        $contentType = $this->request->getHeaderLine('Content-Type');
+        if (str_contains($contentType, 'application/json')) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
-     * Render the User Roles management view (Admin web) OR list roles as JSON (API/Dropdown).
+     * Serve Roles Page (HTML) or Roles List (JSON).
      *
      * GET /roles
      * GET /admin/roles
      * GET /api/roles
      */
-    public function index(): string|ResponseInterface
+    public function index(): ResponseInterface|string
     {
         $session = service('session');
-        $userId  = (int) ($session->get('user_id') ?? 0);
+        $userId = (int) ($session->get('user_id') ?? 0);
 
-        // If browser page visit (not JSON and accepts text/html)
-        if (str_contains((string) $this->request->getHeaderLine('Accept'), 'text/html') && !$this->request->isAJAX()) {
+        // Check if browser navigation request (Accept: text/html and not AJAX)
+        $accept = $this->request->getHeaderLine('Accept');
+        $isHtmlBrowser = str_contains($accept, 'text/html') && !$this->request->isAJAX();
+
+        if ($isHtmlBrowser) {
             if ($userId <= 0) {
                 return redirect()->to('/login');
             }
@@ -143,13 +156,14 @@ class Role extends BaseController
 
         $id = (int) $id;
         $db = \Config\Database::connect();
-        $builder = $db->table('roles');
-        $builder->select('roles.id, roles.name, roles.description, roles.created_at, roles.updated_at, COUNT(users.id) as user_count')
-                ->join('users', 'users.role_id = roles.id', 'left')
-                ->where('roles.id', $id)
-                ->groupBy('roles.id');
+        $role = $db->table('roles')
+                   ->select('roles.id, roles.name, roles.description, roles.created_at, roles.updated_at, COUNT(users.id) as user_count')
+                   ->join('users', 'users.role_id = roles.id', 'left')
+                   ->where('roles.id', $id)
+                   ->groupBy('roles.id')
+                   ->get()
+                   ->getRowArray();
 
-        $role = $builder->get()->getRowArray();
         if (!$role) {
             return $this->response->setStatusCode(404)->setJSON([
                 'status'  => 'error',
@@ -157,12 +171,13 @@ class Role extends BaseController
             ]);
         }
 
-        $role['id']         = (int) $role['id'];
+        $role['id'] = (int) $role['id'];
         $role['user_count'] = (int) ($role['user_count'] ?? 0);
 
         return $this->response->setJSON([
             'status' => 'success',
             'data'   => $role,
+            'role'   => $role,
         ]);
     }
 
@@ -188,11 +203,9 @@ class Role extends BaseController
             ]);
         }
 
-        // Support both POST form fields and JSON payloads
-        $data = $this->request->is('json') ? ($this->request->getJSON(true) ?? []) : $this->request->getPost();
-
-        $name        = trim((string) ($data['name'] ?? ''));
-        $description = trim((string) ($data['description'] ?? ''));
+        $input = $this->request->getJSON(true) ?? $this->request->getPost();
+        $name = trim((string) ($input['name'] ?? ''));
+        $description = trim((string) ($input['description'] ?? ''));
 
         if ($name === '') {
             return $this->response->setStatusCode(422)->setJSON([
@@ -285,10 +298,9 @@ class Role extends BaseController
             ]);
         }
 
-        $data = $this->request->is('json') ? ($this->request->getJSON(true) ?? []) : $this->request->getRawInput();
-
-        $name        = trim((string) ($data['name'] ?? ''));
-        $description = trim((string) ($data['description'] ?? ''));
+        $input = $this->request->getJSON(true) ?? $this->request->getRawInput();
+        $name = trim((string) ($input['name'] ?? ''));
+        $description = trim((string) ($input['description'] ?? ''));
 
         if ($name === '') {
             return $this->response->setStatusCode(422)->setJSON([
@@ -306,7 +318,7 @@ class Role extends BaseController
             ]);
         }
 
-        // Check uniqueness excluding current role
+        // Uniqueness check excluding current role
         $existing = $db->table('roles')
                        ->where('LOWER(name)', strtolower($name))
                        ->where('id !=', $id)
@@ -381,6 +393,15 @@ class Role extends BaseController
         }
 
         $id = (int) $id;
+
+        // Protection: System Admin role cannot be deleted
+        if ($id === 1) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'status'  => 'error',
+                'message' => 'The system Administrator role cannot be deleted.',
+            ]);
+        }
+
         $db = \Config\Database::connect();
         $role = $db->table('roles')->where('id', $id)->get()->getRowArray();
         if (!$role) {
@@ -390,20 +411,19 @@ class Role extends BaseController
             ]);
         }
 
-        // Prevent deletion of primary Admin role
-        if ($id === 1 || strcasecmp($role['name'], 'Admin') === 0) {
+        if (strcasecmp((string) $role['name'], 'Admin') === 0) {
             return $this->response->setStatusCode(400)->setJSON([
                 'status'  => 'error',
                 'message' => 'The system Administrator role cannot be deleted.',
             ]);
         }
 
-        // Check if assigned to any user
-        $userCount = $db->table('users')->where('role_id', $id)->countAllResults();
-        if ($userCount > 0) {
+        // Protection: Cannot delete role if assigned to any user
+        $assignedCount = $db->table('users')->where('role_id', $id)->countAllResults();
+        if ($assignedCount > 0) {
             return $this->response->setStatusCode(409)->setJSON([
                 'status'  => 'error',
-                'message' => "Cannot delete role \"{$role['name']}\" because it is currently assigned to {$userCount} user(s). Reassign them first.",
+                'message' => "Cannot delete role \"{$role['name']}\" because it is currently assigned to {$assignedCount} user(s). Reassign them first.",
             ]);
         }
 

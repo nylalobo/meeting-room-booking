@@ -208,6 +208,13 @@ if ($isLoggedIn && $userId) {
                 <span class="nav-text">Departments</span>
             </a>
 
+            <?php if (strcasecmp((string) ($userRole ?? ''), 'Admin') === 0 || (int) (session()->get('role_id') ?? 0) === 1): ?>
+            <a href="<?= base_url('settings') ?>" class="nav-item <?= (str_starts_with(uri_string(), 'settings') || str_starts_with(uri_string(), 'admin/settings')) ? 'active' : '' ?>" title="Settings & Configuration">
+                <i class="bi bi-gear nav-icon"></i>
+                <span class="nav-text">Settings</span>
+            </a>
+            <?php endif; ?>
+
         </nav>
 
         <!-- Bottom Account Section (Authenticated Users) -->
@@ -299,6 +306,7 @@ if ($isLoggedIn && $userId) {
 <script src="<?= base_url('js/equipment.js') ?>"></script>
 <script src="<?= base_url('js/users.js') ?>"></script>
 <script src="<?= base_url('js/roles.js') ?>"></script>
+<script src="<?= base_url('js/settings.js') ?>"></script>
 <script src="<?= base_url('js/departments.js') ?>"></script>
 
 </body>
