@@ -248,22 +248,22 @@ if (trim($userGreeting) === '') {
             </div>
         </div>
 
-        <!-- Card 4: Operations & Catering -->
+        <!-- Card 4: Equipment & Resources -->
         <div class="flash-card-container">
-            <div class="flash-card glass-card" tabindex="0" role="button" aria-label="Operations and catering card. Press Enter to flip for details." id="flashCardOperations">
+            <div class="flash-card glass-card" tabindex="0" role="button" aria-label="Equipment and resources card. Press Enter to flip for details." id="flashCardOperations">
                 <!-- Front -->
                 <div class="flash-card-front">
                     <div class="flash-card-header">
-                        <span><i class="bi bi-cup-hot me-1"></i>Hospitality & Assets</span>
+                        <span><i class="bi bi-projector me-1"></i>Equipment & Assets</span>
                         <div class="flash-card-icon flash-card-icon-purple">
                             <i class="bi bi-layers-fill"></i>
                         </div>
                     </div>
                     <div class="flash-card-body">
-                        <h3 class="flash-card-title">Hospitality & Resources</h3>
+                        <h3 class="flash-card-title">Equipment & Resources</h3>
                         <p class="flash-card-detail">
-                            <i class="bi bi-cup-straw"></i>
-                            <span>Catering & refreshments active</span>
+                            <i class="bi bi-cpu"></i>
+                            <span>Hardware & AV assets active</span>
                         </p>
                         <p class="flash-card-detail">
                             <i class="bi bi-projector"></i>
@@ -282,7 +282,7 @@ if (trim($userGreeting) === '') {
                         <span class="badge bg-primary-subtle text-primary small">Enterprise</span>
                     </div>
                     <div class="flash-card-body">
-                        <div class="small text-muted mb-1">Manage catering requests, hospitality services, projectors, and hardware assets.</div>
+                        <div class="small text-muted mb-1">Manage hardware inventory, meeting room projectors, and equipment assets.</div>
                         <div class="small fw-semibold text-white mb-2">Integrated into booking workflows.</div>
                     </div>
                     <div class="flash-card-footer">
