@@ -36,6 +36,10 @@ class Room extends BaseController
 
     public function index(): ResponseInterface
     {
+        if ($this->request->getGet('format') === 'select2') {
+            return $this->select2();
+        }
+
         $rooms = $this->roomModel
             ->orderBy('id', 'ASC')
             ->findAll();
@@ -43,6 +47,113 @@ class Room extends BaseController
         return $this->response->setJSON([
             'status' => 'success',
             'data'   => $rooms,
+        ]);
+    }
+
+    /**
+     * Select2 AJAX data source for rooms.
+     * Supports search across room name, room code, and location name.
+     */
+    public function select2(): ResponseInterface
+    {
+        $session = service('session');
+        if (!$session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'     => 'error',
+                'message'    => 'Unauthorized. Please log in.',
+                'results'    => [],
+                'pagination' => ['more' => false],
+            ]);
+        }
+
+        $id = $this->request->getGet('id');
+        if ($id !== null && is_numeric($id) && (int) $id > 0) {
+            $room = $this->roomModel->builder()
+                ->select('rooms.id, rooms.name, rooms.room_code, rooms.capacity, rooms.location_id, rooms.is_active, locations.name as location_name')
+                ->join('locations', 'locations.id = rooms.location_id', 'left')
+                ->where('rooms.id', (int) $id)
+                ->get()
+                ->getRowArray();
+
+            if ($room) {
+                $code = !empty($room['room_code']) ? " ({$room['room_code']})" : '';
+                $loc = !empty($room['location_name']) ? " — {$room['location_name']}" : '';
+                $text = "{$room['name']}{$code}{$loc}";
+                return $this->response->setJSON([
+                    'results' => [[
+                        'id'            => (int) $room['id'],
+                        'text'          => $text,
+                        'name'          => $room['name'],
+                        'room_code'     => $room['room_code'] ?? '',
+                        'location_name' => $room['location_name'] ?? '',
+                        'capacity'      => (int) ($room['capacity'] ?? 0),
+                    ]],
+                    'pagination' => ['more' => false],
+                ]);
+            }
+            return $this->response->setJSON([
+                'results'    => [],
+                'pagination' => ['more' => false],
+            ]);
+        }
+
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(50, max(5, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 20)));
+        $includeId = $this->request->getGet('include_id');
+        $includeIdInt = ($includeId !== null && is_numeric($includeId)) ? (int) $includeId : null;
+
+        $builder = $this->roomModel->builder();
+        $builder->select('rooms.id, rooms.name, rooms.room_code, rooms.capacity, rooms.location_id, rooms.is_active, locations.name as location_name');
+        $builder->join('locations', 'locations.id = rooms.location_id', 'left');
+
+        if ($includeIdInt !== null) {
+            $builder->groupStart()
+                ->where('rooms.is_active', 1)
+                ->orWhere('rooms.id', $includeIdInt)
+                ->groupEnd();
+        } else {
+            $builder->where('rooms.is_active', 1);
+        }
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('rooms.name', $search)
+                ->orLike('rooms.room_code', $search)
+                ->orLike('locations.name', $search)
+                ->groupEnd();
+        }
+
+        $totalCount = (clone $builder)->countAllResults();
+
+        $offset = ($page - 1) * $perPage;
+        $rooms = $builder->orderBy('rooms.name', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
+
+        $results = [];
+        foreach ($rooms as $r) {
+            $code = !empty($r['room_code']) ? " ({$r['room_code']})" : '';
+            $loc = !empty($r['location_name']) ? " — {$r['location_name']}" : '';
+            $text = "{$r['name']}{$code}{$loc}";
+            $results[] = [
+                'id'            => (int) $r['id'],
+                'text'          => $text,
+                'name'          => $r['name'],
+                'room_code'     => $r['room_code'] ?? '',
+                'location_name' => $r['location_name'] ?? '',
+                'capacity'      => (int) ($r['capacity'] ?? 0),
+            ];
+        }
+
+        $hasMore = ($offset + count($results)) < $totalCount;
+
+        return $this->response->setJSON([
+            'results'    => $results,
+            'pagination' => [
+                'more' => $hasMore,
+            ],
         ]);
     }
 

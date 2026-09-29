@@ -550,6 +550,10 @@
                 const bookingSelect = document.getElementById('participantBooking');
                 if (bookingSelect && bookingId) {
                     bookingSelect.value = String(bookingId);
+                    if (isSelect2Available()) {
+                        const b = bookingsMap.get(String(bookingId));
+                        setSelect2Option('#participantBooking', bookingId, b?.title || `Meeting #${bookingId}`);
+                    }
                 }
                 openParticipantModal();
             });
@@ -602,6 +606,106 @@
 
         if (currentSelected) {
             bookingFilter.value = currentSelected;
+        }
+    }
+
+    function isSelect2Available() {
+        return typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined';
+    }
+
+    function setSelect2Option(selector, id, text) {
+        if (!isSelect2Available()) {
+            const el = document.querySelector(selector);
+            if (el && id) el.value = String(id);
+            return;
+        }
+        const $select = $(selector);
+        if (!$select.length) return;
+
+        if (!id) {
+            $select.val(null).trigger('change');
+            return;
+        }
+
+        const idStr = String(id);
+        if ($select.find(`option[value="${idStr}"]`).length === 0) {
+            const newOption = new Option(text || `ID #${id}`, idStr, true, true);
+            $select.append(newOption).trigger('change');
+        } else {
+            if (text) {
+                $select.find(`option[value="${idStr}"]`).text(text);
+            }
+            $select.val(idStr).trigger('change');
+        }
+    }
+
+    function setupParticipantSelect2() {
+        if (!isSelect2Available()) return;
+
+        const $modal = $('#participantModal');
+
+        if (!$('#participantBooking').hasClass('select2-hidden-accessible')) {
+            $('#participantBooking').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'Search and select meeting...',
+                allowClear: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: '/api/bookings/select2',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term || '',
+                            page: params.page || 1,
+                            per_page: 20
+                        };
+                    },
+                    processResults: function (data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results || [],
+                            pagination: {
+                                more: Boolean(data.pagination && data.pagination.more)
+                            }
+                        };
+                    },
+                    cache: true
+                }
+            });
+        }
+
+        if (!$('#participantUser').hasClass('select2-hidden-accessible')) {
+            $('#participantUser').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'Search attendee by name or email...',
+                allowClear: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: '/api/users/select2',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term || '',
+                            page: params.page || 1,
+                            per_page: 20
+                        };
+                    },
+                    processResults: function (data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results || [],
+                            pagination: {
+                                more: Boolean(data.pagination && data.pagination.more)
+                            }
+                        };
+                    },
+                    cache: true
+                }
+            });
         }
     }
 
@@ -673,6 +777,7 @@
         });
 
         form.addEventListener('submit', handleParticipantFormSubmit);
+        setupParticipantSelect2();
     }
 
     function openParticipantModal() {
@@ -681,6 +786,10 @@
 
         modal.classList.remove('d-none');
         document.body.classList.add('booking-modal-open');
+
+        if (isSelect2Available()) {
+            $('#participantBooking, #participantUser').trigger('change.select2');
+        }
 
         setTimeout(() => {
             const firstInput = document.getElementById('participantBooking');
@@ -717,6 +826,13 @@
         if (userSelect) userSelect.disabled = false;
         if (typeSelect) typeSelect.value = 'participant';
         if (statusSelect) statusSelect.value = 'pending';
+
+        if (isSelect2Available()) {
+            $('#participantBooking').prop('disabled', false);
+            $('#participantUser').prop('disabled', false);
+            setSelect2Option('#participantBooking', null);
+            setSelect2Option('#participantUser', null);
+        }
 
         const modalTitle = document.getElementById('participantModalTitle');
         if (modalTitle) modalTitle.textContent = 'Add Participant';
@@ -757,11 +873,22 @@
         if (bookingSelect) {
             bookingSelect.value = String(bookingId);
             bookingSelect.disabled = true;
+            if (isSelect2Available()) {
+                const b = bookingsMap.get(String(bookingId));
+                setSelect2Option('#participantBooking', bookingId, b?.title || `Booking #${bookingId}`);
+                $('#participantBooking').prop('disabled', true);
+            }
         }
 
         if (userSelect) {
             userSelect.value = String(userId);
             userSelect.disabled = true;
+            if (isSelect2Available()) {
+                const u = usersMap.get(String(userId));
+                const uName = u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : `User #${userId}`;
+                setSelect2Option('#participantUser', userId, uName);
+                $('#participantUser').prop('disabled', true);
+            }
         }
 
         if (typeSelect) {

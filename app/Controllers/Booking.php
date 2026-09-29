@@ -54,6 +54,91 @@ class Booking extends BaseController
     }
 
     /**
+     * Select2 AJAX data source for bookings.
+     * Supports search across booking title and room name with server-side pagination.
+     */
+    public function select2(): ResponseInterface
+    {
+        $session = service('session');
+        if (!$session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'     => 'error',
+                'message'    => 'Unauthorized. Please log in.',
+                'results'    => [],
+                'pagination' => ['more' => false],
+            ]);
+        }
+
+        $id = $this->request->getGet('id');
+        if ($id !== null && is_numeric($id) && (int) $id > 0) {
+            $booking = $this->bookingModel->builder()
+                ->select('bookings.id, bookings.title, bookings.start_time, rooms.name as room_name')
+                ->join('rooms', 'rooms.id = bookings.room_id', 'left')
+                ->where('bookings.id', (int) $id)
+                ->get()
+                ->getRowArray();
+
+            if ($booking) {
+                $date = !empty($booking['start_time']) ? date('M j, Y g:ia', strtotime($booking['start_time'])) : '';
+                $text = "{$booking['title']}" . ($date ? " ({$date} - " . ($booking['room_name'] ?? 'Room') . ")" : '');
+                return $this->response->setJSON([
+                    'results' => [[
+                        'id'   => (int) $booking['id'],
+                        'text' => $text,
+                    ]],
+                    'pagination' => ['more' => false],
+                ]);
+            }
+            return $this->response->setJSON([
+                'results'    => [],
+                'pagination' => ['more' => false],
+            ]);
+        }
+
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(50, max(5, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 20)));
+
+        $builder = $this->bookingModel->builder();
+        $builder->select('bookings.id, bookings.title, bookings.start_time, rooms.name as room_name');
+        $builder->join('rooms', 'rooms.id = bookings.room_id', 'left');
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('bookings.title', $search)
+                ->orLike('rooms.name', $search)
+                ->groupEnd();
+        }
+
+        $totalCount = (clone $builder)->countAllResults();
+
+        $offset = ($page - 1) * $perPage;
+        $bookings = $builder->orderBy('bookings.start_time', 'DESC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
+
+        $results = [];
+        foreach ($bookings as $b) {
+            $date = !empty($b['start_time']) ? date('M j, Y g:ia', strtotime($b['start_time'])) : '';
+            $text = "{$b['title']}" . ($date ? " ({$date} - " . ($b['room_name'] ?? 'Room') . ")" : '');
+            $results[] = [
+                'id'   => (int) $b['id'],
+                'text' => $text,
+            ];
+        }
+
+        $hasMore = ($offset + count($results)) < $totalCount;
+
+        return $this->response->setJSON([
+            'results'    => $results,
+            'pagination' => [
+                'more' => $hasMore,
+            ],
+        ]);
+    }
+
+    /**
      * Get all bookings with room and organizer details.
      *
      * Used by the frontend bookings page.

@@ -172,7 +172,7 @@
         </div>
 
 
-        <form id="participantForm">
+        <form id="participantForm" novalidate>
 
             <input type="hidden" id="participantBookingId">
             <input type="hidden" id="participantUserId">

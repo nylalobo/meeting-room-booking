@@ -236,7 +236,125 @@
     }
 
 
+    function isSelect2Available() {
+        return typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined';
+    }
+
+    function setSelect2Option(selector, id, text) {
+        if (!isSelect2Available()) {
+            const el = document.querySelector(selector);
+            if (el && id) el.value = String(id);
+            return;
+        }
+        const $select = $(selector);
+        if (!$select.length) return;
+
+        if (!id) {
+            $select.val(null).trigger('change');
+            return;
+        }
+
+        const idStr = String(id);
+        if ($select.find(`option[value="${idStr}"]`).length === 0) {
+            const newOption = new Option(text || `ID #${id}`, idStr, true, true);
+            $select.append(newOption).trigger('change');
+        } else {
+            if (text) {
+                $select.find(`option[value="${idStr}"]`).text(text);
+            }
+            $select.val(idStr).trigger('change');
+        }
+    }
+
+    function setupBookingSelect2() {
+        if (!isSelect2Available()) return;
+
+        const $modal = $('#bookingModal');
+
+        if (!$('#bookingRoom').hasClass('select2-hidden-accessible')) {
+            $('#bookingRoom').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'Search and select room...',
+                allowClear: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: '/api/rooms/select2',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term || '',
+                            page: params.page || 1,
+                            per_page: 20
+                        };
+                    },
+                    processResults: function (data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results || [],
+                            pagination: {
+                                more: Boolean(data.pagination && data.pagination.more)
+                            }
+                        };
+                    },
+                    cache: true
+                }
+            });
+        }
+
+        if (!$('#bookingUser').hasClass('select2-hidden-accessible')) {
+            $('#bookingUser').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'Search organizer by name or email...',
+                allowClear: true,
+                minimumInputLength: 0,
+                ajax: {
+                    url: '/api/users/select2',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            search: params.term || '',
+                            page: params.page || 1,
+                            per_page: 20
+                        };
+                    },
+                    processResults: function (data, params) {
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results || [],
+                            pagination: {
+                                more: Boolean(data.pagination && data.pagination.more)
+                            }
+                        };
+                    },
+                    cache: true
+                }
+            });
+        }
+    }
+
     function populateModalDropdowns(selectedRoomId = null, selectedUserId = null) {
+        if (isSelect2Available()) {
+            if (selectedRoomId) {
+                const room = roomsMap.get(Number(selectedRoomId));
+                const roomText = room ? (room.room_code ? `${room.name} (${room.room_code})` : room.name) : `Room #${selectedRoomId}`;
+                setSelect2Option('#bookingRoom', selectedRoomId, roomText);
+            } else {
+                setSelect2Option('#bookingRoom', null);
+            }
+
+            if (selectedUserId) {
+                const user = usersMap.get(Number(selectedUserId));
+                const userText = user ? (`${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || `User #${user.id}`) : `User #${selectedUserId}`;
+                setSelect2Option('#bookingUser', selectedUserId, userText);
+            } else {
+                setSelect2Option('#bookingUser', null);
+            }
+            return;
+        }
 
         const roomSelect =
             document.getElementById(
@@ -803,6 +921,7 @@
 
         setupRecurrenceControls();
         setupSafeTimeSelection();
+        setupBookingSelect2();
     }
 
 
@@ -819,6 +938,10 @@
 
         modal.classList.remove('d-none');
         document.body.classList.add('booking-modal-open');
+
+        if (isSelect2Available()) {
+            $('#bookingRoom, #bookingUser').trigger('change.select2');
+        }
 
         setTimeout(() => {
             document.getElementById('bookingTitle')?.focus();
@@ -952,6 +1075,11 @@
         const targetRoomId = options.roomId || (roomFilter ? roomFilter.value : '');
         if (targetRoomId && roomSelect) {
             roomSelect.value = String(targetRoomId);
+            if (isSelect2Available()) {
+                const r = roomsMap.get(Number(targetRoomId));
+                const rLabel = r ? (r.room_code ? `${r.name} (${r.room_code})` : r.name) : `Room #${targetRoomId}`;
+                setSelect2Option('#bookingRoom', targetRoomId, rLabel);
+            }
         }
 
         openBookingModal();
@@ -1674,10 +1802,19 @@
 
         if (roomSelect) {
             roomSelect.value = String(booking.room_id);
+            if (isSelect2Available()) {
+                const roomText = booking.room_code ? `${booking.room_name} (${booking.room_code})` : (booking.room_name || `Room #${booking.room_id}`);
+                setSelect2Option('#bookingRoom', booking.room_id, roomText);
+            }
         }
 
         if (userSelect) {
             userSelect.value = String(booking.user_id);
+            if (isSelect2Available()) {
+                const u = usersMap.get(Number(booking.user_id));
+                const userText = booking.organizer_name || (u ? `${u.first_name || ''} ${u.last_name || ''}`.trim() : `User #${booking.user_id}`);
+                setSelect2Option('#bookingUser', booking.user_id, userText);
+            }
         }
 
         if (startInput) {
@@ -2833,6 +2970,9 @@
 
         if (roomSelect && roomId) {
             roomSelect.value = String(roomId);
+            if (isSelect2Available()) {
+                setSelect2Option('#bookingRoom', roomId, roomName || `Room #${roomId}`);
+            }
         }
         if (startInput && startInputVal) {
             startInput.value = startInputVal;

@@ -212,7 +212,7 @@
         </div>
 
 
-        <form id="bookingForm">
+        <form id="bookingForm" novalidate>
 
             <input type="hidden" id="bookingId">
 

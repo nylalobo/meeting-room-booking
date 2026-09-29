@@ -19,6 +19,10 @@ class User extends BaseController
      */
     public function index(): ResponseInterface
     {
+        if ($this->request->getGet('format') === 'select2') {
+            return $this->select2();
+        }
+
         $users = $this->userModel
             ->select('id, department_id, role_id, first_name, last_name, email, phone, is_active, created_at, updated_at')
             ->orderBy('id', 'ASC')
@@ -27,6 +31,103 @@ class User extends BaseController
         return $this->response->setJSON([
             'status' => 'success',
             'data'   => $users,
+        ]);
+    }
+
+    /**
+     * Select2 AJAX data source for users.
+     * Supports search across first name, last name, and email with server-side pagination.
+     */
+    public function select2(): ResponseInterface
+    {
+        $session = service('session');
+        if (!$session->get('isLoggedIn')) {
+            return $this->response->setStatusCode(401)->setJSON([
+                'status'     => 'error',
+                'message'    => 'Unauthorized. Please log in.',
+                'results'    => [],
+                'pagination' => ['more' => false],
+            ]);
+        }
+
+        $id = $this->request->getGet('id');
+        if ($id !== null && is_numeric($id) && (int) $id > 0) {
+            $user = $this->userModel
+                ->select('id, first_name, last_name, email, is_active')
+                ->find((int) $id);
+
+            if ($user) {
+                $fullName = trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? ''));
+                $text = $fullName !== '' ? $fullName : ($user['email'] ?? 'User #' . $user['id']);
+                return $this->response->setJSON([
+                    'results' => [[
+                        'id'    => (int) $user['id'],
+                        'text'  => $text,
+                        'email' => $user['email'] ?? '',
+                    ]],
+                    'pagination' => ['more' => false],
+                ]);
+            }
+            return $this->response->setJSON([
+                'results'    => [],
+                'pagination' => ['more' => false],
+            ]);
+        }
+
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(50, max(5, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 20)));
+        $includeId = $this->request->getGet('include_id');
+        $includeIdInt = ($includeId !== null && is_numeric($includeId)) ? (int) $includeId : null;
+
+        $builder = $this->userModel->builder();
+        $builder->select('id, first_name, last_name, email, is_active');
+
+        if ($includeIdInt !== null) {
+            $builder->groupStart()
+                ->where('is_active', 1)
+                ->orWhere('id', $includeIdInt)
+                ->groupEnd();
+        } else {
+            $builder->where('is_active', 1);
+        }
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('first_name', $search)
+                ->orLike('last_name', $search)
+                ->orLike('email', $search)
+                ->orLike("CONCAT(first_name, ' ', last_name)", $search)
+                ->groupEnd();
+        }
+
+        $totalCount = (clone $builder)->countAllResults();
+
+        $offset = ($page - 1) * $perPage;
+        $users = $builder->orderBy('first_name', 'ASC')
+            ->orderBy('last_name', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
+
+        $results = [];
+        foreach ($users as $u) {
+            $fullName = trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
+            $text = $fullName !== '' ? $fullName : ($u['email'] ?? 'User #' . $u['id']);
+            $results[] = [
+                'id'    => (int) $u['id'],
+                'text'  => $text,
+                'email' => $u['email'] ?? '',
+            ];
+        }
+
+        $hasMore = ($offset + count($results)) < $totalCount;
+
+        return $this->response->setJSON([
+            'results'    => $results,
+            'pagination' => [
+                'more' => $hasMore,
+            ],
         ]);
     }
 
