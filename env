@@ -69,19 +69,23 @@
 # logger.threshold = 4
 
 #--------------------------------------------------------------------
-# EMAIL / GMAIL SMTP CONFIGURATION
+# EMAIL / BREVO SMTP CONFIGURATION
 #--------------------------------------------------------------------
-# To enable real email verification via Gmail SMTP:
-# 1. Enable 2-Step Verification in your Google Account (myaccount.google.com/security)
-# 2. Generate a 16-character App Password under Security -> App Passwords
-# 3. Fill in your Gmail address and generated App Password below in your .env file
+# To enable transactional email delivery via Brevo (formerly Sendinblue) SMTP:
+# 1. Sign in to your Brevo account (app.brevo.com)
+# 2. Navigate to Transactional -> Configuration -> SMTP / API Keys
+# 3. Copy your SMTP Login and Master / SMTP Key
+# 4. Fill in your Brevo SMTP credentials below in your .env file:
 #
 # email.protocol = 'smtp'
-# email.SMTPHost = 'smtp.gmail.com'
+# email.SMTPHost = 'smtp-relay.brevo.com'
 # email.SMTPPort = 587
 # email.SMTPCrypto = 'tls'
-# email.SMTPUser = 'your-email@gmail.com'
-# email.SMTPPass = 'your-16-char-app-password'
-# email.fromEmail = 'your-email@gmail.com'
+# email.SMTPUser = 'your-brevo-smtp-login'
+# email.SMTPPass = 'your-brevo-smtp-key'
+# email.fromEmail = 'your-authorized-sender@yourdomain.com'
 # email.fromName = 'MeetSpace Enterprise Suite'
 # email.mailType = 'html'
+#
+# SMTP_USER = 'your-brevo-smtp-login'
+# SMTP_PASS = 'your-brevo-smtp-key'

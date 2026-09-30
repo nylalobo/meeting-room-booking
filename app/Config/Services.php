@@ -32,7 +32,7 @@ class Services extends BaseService
      *
      * In production (ENVIRONMENT === 'production') or normal client HTTP usage,
      * the mock transport can NEVER be activated by external headers alone;
-     * standard Email with Gmail SMTP is always returned.
+     * standard Email with Brevo SMTP is always returned.
      *
      * @param EmailConfig|array|null $config
      */
