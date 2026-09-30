@@ -9,6 +9,9 @@
  * - Room form validation and API error handling
  */
 
+(function () {
+    'use strict';
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // Rooms page
@@ -1553,3 +1556,5 @@ function closeRoomQrModal() {
         displayEl.innerHTML = '';
     }
 }
+
+})();

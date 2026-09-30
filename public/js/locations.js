@@ -9,6 +9,9 @@
  * - Location form validation and API error handling
  */
 
+(function () {
+    'use strict';
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // Locations page
@@ -1211,3 +1214,4 @@ function hideLocationFormMessages() {
     );
 }
 
+})();
