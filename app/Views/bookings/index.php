@@ -104,8 +104,6 @@
         </table>
     </div>
 
-    <div id="bookingsPagination" class="meetspace-pagination-wrapper d-none"></div>
-
 </div>
 
 <!-- ================================================================
@@ -2214,6 +2212,94 @@
     flex-direction: column;
     gap: 4px;
     margin-top: 12px;
+}
+
+[data-theme="light"] .booking-action-btn {
+    border-color: #CBD5E1;
+    color: #475569;
+    background: #FFFFFF;
+}
+
+[data-theme="light"] .booking-action-btn:hover {
+    background-color: #EEF2FF;
+    color: #4F46E5;
+    border-color: #C7D2FE;
+}
+
+[data-theme="light"] .booking-status-pending {
+    background-color: #FEF3C7;
+    color: #92400E;
+    border-color: #FDE68A;
+}
+
+[data-theme="light"] .booking-status-approved {
+    background-color: #D1FAE5;
+    color: #065F46;
+    border-color: #A7F3D0;
+}
+
+[data-theme="light"] .booking-status-rejected {
+    background-color: #FEE2E2;
+    color: #991B1B;
+    border-color: #FECACA;
+}
+
+[data-theme="light"] .booking-status-cancelled {
+    background-color: #F1F5F9;
+    color: #475569;
+    border-color: #CBD5E1;
+}
+
+[data-theme="light"] .booking-status-completed {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+    border-color: #BFDBFE;
+}
+
+[data-theme="light"] .btn-pending-filter {
+    background-color: #FFFBEB;
+    border-color: #FCD34D;
+    color: #92400E;
+}
+
+[data-theme="light"] .btn-pending-filter:hover {
+    background-color: #FEF3C7;
+    border-color: #F59E0B;
+}
+
+[data-theme="light"] .visitor-form-card {
+    background: #F8FAFC;
+    border-color: #E2E8F0;
+}
+
+[data-theme="light"] .visitor-form-group input {
+    background: #FFFFFF;
+    border-color: #CBD5E1;
+    color: #0F172A;
+}
+
+[data-theme="light"] .btn-visitor-cancel,
+[data-theme="light"] .btn-visitor-edit {
+    border-color: #CBD5E1;
+    color: #475569;
+}
+
+[data-theme="light"] .btn-visitor-edit:hover {
+    color: #0F172A;
+    border-color: #94A3B8;
+    background: #F1F5F9;
+}
+
+[data-theme="light"] .cal-resource-pill {
+    background: #F1F5F9;
+    border-color: #CBD5E1;
+    color: #334155;
+}
+
+[data-theme="light"] .resource-conflict-banner {
+    background: #FEF2F2;
+    border-color: #FECACA;
+    color: #991B1B;
 }
 </style>
 

@@ -1057,125 +1057,12 @@ function initializeLogoutConfirmation() {
  * @param {Function} onPageChange - Callback when page changes: (newPage) => void
  * @param {Function} onPerPageChange - Callback when per_page changes: (newPerPage) => void
  */
-function renderPagination(target, meta, onPageChange, onPerPageChange) {
+function renderPagination(target, _meta, _onPageChange, _onPerPageChange) {
     const container = typeof target === 'string' ? document.querySelector(target) : target;
     if (!container) return;
 
-    const page = Math.max(1, parseInt(meta.page, 10) || 1);
-    const perPage = Math.max(1, parseInt(meta.per_page, 10) || 10);
-    const total = Math.max(0, parseInt(meta.total, 10) || 0);
-    const totalPages = Math.max(1, parseInt(meta.total_pages, 10) || 1);
-
-    if (total === 0) {
-        container.innerHTML = '';
-        container.classList.add('d-none');
-        return;
-    }
-
-    container.classList.remove('d-none');
-
-    const startItem = Math.min((page - 1) * perPage + 1, total);
-    const endItem = Math.min(page * perPage, total);
-
-    // Build page numbers to display
-    const pageItems = [];
-    if (totalPages <= 7) {
-        for (let i = 1; i <= totalPages; i++) {
-            pageItems.push(i);
-        }
-    } else {
-        pageItems.push(1);
-        if (page > 3) {
-            pageItems.push('...');
-        }
-        const startWindow = Math.max(2, page - 1);
-        const endWindow = Math.min(totalPages - 1, page + 1);
-        for (let i = startWindow; i <= endWindow; i++) {
-            if (!pageItems.includes(i)) pageItems.push(i);
-        }
-        if (page < totalPages - 2) {
-            pageItems.push('...');
-        }
-        if (!pageItems.includes(totalPages)) {
-            pageItems.push(totalPages);
-        }
-    }
-
-    let navHtml = `
-        <div class="meetspace-pagination">
-            <div class="meetspace-pagination-info">
-                Showing <span class="highlight">${startItem}</span> to <span class="highlight">${endItem}</span> of <span class="highlight">${total}</span> results
-            </div>
-            <div class="meetspace-pagination-controls">
-                <div class="meetspace-pagination-per-page">
-                    <span>Rows per page:</span>
-                    <select class="meetspace-per-page-select" aria-label="Rows per page">
-                        <option value="10"${perPage === 10 ? ' selected' : ''}>10</option>
-                        <option value="20"${perPage === 20 ? ' selected' : ''}>20</option>
-                        <option value="50"${perPage === 50 ? ' selected' : ''}>50</option>
-                    </select>
-                </div>
-                <ul class="meetspace-pagination-nav">
-                    <li>
-                        <button type="button" class="meetspace-page-btn prev-btn"${page <= 1 ? ' disabled' : ''} aria-label="Previous page">
-                            <i class="bi bi-chevron-left"></i>
-                        </button>
-                    </li>`;
-
-    pageItems.forEach((item) => {
-        if (item === '...') {
-            navHtml += `<li><span class="meetspace-page-ellipsis">&hellip;</span></li>`;
-        } else {
-            const isActive = item === page;
-            navHtml += `
-                <li>
-                    <button type="button" class="meetspace-page-btn page-num-btn${isActive ? ' active' : ''}" data-page="${item}"${isActive ? ' aria-current="page"' : ''}>
-                        ${item}
-                    </button>
-                </li>`;
-        }
-    });
-
-    navHtml += `
-                    <li>
-                        <button type="button" class="meetspace-page-btn next-btn"${page >= totalPages ? ' disabled' : ''} aria-label="Next page">
-                            <i class="bi bi-chevron-right"></i>
-                        </button>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    `;
-
-    container.innerHTML = navHtml;
-
-    // Attach event listeners
-    const select = container.querySelector('.meetspace-per-page-select');
-    if (select && typeof onPerPageChange === 'function') {
-        select.addEventListener('change', (e) => {
-            onPerPageChange(parseInt(e.target.value, 10));
-        });
-    }
-
-    const prevBtn = container.querySelector('.prev-btn');
-    if (prevBtn && !prevBtn.disabled && typeof onPageChange === 'function') {
-        prevBtn.addEventListener('click', () => onPageChange(page - 1));
-    }
-
-    const nextBtn = container.querySelector('.next-btn');
-    if (nextBtn && !nextBtn.disabled && typeof onPageChange === 'function') {
-        nextBtn.addEventListener('click', () => onPageChange(page + 1));
-    }
-
-    const pageBtns = container.querySelectorAll('.page-num-btn');
-    pageBtns.forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const targetPage = parseInt(btn.getAttribute('data-page'), 10);
-            if (targetPage !== page && typeof onPageChange === 'function') {
-                onPageChange(targetPage);
-            }
-        });
-    });
+    container.innerHTML = '';
+    container.classList.add('d-none');
 }
 
 window.renderPagination = renderPagination;

@@ -264,11 +264,11 @@
             let locationRoomText = '—';
             if (item.location_name && item.default_room_name) {
                 const roomCodeBadge = item.default_room_code ? `<span class="badge bg-secondary ms-1" style="font-size: 10px;">${escapeHtml(item.default_room_code)}</span>` : '';
-                locationRoomText = `<div class="fw-medium text-white">${escapeHtml(item.location_name)}</div><div class="text-muted small">${escapeHtml(item.default_room_name)}${roomCodeBadge}</div>`;
+                locationRoomText = `<div class="fw-medium booking-room-name">${escapeHtml(item.location_name)}</div><div class="text-muted small">${escapeHtml(item.default_room_name)}${roomCodeBadge}</div>`;
             } else if (item.location_name) {
-                locationRoomText = `<div class="fw-medium text-white">${escapeHtml(item.location_name)}</div><div class="text-muted small">Unassigned room</div>`;
+                locationRoomText = `<div class="fw-medium booking-room-name">${escapeHtml(item.location_name)}</div><div class="text-muted small">Unassigned room</div>`;
             } else if (item.default_room_name) {
-                locationRoomText = `<div class="fw-medium text-white">${escapeHtml(item.default_room_name)}</div>`;
+                locationRoomText = `<div class="fw-medium booking-room-name">${escapeHtml(item.default_room_name)}</div>`;
             }
 
             // Model info
@@ -300,7 +300,7 @@
             row.innerHTML = `
                 <td>
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <span class="fw-semibold text-white">${escapeHtml(item.name || 'Unnamed Asset')}</span>
+                        <span class="fw-semibold booking-room-name">${escapeHtml(item.name || 'Unnamed Asset')}</span>
                         <span class="equip-code-badge">${escapeHtml(item.code || '')}</span>
                     </div>
                     ${modelText}
@@ -312,7 +312,7 @@
                     ${locationRoomText}
                 </td>
                 <td>
-                    <span class="text-white font-monospace small">${escapeHtml(item.serial_number || '—')}</span>
+                    <span class="booking-room-name font-monospace small">${escapeHtml(item.serial_number || '—')}</span>
                 </td>
                 <td>
                     ${statusBadge}

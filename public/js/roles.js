@@ -199,7 +199,7 @@
                                 <i class="bi ${isAdminRole ? 'bi-shield-shaded text-warning' : 'bi-person-badge text-primary'}"></i>
                             </div>
                             <div>
-                                <span class="fw-semibold text-white d-block">${escapeHtml(role.name)}</span>
+                                <span class="fw-semibold booking-room-name d-block">${escapeHtml(role.name)}</span>
                                 ${isAdminRole ? '<span class="badge bg-warning-subtle text-warning" style="font-size: 10px; font-weight: 600;">SYSTEM CORE</span>' : ''}
                             </div>
                         </div>

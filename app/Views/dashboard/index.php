@@ -136,7 +136,7 @@ if (trim($userGreeting) === '') {
                     </div>
                     <div class="flash-card-body">
                         <div class="small text-muted mb-1" id="fcBackDetails">Full booking schedule and attendee list available in Bookings.</div>
-                        <div class="small fw-semibold text-white mb-2" id="fcBackRoomInfo">Select to open calendar.</div>
+                        <div class="small fw-semibold booking-room-name mb-2" id="fcBackRoomInfo">Select to open calendar.</div>
                     </div>
                     <div class="flash-card-footer">
                         <a href="<?= base_url('bookings') ?>" class="flash-card-action-btn" onclick="event.stopPropagation();">
@@ -187,7 +187,7 @@ if (trim($userGreeting) === '') {
                     </div>
                     <div class="flash-card-body">
                         <div class="small text-muted mb-1">Check availability finder or browse conference rooms across all locations.</div>
-                        <div class="small fw-semibold text-white mb-2">QR check-in placards equipped in all active rooms.</div>
+                        <div class="small fw-semibold booking-room-name mb-2">QR check-in placards equipped in all active rooms.</div>
                     </div>
                     <div class="flash-card-footer">
                         <a href="<?= base_url('rooms') ?>" class="flash-card-action-btn" onclick="event.stopPropagation();">
@@ -235,7 +235,7 @@ if (trim($userGreeting) === '') {
                     </div>
                     <div class="flash-card-body">
                         <div class="small text-muted mb-1">Approve or reject meeting reservation requests with instant attendee notifications.</div>
-                        <div class="small fw-semibold text-white mb-2">One-click approval workflow.</div>
+                        <div class="small fw-semibold booking-room-name mb-2">One-click approval workflow.</div>
                     </div>
                     <div class="flash-card-footer">
                         <a href="<?= base_url('bookings') ?>" class="flash-card-action-btn" onclick="event.stopPropagation();">
@@ -283,7 +283,7 @@ if (trim($userGreeting) === '') {
                     </div>
                     <div class="flash-card-body">
                         <div class="small text-muted mb-1">Manage hardware inventory, meeting room projectors, and equipment assets.</div>
-                        <div class="small fw-semibold text-white mb-2">Integrated into booking workflows.</div>
+                        <div class="small fw-semibold booking-room-name mb-2">Integrated into booking workflows.</div>
                     </div>
                     <div class="flash-card-footer">
                         <a href="<?= base_url('equipment') ?>" class="flash-card-action-btn" onclick="event.stopPropagation();">

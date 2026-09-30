@@ -180,15 +180,15 @@ async function loadDashboardStats() {
 
                     return `
                         <tr class="hover-lift">
-                            <td class="fw-semibold text-white">
+                            <td class="fw-semibold">
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="pulsing-dot pulsing-dot-green"></span>
-                                    <span>${title}</span>
+                                    <span class="booking-room-name">${title}</span>
                                 </div>
                             </td>
                             <td class="text-muted-blue">${roomName}</td>
                             <td class="text-muted-blue">
-                                <div class="fw-medium text-white">${date}</div>
+                                <div class="fw-medium booking-room-name">${date}</div>
                                 <div style="font-size: 11.5px; opacity: 0.85;">${timeRange}</div>
                             </td>
                             <td class="text-end">

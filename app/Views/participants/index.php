@@ -132,8 +132,6 @@
     <!-- Dynamic Meeting Cards Grid -->
     <div id="participantsCardsContainer" class="participants-grid d-none"></div>
 
-    <div id="participantsPagination" class="meetspace-pagination-wrapper d-none"></div>
-
     <!-- Hidden compatibility wrapper for legacy checks -->
     <div id="participantsTableWrapper" class="d-none" aria-hidden="true">
         <tbody id="participantsTableBody"></tbody>

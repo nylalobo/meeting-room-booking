@@ -6412,7 +6412,7 @@ input#recurrenceUntilDate {
     padding: 3px 8px;
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.06);
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     border: 1px solid rgba(255, 255, 255, 0.10);
     text-transform: capitalize;
     display: inline-block;
@@ -6469,7 +6469,7 @@ input#recurrenceUntilDate {
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--color-text-secondary);
+    color: var(--text-secondary);
     font-size: 13px;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -7682,3 +7682,265 @@ input#recurrenceUntilDate {
     }
 }
 
+/* Hide visible pagination/results footer across all listing pages (API pagination remains intact) */
+.meetspace-pagination-wrapper,
+.meetspace-pagination {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Shared Module Styles & Light/Dark Theme Polish
+   ========================================================================== */
+
+/* Rooms, Roles & Equipment Table Panel Spacing */
+.rooms-panel,
+.roles-panel,
+.equipment-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.rooms-table thead th,
+.roles-table thead th,
+.equipment-table thead th {
+    padding: 15px 18px;
+}
+
+.rooms-table tbody td,
+.roles-table tbody td,
+.equipment-table tbody td {
+    padding: 16px 18px;
+}
+
+/* Participants Green Metric Icon */
+.stat-icon-green {
+    background-color: var(--color-teal-subtle);
+    color: var(--color-teal);
+}
+
+/* User Roles Module Components */
+.role-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.24);
+}
+
+.role-icon-box.badge-admin-role {
+    background: rgba(245, 158, 11, 0.14);
+    border-color: rgba(245, 158, 11, 0.28);
+}
+
+.bg-indigo-subtle {
+    background-color: rgba(99, 102, 241, 0.14) !important;
+}
+
+.text-indigo {
+    color: #A5B4FC !important;
+}
+
+.border-indigo-subtle {
+    border-color: rgba(99, 102, 241, 0.30) !important;
+}
+
+.btn-action-edit,
+.btn-action-delete {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s ease;
+}
+
+.btn-action-edit:hover {
+    background-color: var(--bg-card-inner);
+    color: var(--color-text-white);
+    border-color: var(--border-hover);
+}
+
+.btn-action-delete:hover:not(:disabled):not(.disabled) {
+    background-color: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #EF4444;
+}
+
+.btn-action-delete:disabled,
+.btn-action-delete.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+#roleForm {
+    padding: 20px 22px 22px;
+}
+
+.booking-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+}
+
+/* Settings Module Components */
+.settings-inner-card {
+    background: var(--bg-card-inner);
+    border: 1px solid var(--border-subtle);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.settings-unit-addon {
+    background-color: var(--bg-card-inner) !important;
+    border: 1px solid var(--input-border) !important;
+    color: var(--color-text-muted) !important;
+    font-size: 12.5px;
+    font-weight: 500;
+}
+
+.settings-badge-configured {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34D399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.settings-badge-masked {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60A5FA;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Light Mode Contrast Overrides for Shared Table, Badge & Action Elements */
+[data-theme="light"] .booking-date,
+[data-theme="light"] .booking-time,
+[data-theme="light"] .booking-organizer {
+    color: #334155;
+}
+
+[data-theme="light"] .bg-indigo-subtle {
+    background-color: #EEF2FF !important;
+}
+
+[data-theme="light"] .text-indigo {
+    color: #4338CA !important;
+}
+
+[data-theme="light"] .border-indigo-subtle {
+    border-color: #C7D2FE !important;
+}
+
+[data-theme="light"] .role-icon-box {
+    background: #EEF2FF;
+    border-color: #C7D2FE;
+}
+
+[data-theme="light"] .role-icon-box.badge-admin-role {
+    background: #FEF3C7;
+    border-color: #FDE68A;
+}
+
+[data-theme="light"] .btn-action-edit,
+[data-theme="light"] .btn-action-delete,
+[data-theme="light"] .equip-action-btn,
+[data-theme="light"] .user-action-btn,
+[data-theme="light"] .location-action-btn,
+[data-theme="light"] .facility-action-btn,
+[data-theme="light"] .department-action-btn {
+    background: #FFFFFF;
+    border-color: #CBD5E1;
+    color: #475569;
+}
+
+[data-theme="light"] .btn-action-edit:hover,
+[data-theme="light"] .equip-action-btn:hover,
+[data-theme="light"] .user-action-btn:hover,
+[data-theme="light"] .location-action-btn:hover,
+[data-theme="light"] .facility-action-btn:hover,
+[data-theme="light"] .department-action-btn:hover {
+    background: #EEF2FF;
+    color: #4F46E5;
+    border-color: #C7D2FE;
+}
+
+[data-theme="light"] .equip-retire-btn:hover {
+    background: #FEE2E2 !important;
+    border-color: #FCA5A5 !important;
+    color: #DC2626 !important;
+}
+
+[data-theme="light"] .badge-equip-category {
+    background: #F1F5F9;
+    color: #334155;
+    border-color: #CBD5E1;
+}
+
+[data-theme="light"] .equip-code-badge {
+    background: #EEF2FF;
+    color: #4338CA;
+    border-color: #C7D2FE;
+}
+
+[data-theme="light"] .badge-equip-available {
+    background-color: #D1FAE5;
+    color: #065F46;
+    border-color: #A7F3D0;
+}
+
+[data-theme="light"] .badge-equip-maintenance {
+    background-color: #FEF3C7;
+    color: #92400E;
+    border-color: #FDE68A;
+}
+
+[data-theme="light"] .badge-equip-damaged {
+    background-color: #FEE2E2;
+    color: #991B1B;
+    border-color: #FECACA;
+}
+
+[data-theme="light"] .badge-equip-retired {
+    background-color: #F1F5F9;
+    color: #475569;
+    border-color: #CBD5E1;
+}
+
+[data-theme="light"] .equip-detail-item {
+    background: #F8FAFC;
+    border-color: #E2E8F0;
+}
+
+[data-theme="light"] .settings-inner-card {
+    background: #F8FAFC;
+    border-color: #E2E8F0;
+}
+
+[data-theme="light"] .settings-unit-addon {
+    background-color: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #475569 !important;
+}
+
+[data-theme="light"] .settings-badge-configured {
+    background: #D1FAE5;
+    color: #065F46;
+    border-color: #A7F3D0;
+}
+
+[data-theme="light"] .settings-badge-masked {
+    background: #DBEAFE;
+    color: #1E40AF;
+    border-color: #BFDBFE;
+}

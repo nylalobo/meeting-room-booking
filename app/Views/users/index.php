@@ -89,8 +89,6 @@
 
     </div>
 
-    <div id="usersPagination" class="meetspace-pagination-wrapper d-none"></div>
-
 </div>
 
 
@@ -312,9 +310,9 @@
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     background: transparent;
-    color: #8496b5;
+    color: var(--color-text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -324,8 +322,9 @@
 }
 
 .user-action-btn:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-    color: #ffffff;
+    background-color: var(--bg-card-inner);
+    color: var(--color-text-white);
+    border-color: var(--border-hover);
 }
 
 .user-delete-btn:hover {
@@ -346,10 +345,22 @@
     border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
+[data-theme="light"] .user-role-badge {
+    background-color: #eef2ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+}
+
 .user-role-unassigned {
     background-color: rgba(148, 163, 184, 0.12);
     color: #94a3b8;
     border-color: rgba(148, 163, 184, 0.2);
+}
+
+[data-theme="light"] .user-role-unassigned {
+    background-color: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
 }
 
 .booking-status-active {
@@ -358,17 +369,29 @@
     border: 1px solid rgba(45, 212, 191, 0.25);
 }
 
+[data-theme="light"] .booking-status-active {
+    background-color: #ccfbf1;
+    color: #0f766e;
+    border-color: #99f6e4;
+}
+
 .booking-status-inactive {
     background-color: rgba(148, 163, 184, 0.12);
     color: #94a3b8;
     border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
+[data-theme="light"] .booking-status-inactive {
+    background-color: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
 .user-password-hint {
     display: block;
     margin-top: 6px;
     font-size: 12px;
-    color: #94a3b8;
+    color: var(--color-text-muted);
 }
 </style>
 

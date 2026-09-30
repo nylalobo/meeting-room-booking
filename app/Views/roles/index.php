@@ -67,8 +67,6 @@
         </table>
     </div>
 
-    <div id="rolesPagination" class="meetspace-pagination-wrapper d-none"></div>
-
 </div>
 
 

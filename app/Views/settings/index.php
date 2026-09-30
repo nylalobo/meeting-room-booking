@@ -33,7 +33,7 @@
                 <i class="bi bi-sliders"></i>
             </div>
             <div>
-                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: #f8fafc;">General Settings</h3>
+                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: var(--color-text-white);">General Settings</h3>
                 <p class="panel-subtitle mb-0 text-muted" style="font-size: 0.85rem;">Core application identity, timezone, and duration boundaries.</p>
             </div>
         </div>
@@ -90,7 +90,7 @@
                             step="5"
                             required
                         >
-                        <span class="input-group-text bg-dark border-secondary text-secondary" style="border-color: rgba(255,255,255,0.12) !important;">mins</span>
+                        <span class="input-group-text settings-unit-addon">mins</span>
                     </div>
                     <small class="text-muted" style="font-size: 11.5px;">Standard new meeting duration (5–480 min).</small>
                     <div class="invalid-feedback d-none text-danger mt-1" id="defaultMeetingDurationFeedback" style="font-size: 12px;"></div>
@@ -114,7 +114,7 @@
                             step="15"
                             required
                         >
-                        <span class="input-group-text bg-dark border-secondary text-secondary" style="border-color: rgba(255,255,255,0.12) !important;">mins</span>
+                        <span class="input-group-text settings-unit-addon">mins</span>
                     </div>
                     <small class="text-muted" style="font-size: 11.5px;">Maximum duration single session (up to 1440 min).</small>
                     <div class="invalid-feedback d-none text-danger mt-1" id="maxMeetingDurationFeedback" style="font-size: 12px;"></div>
@@ -138,7 +138,7 @@
                             step="5"
                             required
                         >
-                        <span class="input-group-text bg-dark border-secondary text-secondary" style="border-color: rgba(255,255,255,0.12) !important;">mins</span>
+                        <span class="input-group-text settings-unit-addon">mins</span>
                     </div>
                     <small class="text-muted" style="font-size: 11.5px;">Rest & cleanup buffer between meetings (0–120 min).</small>
                     <div class="invalid-feedback d-none text-danger mt-1" id="bookingBufferTimeFeedback" style="font-size: 12px;"></div>
@@ -154,17 +154,17 @@
                 <i class="bi bi-calendar-check"></i>
             </div>
             <div>
-                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: #f8fafc;">Booking Policies & Governance</h3>
+                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: var(--color-text-white);">Booking Policies & Governance</h3>
                 <p class="panel-subtitle mb-0 text-muted" style="font-size: 0.85rem;">Control reservation permissions, workflows, and self-service rules.</p>
             </div>
         </div>
 
         <div class="row g-3">
             <div class="col-md-6">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <div class="form-check form-switch d-flex justify-content-between align-items-center ps-0">
                         <div>
-                            <label class="form-check-label fw-semibold text-light mb-1" for="allowRecurringMeetings" style="cursor: pointer;">
+                            <label class="form-check-label fw-semibold booking-room-name mb-1" for="allowRecurringMeetings" style="cursor: pointer;">
                                 Allow Recurring Meetings
                             </label>
                             <p class="text-muted mb-0" style="font-size: 12px;">Enable organizers to create recurring meeting schedules (daily, weekly, monthly).</p>
@@ -184,10 +184,10 @@
             </div>
 
             <div class="col-md-6">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <div class="form-check form-switch d-flex justify-content-between align-items-center ps-0">
                         <div>
-                            <label class="form-check-label fw-semibold text-light mb-1" for="requireBookingApproval" style="cursor: pointer;">
+                            <label class="form-check-label fw-semibold booking-room-name mb-1" for="requireBookingApproval" style="cursor: pointer;">
                                 Require Booking Approval
                             </label>
                             <p class="text-muted mb-0" style="font-size: 12px;">All reservations require administrator or room manager sign-off before confirmation.</p>
@@ -207,10 +207,10 @@
             </div>
 
             <div class="col-md-6">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <div class="form-check form-switch d-flex justify-content-between align-items-center ps-0">
                         <div>
-                            <label class="form-check-label fw-semibold text-light mb-1" for="allowUserCancellation" style="cursor: pointer;">
+                            <label class="form-check-label fw-semibold booking-room-name mb-1" for="allowUserCancellation" style="cursor: pointer;">
                                 Allow Self-Cancellation
                             </label>
                             <p class="text-muted mb-0" style="font-size: 12px;">Permit organizers to cancel their own future scheduled meetings without admin assistance.</p>
@@ -230,10 +230,10 @@
             </div>
 
             <div class="col-md-6">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <div class="form-check form-switch d-flex justify-content-between align-items-center ps-0">
                         <div>
-                            <label class="form-check-label fw-semibold text-light mb-1" for="allowUserRescheduling" style="cursor: pointer;">
+                            <label class="form-check-label fw-semibold booking-room-name mb-1" for="allowUserRescheduling" style="cursor: pointer;">
                                 Allow Self-Rescheduling
                             </label>
                             <p class="text-muted mb-0" style="font-size: 12px;">Permit organizers to update time slots or transfer rooms for their own active meetings.</p>
@@ -261,7 +261,7 @@
                 <i class="bi bi-envelope-at"></i>
             </div>
             <div>
-                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: #f8fafc;">Email Settings (SMTP Integration)</h3>
+                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: var(--color-text-white);">Email Settings (SMTP Integration)</h3>
                 <p class="panel-subtitle mb-0 text-muted" style="font-size: 0.85rem;">Transactional email delivery parameters managed securely via server environment (.env).</p>
             </div>
         </div>
@@ -269,8 +269,8 @@
         <div class="p-3 mb-3 rounded" style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.2);">
             <div class="d-flex align-items-start">
                 <i class="bi bi-shield-check text-info me-2 fs-5 mt-1"></i>
-                <div style="font-size: 12.5px; color: #e2e8f0; line-height: 1.5;">
-                    <strong>Enterprise Security Policy:</strong> SMTP credentials, API keys, and authentication tokens are loaded strictly from the environment configuration (<code>.env</code>). They are encrypted in transit and never stored in the database or exposed via API or client-side code.
+                <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+                    <strong style="color: var(--color-text-white);">Enterprise Security Policy:</strong> SMTP credentials, API keys, and authentication tokens are loaded strictly from the environment configuration (<code>.env</code>). They are encrypted in transit and never stored in the database or exposed via API or client-side code.
                 </div>
             </div>
         </div>
@@ -327,7 +327,7 @@
                         <i class="bi bi-key me-1"></i> SMTP Username Status
                     </label>
                     <div class="d-flex align-items-center h-100 mt-1">
-                        <span class="badge py-2 px-3 rounded-pill" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                        <span class="badge py-2 px-3 rounded-pill settings-badge-configured">
                             <i class="bi bi-check2-circle me-1"></i> <?= esc($email['smtp_user_status']) ?>
                         </span>
                     </div>
@@ -340,7 +340,7 @@
                         <i class="bi bi-shield-lock me-1"></i> SMTP Password / Key
                     </label>
                     <div class="d-flex align-items-center h-100 mt-1">
-                        <span class="badge py-2 px-3 rounded-pill" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);">
+                        <span class="badge py-2 px-3 rounded-pill settings-badge-masked">
                             <i class="bi bi-shield-fill-check me-1"></i> <?= esc($email['smtp_pass_status']) ?> (••••••••••••)
                         </span>
                     </div>
@@ -356,44 +356,44 @@
                 <i class="bi bi-cpu"></i>
             </div>
             <div>
-                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: #f8fafc;">System Information & Runtime Diagnostics</h3>
+                <h3 class="panel-title mb-0" style="font-size: 1.15rem; font-weight: 600; color: var(--color-text-white);">System Information & Runtime Diagnostics</h3>
                 <p class="panel-subtitle mb-0 text-muted" style="font-size: 0.85rem;">Platform specifications and server health status.</p>
             </div>
         </div>
 
         <div class="row g-3">
             <div class="col-md-4">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <span class="text-muted d-block mb-1" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">APPLICATION</span>
-                    <strong class="text-light fs-6"><?= esc($system['application']) ?></strong>
+                    <strong class="booking-room-name fs-6"><?= esc($system['application']) ?></strong>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <span class="text-muted d-block mb-1" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">FRAMEWORK</span>
-                    <strong class="text-light fs-6"><?= esc($system['framework']) ?></strong>
+                    <strong class="booking-room-name fs-6"><?= esc($system['framework']) ?></strong>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <span class="text-muted d-block mb-1" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">ENVIRONMENT</span>
                     <span class="badge bg-primary px-2 py-1"><?= esc($system['environment']) ?></span>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <span class="text-muted d-block mb-1" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">PHP RUNTIME</span>
-                    <strong class="text-light fs-6"><?= esc($system['php_version']) ?></strong>
+                    <strong class="booking-room-name fs-6"><?= esc($system['php_version']) ?></strong>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <span class="text-muted d-block mb-1" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">DATABASE</span>
-                    <strong class="text-light fs-6"><?= esc($system['database']) ?></strong>
+                    <strong class="booking-room-name fs-6"><?= esc($system['database']) ?></strong>
                     <div class="mt-1">
                         <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2" style="font-size: 11px;">
                             <i class="bi bi-circle-fill me-1" style="font-size: 7px;"></i> <?= esc($system['db_status']) ?>
@@ -403,9 +403,9 @@
             </div>
 
             <div class="col-md-4">
-                <div class="p-3 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
+                <div class="p-3 rounded settings-inner-card">
                     <span class="text-muted d-block mb-1" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">SERVER TIMESTAMP</span>
-                    <strong class="text-light fs-6" id="serverTimeDisplay"><?= esc($system['server_time']) ?></strong>
+                    <strong class="booking-room-name fs-6" id="serverTimeDisplay"><?= esc($system['server_time']) ?></strong>
                 </div>
             </div>
         </div>

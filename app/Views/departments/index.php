@@ -66,8 +66,6 @@
         </table>
     </div>
 
-    <div id="departmentsPagination" class="meetspace-pagination-wrapper d-none"></div>
-
 </div>
 
 
@@ -187,19 +185,19 @@
 
 .department-name {
     font-weight: 600;
-    color: #f1f5f9;
+    color: var(--color-text-white);
     font-size: 14px;
 }
 
 .department-description {
-    color: #94a3b8;
+    color: var(--text-secondary);
     font-size: 13px;
     max-width: 450px;
     line-height: 1.4;
 }
 
 .department-date {
-    color: #8496b5;
+    color: var(--color-text-muted);
     font-size: 13px;
 }
 
@@ -213,9 +211,9 @@
     width: 32px;
     height: 32px;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
     background: transparent;
-    color: #8496b5;
+    color: var(--color-text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -225,8 +223,9 @@
 }
 
 .department-action-btn:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-    color: #ffffff;
+    background-color: var(--bg-card-inner);
+    color: var(--color-text-white);
+    border-color: var(--border-hover);
 }
 
 .department-delete-btn:hover {
