@@ -87,8 +87,50 @@ class Facility extends BaseController
         ]);
     }
 
+    /**
+     * RBAC helper matching Equipment approach.
+     */
+    protected function canManageFacilities(): bool
+    {
+        $session = service('session');
+        $userId = (int) ($session->get('user_id') ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+
+        $currentUserRoleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+        $currentUserRoleId   = (int) ($session->get('role_id') ?? 0);
+
+        if (empty($currentUserRoleName) || $currentUserRoleId <= 0) {
+            $db = \Config\Database::connect();
+            $user = $db->table('users')
+                       ->select('users.id, users.role_id, roles.name as role_name')
+                       ->join('roles', 'roles.id = users.role_id', 'left')
+                       ->where('users.id', $userId)
+                       ->get()
+                       ->getRowArray();
+            if ($user) {
+                $currentUserRoleId   = (int) ($user['role_id'] ?? 0);
+                $currentUserRoleName = (string) ($user['role_name'] ?? '');
+            }
+        }
+
+        if ($currentUserRoleId === 1 || $currentUserRoleId === 6) {
+            return true;
+        }
+
+        return in_array($currentUserRoleName, ['Admin', 'Facilities Manager', 'Facility Manager'], true);
+    }
+
     public function create(): ResponseInterface
     {
+        if (!$this->canManageFacilities()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage facilities.',
+            ]);
+        }
+
         $data = $this->request->getJSON(true);
 
         if (!$this->facilityModel->insert($data)) {
@@ -115,6 +157,13 @@ class Facility extends BaseController
 
     public function update(int $id): ResponseInterface
     {
+        if (!$this->canManageFacilities()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage facilities.',
+            ]);
+        }
+
         $facility = $this->facilityModel->find($id);
 
         if ($facility === null) {
@@ -148,6 +197,13 @@ class Facility extends BaseController
 
     public function delete(int $id): ResponseInterface
     {
+        if (!$this->canManageFacilities()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage facilities.',
+            ]);
+        }
+
         $facility = $this->facilityModel->find($id);
 
         if ($facility === null) {

@@ -93,7 +93,6 @@ class BookingParticipant extends BaseController
         ]);
     }
 
-
     public function show(int $bookingId, int $userId): ResponseInterface
     {
         $participant = $this->bookingParticipantModel
@@ -138,6 +137,15 @@ class BookingParticipant extends BaseController
                     'status'  => 'error',
                     'message' => 'Booking not found.',
                 ]);
+        }
+
+        $auth = $this->getAuthUser();
+        $isOrganizer = $auth['id'] > 0 && $auth['id'] === (int) $booking['user_id'];
+        if (!$isOrganizer && !$auth['is_privileged']) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. Only the meeting organizer or an administrator can add participants.',
+            ]);
         }
 
         $user = $this->userModel->find($data['user_id']);
@@ -212,9 +220,31 @@ class BookingParticipant extends BaseController
                 ]);
         }
 
+        $booking = $this->bookingModel->find($bookingId);
+        $auth = $this->getAuthUser();
+        $isOrganizer = $booking && $auth['id'] > 0 && $auth['id'] === (int) $booking['user_id'];
+        $isSelf = $auth['id'] > 0 && $auth['id'] === $userId;
+
+        if (!$isOrganizer && !$auth['is_privileged'] && !$isSelf) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to update this participant.',
+            ]);
+        }
+
         $data = $this->request->getJSON(true) ?? [];
 
         unset($data['booking_id'], $data['user_id']);
+
+        // Non-organizers and non-admins can only update their own response_status (cannot change participant_type)
+        if (!$isOrganizer && !$auth['is_privileged'] && $isSelf) {
+            if (array_key_exists('participant_type', $data)) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Forbidden. You cannot modify participant type.',
+                ]);
+            }
+        }
 
         $rules = [];
         $messages = [];
@@ -285,6 +315,18 @@ class BookingParticipant extends BaseController
                 ]);
         }
 
+        $booking = $this->bookingModel->find($bookingId);
+        $auth = $this->getAuthUser();
+        $isOrganizer = $booking && $auth['id'] > 0 && $auth['id'] === (int) $booking['user_id'];
+        $isSelf = $auth['id'] > 0 && $auth['id'] === $userId;
+
+        if (!$isOrganizer && !$auth['is_privileged'] && !$isSelf) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to remove this participant.',
+            ]);
+        }
+
         $deleted = $this->bookingParticipantModel
             ->where('booking_id', $bookingId)
             ->where('user_id', $userId)
@@ -303,5 +345,39 @@ class BookingParticipant extends BaseController
             'status'  => 'success',
             'message' => 'Booking participant deleted successfully.',
         ]);
+    }
+
+    /**
+     * Resolve current user identity and roles.
+     */
+    protected function getAuthUser(): array
+    {
+        $session = service('session');
+        $userId = (int) ($session->get('user_id') ?? 0);
+        $roleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+        $roleId = (int) ($session->get('role_id') ?? 0);
+
+        if ($userId > 0 && (empty($roleName) || $roleId <= 0)) {
+            $user = $this->userModel->find($userId);
+            if ($user && !empty($user['role_id'])) {
+                $roleId = (int) $user['role_id'];
+                $db = \Config\Database::connect();
+                $role = $db->table('roles')->where('id', $roleId)->get()->getRowArray();
+                if ($role) {
+                    $roleName = (string) $role['name'];
+                }
+            }
+        }
+
+        $isAdmin = ($roleId === 1 || strcasecmp($roleName, 'Admin') === 0);
+        $isPrivileged = ($isAdmin || $roleId === 6 || in_array($roleName, ['Facilities Manager', 'Facility Manager'], true));
+
+        return [
+            'id'           => $userId,
+            'role_id'      => $roleId,
+            'role_name'    => $roleName,
+            'is_admin'     => $isAdmin,
+            'is_privileged'=> $isPrivileged,
+        ];
     }
 }

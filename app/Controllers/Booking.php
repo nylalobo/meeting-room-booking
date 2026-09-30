@@ -1086,7 +1086,24 @@ class Booking extends BaseController
 
         $session = service('session');
         $currentUserId = (int) $session->get('user_id');
-        $currentUserRoleName = (string) ($session->get('role_name') ?? '');
+        $currentUserRoleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+
+        $currentUserRecord = !empty($currentUserId) ? $this->userModel->find($currentUserId) : null;
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = (string) $roleRow['name'];
+            }
+        }
+        $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
+
+        if (!$this->canUserManageBooking($currentUserId, $currentUserRoleName, $currentUserDeptId, $booking)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to modify this booking.',
+            ]);
+        }
 
         $data = $this->request->getJSON(true) ?? [];
 
@@ -1197,6 +1214,27 @@ class Booking extends BaseController
                 ]);
         }
 
+        $session = service('session');
+        $currentUserId = (int) $session->get('user_id');
+        $currentUserRoleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+
+        $currentUserRecord = !empty($currentUserId) ? $this->userModel->find($currentUserId) : null;
+        if (empty($currentUserRoleName) && !empty($currentUserRecord['role_id'])) {
+            $db = \Config\Database::connect();
+            $roleRow = $db->table('roles')->where('id', $currentUserRecord['role_id'])->get()->getRowArray();
+            if ($roleRow) {
+                $currentUserRoleName = (string) $roleRow['name'];
+            }
+        }
+        $currentUserDeptId = !empty($currentUserRecord['department_id']) ? (int) $currentUserRecord['department_id'] : null;
+
+        if (!$this->canUserManageBooking($currentUserId, $currentUserRoleName, $currentUserDeptId, $booking)) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to delete this booking.',
+            ]);
+        }
+
         if (!$this->bookingModel->delete($id)) {
             return $this->response
                 ->setStatusCode(500)
@@ -1210,6 +1248,34 @@ class Booking extends BaseController
             'status'  => 'success',
             'message' => 'Booking deleted successfully.',
         ]);
+    }
+
+    /**
+     * Check if a user is authorized to manage (update or delete) a booking.
+     */
+    protected function canUserManageBooking(int $currentUserId, string $currentUserRoleName, ?int $currentUserDeptId, array $booking): bool
+    {
+        if ($currentUserId <= 0) {
+            return false;
+        }
+
+        if ($currentUserId === (int) $booking['user_id']) {
+            return true;
+        }
+
+        if (in_array($currentUserRoleName, ['Admin', 'Facilities Manager'], true)) {
+            return true;
+        }
+
+        if ($currentUserRoleName === 'Manager') {
+            $organizer = $this->userModel->find((int) $booking['user_id']);
+            $organizerDeptId = !empty($organizer['department_id']) ? (int) $organizer['department_id'] : null;
+            if ($currentUserDeptId !== null && $organizerDeptId !== null && $currentUserDeptId === $organizerDeptId) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

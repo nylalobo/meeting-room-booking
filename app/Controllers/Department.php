@@ -82,8 +82,50 @@ class Department extends BaseController
         ]);
     }
 
+    /**
+     * RBAC helper matching Equipment approach.
+     */
+    protected function canManageDepartments(): bool
+    {
+        $session = service('session');
+        $userId = (int) ($session->get('user_id') ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+
+        $currentUserRoleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+        $currentUserRoleId   = (int) ($session->get('role_id') ?? 0);
+
+        if (empty($currentUserRoleName) || $currentUserRoleId <= 0) {
+            $db = \Config\Database::connect();
+            $user = $db->table('users')
+                       ->select('users.id, users.role_id, roles.name as role_name')
+                       ->join('roles', 'roles.id = users.role_id', 'left')
+                       ->where('users.id', $userId)
+                       ->get()
+                       ->getRowArray();
+            if ($user) {
+                $currentUserRoleId   = (int) ($user['role_id'] ?? 0);
+                $currentUserRoleName = (string) ($user['role_name'] ?? '');
+            }
+        }
+
+        if ($currentUserRoleId === 1 || $currentUserRoleId === 6) {
+            return true;
+        }
+
+        return in_array($currentUserRoleName, ['Admin', 'Facilities Manager', 'Facility Manager'], true);
+    }
+
     public function create(): ResponseInterface
     {
+        if (!$this->canManageDepartments()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage departments.',
+            ]);
+        }
+
         $data = $this->request->getJSON(true);
 
         if (!$this->departmentModel->insert($data)) {
@@ -110,6 +152,13 @@ class Department extends BaseController
 
     public function update(int $id): ResponseInterface
     {
+        if (!$this->canManageDepartments()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage departments.',
+            ]);
+        }
+
         $department = $this->departmentModel->find($id);
 
         if ($department === null) {
@@ -140,31 +189,39 @@ class Department extends BaseController
             'data'    => $updatedDepartment,
         ]);
     }
+
     public function delete(int $id): ResponseInterface
-{
-    $department = $this->departmentModel->find($id);
-
-    if ($department === null) {
-        return $this->response
-            ->setStatusCode(404)
-            ->setJSON([
+    {
+        if (!$this->canManageDepartments()) {
+            return $this->response->setStatusCode(403)->setJSON([
                 'status'  => 'error',
-                'message' => 'Department not found.',
+                'message' => 'Forbidden. You do not have permission to manage departments.',
             ]);
-    }
+        }
 
-    if (!$this->departmentModel->delete($id)) {
-        return $this->response
-            ->setStatusCode(500)
-            ->setJSON([
-                'status'  => 'error',
-                'message' => 'Failed to delete department.',
-            ]);
-    }
+        $department = $this->departmentModel->find($id);
 
-    return $this->response->setJSON([
-        'status'  => 'success',
-        'message' => 'Department deleted successfully.',
-    ]);
+        if ($department === null) {
+            return $this->response
+                ->setStatusCode(404)
+                ->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Department not found.',
+                ]);
+        }
+
+        if (!$this->departmentModel->delete($id)) {
+            return $this->response
+                ->setStatusCode(500)
+                ->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Failed to delete department.',
+                ]);
+        }
+
+        return $this->response->setJSON([
+            'status'  => 'success',
+            'message' => 'Department deleted successfully.',
+        ]);
     }
 }

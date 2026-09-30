@@ -112,6 +112,13 @@ class Location extends BaseController
     */
     public function create(): ResponseInterface
     {
+        if (!$this->canManageLocations()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage locations.',
+            ]);
+        }
+
         $data = $this->request->getJSON(true);
 
         if (!is_array($data)) {
@@ -193,6 +200,13 @@ class Location extends BaseController
     */
     public function update(int $id): ResponseInterface
     {
+        if (!$this->canManageLocations()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage locations.',
+            ]);
+        }
+
         $location = $this->locationModel->find($id);
 
         if (!$location) {
@@ -319,6 +333,13 @@ class Location extends BaseController
     */
     public function delete(int $id): ResponseInterface
     {
+        if (!$this->canManageLocations()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to manage locations.',
+            ]);
+        }
+
         $location = $this->locationModel->find($id);
 
         if (!$location) {
@@ -361,5 +382,40 @@ class Location extends BaseController
                         'This location cannot be deleted because it may be used by one or more rooms.',
                 ]);
         }
+    }
+
+    /**
+     * RBAC helper matching Equipment approach.
+     */
+    protected function canManageLocations(): bool
+    {
+        $session = service('session');
+        $userId = (int) ($session->get('user_id') ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+
+        $currentUserRoleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+        $currentUserRoleId   = (int) ($session->get('role_id') ?? 0);
+
+        if (empty($currentUserRoleName) || $currentUserRoleId <= 0) {
+            $db = \Config\Database::connect();
+            $user = $db->table('users')
+                       ->select('users.id, users.role_id, roles.name as role_name')
+                       ->join('roles', 'roles.id = users.role_id', 'left')
+                       ->where('users.id', $userId)
+                       ->get()
+                       ->getRowArray();
+            if ($user) {
+                $currentUserRoleId   = (int) ($user['role_id'] ?? 0);
+                $currentUserRoleName = (string) ($user['role_name'] ?? '');
+            }
+        }
+
+        if ($currentUserRoleId === 1 || $currentUserRoleId === 6) {
+            return true;
+        }
+
+        return in_array($currentUserRoleName, ['Admin', 'Facilities Manager', 'Facility Manager'], true);
     }
 }

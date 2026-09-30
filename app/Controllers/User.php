@@ -210,10 +210,53 @@ class User extends BaseController
     }
 
     /**
+     * Authoritative Admin check.
+     */
+    protected function isAdminUser(): bool
+    {
+        $session = service('session');
+        $userId = (int) ($session->get('user_id') ?? 0);
+        if ($userId <= 0) {
+            return false;
+        }
+
+        $roleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+        $roleId = (int) ($session->get('role_id') ?? 0);
+
+        if (strcasecmp($roleName, 'Admin') === 0 || $roleId === 1) {
+            return true;
+        }
+
+        // Authoritative DB verification fallback
+        $db = \Config\Database::connect();
+        $user = $db->table('users')
+                   ->select('users.id, roles.name as role_name')
+                   ->join('roles', 'roles.id = users.role_id', 'left')
+                   ->where('users.id', $userId)
+                   ->get()
+                   ->getRowArray();
+
+        if ($user && strcasecmp((string) ($user['role_name'] ?? ''), 'Admin') === 0) {
+            $session->set('role', 'Admin');
+            $session->set('role_name', 'Admin');
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Create a new user.
      */
     public function create(): ResponseInterface
     {
+        if (!$this->isAdminUser()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. Administrator privileges required.',
+            ]);
+        }
+
         $data = $this->request->getJSON(true) ?? [];
 
         $rules = [
@@ -320,6 +363,13 @@ class User extends BaseController
      */
     public function update(int $id): ResponseInterface
     {
+        if (!$this->isAdminUser()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. Administrator privileges required.',
+            ]);
+        }
+
         $existingUser = $this->userModel->find($id);
 
         if ($existingUser === null) {
@@ -447,6 +497,13 @@ class User extends BaseController
      */
     public function delete(int $id): ResponseInterface
     {
+        if (!$this->isAdminUser()) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. Administrator privileges required.',
+            ]);
+        }
+
         $user = $this->userModel->find($id);
 
         if ($user === null) {
