@@ -18,10 +18,34 @@
         initSettingsForm();
     });
 
+    function isSelect2Available() {
+        return typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined';
+    }
+
+    function setupSettingsSelect2() {
+        if (!isSelect2Available()) return;
+
+        const $tz = $('#appTimezone');
+        if ($tz.length && !$tz.hasClass('select2-hidden-accessible')) {
+            $tz.select2({
+                width: '100%',
+                placeholder: 'Select application timezone...',
+                allowClear: false
+            });
+
+            $tz.on('change', function () {
+                const el = document.getElementById('appTimezone');
+                if (el) clearFieldValidation(el);
+            });
+        }
+    }
+
     function initSettingsForm() {
         const form = document.getElementById('settingsForm');
         const headerSaveBtn = document.getElementById('headerSaveBtn');
         const bottomSaveBtn = document.getElementById('bottomSaveBtn');
+
+        setupSettingsSelect2();
 
         // Allow header button to trigger form submit
         headerSaveBtn?.addEventListener('click', () => {

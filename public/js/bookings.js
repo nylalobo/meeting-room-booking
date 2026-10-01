@@ -359,6 +359,47 @@
         }
     }
 
+    function setupAvailabilitySelect2() {
+        if (!isSelect2Available()) return;
+
+        const $availModal = $('#availabilityModal');
+        if (!$availModal.length) return;
+
+        if ($('#availLocation').length && !$('#availLocation').hasClass('select2-hidden-accessible')) {
+            $('#availLocation').select2({
+                dropdownParent: $availModal,
+                width: '100%',
+                placeholder: 'All Locations',
+                allowClear: true
+            });
+        }
+
+        if ($('#availSpecificRoom').length && !$('#availSpecificRoom').hasClass('select2-hidden-accessible')) {
+            $('#availSpecificRoom').select2({
+                dropdownParent: $availModal,
+                width: '100%',
+                placeholder: 'Any Room',
+                allowClear: true
+            });
+        }
+    }
+
+    function setupResourcesSelect2() {
+        if (!isSelect2Available()) return;
+
+        const $resModal = $('#bookingResourcesModal');
+        if (!$resModal.length) return;
+
+        if ($('#resourceEquipmentSelect').length && !$('#resourceEquipmentSelect').hasClass('select2-hidden-accessible')) {
+            $('#resourceEquipmentSelect').select2({
+                dropdownParent: $resModal,
+                width: '100%',
+                placeholder: 'Select an equipment item to assign...',
+                allowClear: true
+            });
+        }
+    }
+
     function populateModalDropdowns(selectedRoomId = null, selectedUserId = null) {
         if (isSelect2Available()) {
             if (selectedRoomId) {
@@ -2503,6 +2544,7 @@
         });
 
         form.addEventListener('submit', handleAvailabilitySearchSubmit);
+        setupAvailabilitySelect2();
     }
 
     async function openAvailabilityModal() {
@@ -2565,9 +2607,7 @@
                 });
 
             const roomToSelect = bookingRoomVal || calRoomFilterVal || currentRoomVal;
-            if (roomToSelect) {
-                specificRoomSelect.value = String(roomToSelect);
-            }
+            specificRoomSelect.value = roomToSelect ? String(roomToSelect) : '';
         }
 
         // Load locations if not loaded
@@ -2586,10 +2626,17 @@
                             opt.textContent = loc.name;
                             locationSelect.appendChild(opt);
                         });
+                    locationSelect.value = '';
                 }
             } catch (err) {
                 // Ignore network error on location pre-fetch
             }
+        }
+
+        setupAvailabilitySelect2();
+        if (isSelect2Available()) {
+            $('#availLocation').val(locationSelect ? locationSelect.value : '').trigger('change.select2');
+            $('#availSpecificRoom').val(specificRoomSelect ? specificRoomSelect.value : '').trigger('change.select2');
         }
 
         // Load facilities if not loaded
@@ -5410,6 +5457,7 @@
         });
 
         form?.addEventListener('submit', handleResourceFormSubmit);
+        setupResourcesSelect2();
     }
 
     /**
@@ -5475,6 +5523,9 @@
         const selectEl = document.getElementById('resourceEquipmentSelect');
         if (selectEl) {
             selectEl.value = '';
+            if (isSelect2Available()) {
+                $('#resourceEquipmentSelect').val('').trigger('change.select2');
+            }
         }
     }
 
@@ -5808,6 +5859,10 @@
 
         select.innerHTML = '<option value="">Loading available equipment...</option>';
         select.disabled = true;
+        if (isSelect2Available()) {
+            setupResourcesSelect2();
+            $('#resourceEquipmentSelect').val('').trigger('change.select2');
+        }
 
         try {
             const response = await fetch('/api/equipment/availability', {
@@ -5824,6 +5879,9 @@
 
             if (!response.ok || result.status !== 'success' || !Array.isArray(result.data)) {
                 select.innerHTML = '<option value="">Unable to load available equipment</option>';
+                if (isSelect2Available()) {
+                    $('#resourceEquipmentSelect').val('').trigger('change.select2');
+                }
                 return;
             }
 
@@ -5833,6 +5891,9 @@
 
             if (availableItems.length === 0) {
                 select.innerHTML = '<option value="">No equipment currently available in catalog</option>';
+                if (isSelect2Available()) {
+                    $('#resourceEquipmentSelect').val('').trigger('change.select2');
+                }
                 return;
             }
 
@@ -5843,10 +5904,18 @@
             });
 
             select.innerHTML = optionsHtml;
+            select.value = '';
+            if (isSelect2Available()) {
+                setupResourcesSelect2();
+                $('#resourceEquipmentSelect').val('').trigger('change.select2');
+            }
 
         } catch (e) {
             select.disabled = false;
             select.innerHTML = '<option value="">Network error loading equipment</option>';
+            if (isSelect2Available()) {
+                $('#resourceEquipmentSelect').val('').trigger('change.select2');
+            }
         }
     }
 

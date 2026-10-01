@@ -51,7 +51,37 @@
        INITIALIZATION
        ========================================================================== */
 
+    function isSelect2Available() {
+        return typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined';
+    }
+
+    function setupEquipmentSelect2() {
+        if (!isSelect2Available()) return;
+
+        const $modal = $('#equipmentModal');
+        if (!$modal.length) return;
+
+        if ($('#equipmentLocationId').length && !$('#equipmentLocationId').hasClass('select2-hidden-accessible')) {
+            $('#equipmentLocationId').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'None / Unassigned',
+                allowClear: true
+            });
+        }
+
+        if ($('#equipmentDefaultRoomId').length && !$('#equipmentDefaultRoomId').hasClass('select2-hidden-accessible')) {
+            $('#equipmentDefaultRoomId').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'None / Floating Asset',
+                allowClear: true
+            });
+        }
+    }
+
     function initEquipmentModule() {
+        setupEquipmentSelect2();
         loadLocationsAndRooms();
         loadEquipment();
         setupFilters();
@@ -180,6 +210,7 @@
         // Form modal dropdown
         const modalDropdown = document.getElementById('equipmentLocationId');
         if (modalDropdown) {
+            const currentModalVal = modalDropdown.value;
             modalDropdown.innerHTML = '<option value="">None / Unassigned</option>';
             locations.forEach((loc) => {
                 const opt = document.createElement('option');
@@ -187,6 +218,11 @@
                 opt.textContent = loc.name;
                 modalDropdown.appendChild(opt);
             });
+            modalDropdown.value = currentModalVal;
+            if (isSelect2Available()) {
+                setupEquipmentSelect2();
+                $('#equipmentLocationId').val(currentModalVal).trigger('change.select2');
+            }
         }
     }
 
@@ -210,7 +246,13 @@
             modalDropdown.appendChild(opt);
         });
 
-        modalDropdown.value = currentVal;
+        const isValidRoom = currentVal && filteredRooms.some((rm) => String(rm.id) === String(currentVal));
+        modalDropdown.value = isValidRoom ? currentVal : '';
+
+        if (isSelect2Available()) {
+            setupEquipmentSelect2();
+            $('#equipmentDefaultRoomId').val(modalDropdown.value).trigger('change.select2');
+        }
     }
 
     /* ==========================================================================
@@ -407,10 +449,15 @@
 
         // Dynamic room options when location changes in form modal
         const modalLocationSelect = document.getElementById('equipmentLocationId');
-        modalLocationSelect?.addEventListener('change', () => {
-            const locId = modalLocationSelect.value;
+        const handleLocationCascade = () => {
+            const locId = modalLocationSelect ? modalLocationSelect.value : '';
             populateRoomDropdown(roomsList, locId);
-        });
+        };
+        if (isSelect2Available()) {
+            $('#equipmentLocationId').off('change.equipCascade').on('change.equipCascade', handleLocationCascade);
+        } else {
+            modalLocationSelect?.addEventListener('change', handleLocationCascade);
+        }
     }
 
     /* ==========================================================================
@@ -476,6 +523,10 @@
         form.reset();
         document.getElementById('equipmentId').value = '';
         document.getElementById('equipmentStatus').value = 'available';
+        const locSelect = document.getElementById('equipmentLocationId');
+        if (locSelect) locSelect.value = '';
+        const roomSelect = document.getElementById('equipmentDefaultRoomId');
+        if (roomSelect) roomSelect.value = '';
 
         errorAlert?.classList.add('d-none');
         successAlert?.classList.add('d-none');
@@ -484,6 +535,10 @@
         subtitle.textContent = 'Add a new physical equipment asset to the inventory catalog.';
         if (submitBtnText) submitBtnText.textContent = 'Save Equipment';
 
+        setupEquipmentSelect2();
+        if (isSelect2Available()) {
+            $('#equipmentLocationId').val('').trigger('change.select2');
+        }
         populateRoomDropdown(roomsList, null);
 
         modal.classList.remove('d-none');
@@ -528,11 +583,21 @@
             document.getElementById('equipmentStatus').value = item.status || 'available';
             document.getElementById('equipmentModelNumber').value = item.model_number || '';
             document.getElementById('equipmentSerialNumber').value = item.serial_number || '';
-            document.getElementById('equipmentLocationId').value = item.location_id || '';
+            const locVal = item.location_id ? String(item.location_id) : '';
+            document.getElementById('equipmentLocationId').value = locVal;
+
+            setupEquipmentSelect2();
+            if (isSelect2Available()) {
+                $('#equipmentLocationId').val(locVal).trigger('change.select2');
+            }
 
             // Update rooms dropdown filtered by location
             populateRoomDropdown(roomsList, item.location_id);
-            document.getElementById('equipmentDefaultRoomId').value = item.default_room_id || '';
+            const roomVal = item.default_room_id ? String(item.default_room_id) : '';
+            document.getElementById('equipmentDefaultRoomId').value = roomVal;
+            if (isSelect2Available()) {
+                $('#equipmentDefaultRoomId').val(roomVal).trigger('change.select2');
+            }
 
             document.getElementById('equipmentDescription').value = item.description || '';
             document.getElementById('equipmentNotes').value = item.notes || '';

@@ -254,6 +254,35 @@
     }
 
 
+    function isSelect2Available() {
+        return typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined';
+    }
+
+    function setupUserSelect2() {
+        if (!isSelect2Available()) return;
+
+        const $modal = $('#userModal');
+        if (!$modal.length) return;
+
+        if ($('#userDepartment').length && !$('#userDepartment').hasClass('select2-hidden-accessible')) {
+            $('#userDepartment').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'Select Department...',
+                allowClear: true
+            });
+        }
+
+        if ($('#userRole').length && !$('#userRole').hasClass('select2-hidden-accessible')) {
+            $('#userRole').select2({
+                dropdownParent: $modal,
+                width: '100%',
+                placeholder: 'Select Role...',
+                allowClear: true
+            });
+        }
+    }
+
     function populateModalDropdowns() {
 
         const departmentSelect =
@@ -312,6 +341,11 @@
                     opt
                 );
             });
+        }
+
+        setupUserSelect2();
+        if (isSelect2Available()) {
+            $('#userDepartment, #userRole').trigger('change.select2');
         }
     }
 
@@ -647,6 +681,8 @@
             'submit',
             handleUserFormSubmit
         );
+
+        setupUserSelect2();
     }
 
 
@@ -668,6 +704,10 @@
         document.body.classList.add(
             'booking-modal-open'
         );
+
+        if (isSelect2Available()) {
+            $('#userDepartment, #userRole').trigger('change.select2');
+        }
 
         setTimeout(() => {
 
@@ -708,6 +748,10 @@
             );
 
         form?.reset();
+
+        if (isSelect2Available()) {
+            $('#userDepartment, #userRole').val('').trigger('change.select2');
+        }
 
         const userId =
             document.getElementById(
@@ -974,6 +1018,11 @@
                 user.role_id
                     ? String(user.role_id)
                     : '';
+        }
+
+        if (isSelect2Available()) {
+            $('#userDepartment').val(departmentInput ? departmentInput.value : '').trigger('change.select2');
+            $('#userRole').val(roleInput ? roleInput.value : '').trigger('change.select2');
         }
 
         if (phoneInput) {
