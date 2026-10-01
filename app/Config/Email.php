@@ -7,18 +7,18 @@ use CodeIgniter\Config\BaseConfig;
 class Email extends BaseConfig
 {
     public string $fromEmail  = '';
-    public string $fromName   = '';
+    public string $fromName   = 'MeetSpace Enterprise Suite';
     public string $recipients = '';
 
     /**
      * The "user agent"
      */
-    public string $userAgent = 'CodeIgniter';
+    public string $userAgent = 'MeetSpace/1.0';
 
     /**
      * The mail sending protocol: mail, sendmail, smtp
      */
-    public string $protocol = 'mail';
+    public string $protocol = 'smtp';
 
     /**
      * The server path to Sendmail.
@@ -26,9 +26,9 @@ class Email extends BaseConfig
     public string $mailPath = '/usr/sbin/sendmail';
 
     /**
-     * SMTP Server Hostname
+     * SMTP Server Hostname (Default Brevo SMTP Relay)
      */
-    public string $SMTPHost = '';
+    public string $SMTPHost = 'smtp-relay.brevo.com';
 
     /**
      * Which SMTP authentication method to use: login, plain
@@ -48,12 +48,12 @@ class Email extends BaseConfig
     /**
      * SMTP Port
      */
-    public int $SMTPPort = 25;
+    public int $SMTPPort = 587;
 
     /**
      * SMTP Timeout (in seconds)
      */
-    public int $SMTPTimeout = 5;
+    public int $SMTPTimeout = 10;
 
     /**
      * Enable persistent SMTP connections
@@ -82,7 +82,7 @@ class Email extends BaseConfig
     /**
      * Type of mail, either 'text' or 'html'
      */
-    public string $mailType = 'text';
+    public string $mailType = 'html';
 
     /**
      * Character set (utf-8, iso-8859-1, etc.)
@@ -123,4 +123,45 @@ class Email extends BaseConfig
      * Enable notify message from server
      */
     public bool $DSN = false;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        // Support environment variables (SMTP_USER, SMTP_PASS, SMTP_HOST, etc.)
+        $envUser = env('SMTP_USER', getenv('SMTP_USER'));
+        if (!empty($envUser)) {
+            $this->SMTPUser = (string) $envUser;
+        }
+
+        $envPass = env('SMTP_PASS', getenv('SMTP_PASS'));
+        if (!empty($envPass)) {
+            $this->SMTPPass = (string) $envPass;
+        }
+
+        $envHost = env('SMTP_HOST', getenv('SMTP_HOST'));
+        if (!empty($envHost)) {
+            $this->SMTPHost = (string) $envHost;
+        }
+
+        $envPort = env('SMTP_PORT', getenv('SMTP_PORT'));
+        if (!empty($envPort)) {
+            $this->SMTPPort = (int) $envPort;
+        }
+
+        $envCrypto = env('SMTP_CRYPTO', getenv('SMTP_CRYPTO'));
+        if (!empty($envCrypto)) {
+            $this->SMTPCrypto = (string) $envCrypto;
+        }
+
+        $envFromEmail = env('FROM_EMAIL', getenv('FROM_EMAIL'));
+        if (!empty($envFromEmail)) {
+            $this->fromEmail = (string) $envFromEmail;
+        }
+
+        $envFromName = env('FROM_NAME', getenv('FROM_NAME'));
+        if (!empty($envFromName)) {
+            $this->fromName = (string) $envFromName;
+        }
+    }
 }

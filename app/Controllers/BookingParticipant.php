@@ -22,13 +22,74 @@ class BookingParticipant extends BaseController
 
     public function index(): ResponseInterface
     {
-        $participants = $this->bookingParticipantModel
-            ->orderBy('booking_id', 'ASC')
-            ->findAll();
+        $all = $this->request->getGet('all') === '1' || $this->request->getGet('all') === 'true' || $this->request->getGet('paginate') === '0';
+        $page = max(1, (int) ($this->request->getGet('page') ?? 1));
+        $perPage = min(100, max(1, (int) ($this->request->getGet('per_page') ?? $this->request->getGet('limit') ?? 10)));
+        $search = trim((string) ($this->request->getGet('search') ?? $this->request->getGet('term') ?? $this->request->getGet('q') ?? ''));
+        $bookingId = $this->request->getGet('booking_id');
+        $userId = $this->request->getGet('user_id');
+        $type = $this->request->getGet('participant_type') ?? $this->request->getGet('type');
+        $status = $this->request->getGet('response_status') ?? $this->request->getGet('status');
+
+        $builder = $this->bookingParticipantModel->builder();
+        $builder->select('booking_participants.*');
+        $builder->join('users', 'users.id = booking_participants.user_id', 'left');
+        $builder->join('bookings', 'bookings.id = booking_participants.booking_id', 'left');
+
+        if ($search !== '') {
+            $builder->groupStart()
+                ->like('users.first_name', $search)
+                ->orLike('users.last_name', $search)
+                ->orLike('users.email', $search)
+                ->orLike('bookings.title', $search)
+                ->groupEnd();
+        }
+
+        if ($bookingId !== null && $bookingId !== '') {
+            $builder->where('booking_participants.booking_id', (int) $bookingId);
+        }
+
+        if ($userId !== null && $userId !== '') {
+            $builder->where('booking_participants.user_id', (int) $userId);
+        }
+
+        if ($type !== null && $type !== '') {
+            $builder->where('booking_participants.participant_type', strtolower(trim((string) $type)));
+        }
+
+        if ($status !== null && $status !== '') {
+            $builder->where('booking_participants.response_status', strtolower(trim((string) $status)));
+        }
+
+        $total = (clone $builder)->countAllResults();
+
+        if ($all) {
+            $participants = $builder->orderBy('booking_participants.booking_id', 'ASC')->get()->getResultArray();
+            return $this->response->setJSON([
+                'status'      => 'success',
+                'data'        => $participants,
+                'page'        => 1,
+                'per_page'    => $total > 0 ? $total : 1,
+                'total'       => $total,
+                'total_pages' => 1,
+            ]);
+        }
+
+        $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
+        $offset = ($page - 1) * $perPage;
+
+        $participants = $builder->orderBy('booking_participants.booking_id', 'ASC')
+            ->limit($perPage, $offset)
+            ->get()
+            ->getResultArray();
 
         return $this->response->setJSON([
-            'status' => 'success',
-            'data'   => $participants,
+            'status'      => 'success',
+            'data'        => $participants,
+            'page'        => $page,
+            'per_page'    => $perPage,
+            'total'       => $total,
+            'total_pages' => $totalPages,
         ]);
     }
 
@@ -76,6 +137,15 @@ class BookingParticipant extends BaseController
                     'status'  => 'error',
                     'message' => 'Booking not found.',
                 ]);
+        }
+
+        $auth = $this->getAuthUser();
+        $isOrganizer = $auth['id'] > 0 && $auth['id'] === (int) $booking['user_id'];
+        if (!$isOrganizer && !$auth['is_privileged']) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. Only the meeting organizer or an administrator can add participants.',
+            ]);
         }
 
         $user = $this->userModel->find($data['user_id']);
@@ -150,9 +220,31 @@ class BookingParticipant extends BaseController
                 ]);
         }
 
+        $booking = $this->bookingModel->find($bookingId);
+        $auth = $this->getAuthUser();
+        $isOrganizer = $booking && $auth['id'] > 0 && $auth['id'] === (int) $booking['user_id'];
+        $isSelf = $auth['id'] > 0 && $auth['id'] === $userId;
+
+        if (!$isOrganizer && !$auth['is_privileged'] && !$isSelf) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to update this participant.',
+            ]);
+        }
+
         $data = $this->request->getJSON(true) ?? [];
 
         unset($data['booking_id'], $data['user_id']);
+
+        // Non-organizers and non-admins can only update their own response_status (cannot change participant_type)
+        if (!$isOrganizer && !$auth['is_privileged'] && $isSelf) {
+            if (array_key_exists('participant_type', $data)) {
+                return $this->response->setStatusCode(403)->setJSON([
+                    'status'  => 'error',
+                    'message' => 'Forbidden. You cannot modify participant type.',
+                ]);
+            }
+        }
 
         $rules = [];
         $messages = [];
@@ -223,6 +315,18 @@ class BookingParticipant extends BaseController
                 ]);
         }
 
+        $booking = $this->bookingModel->find($bookingId);
+        $auth = $this->getAuthUser();
+        $isOrganizer = $booking && $auth['id'] > 0 && $auth['id'] === (int) $booking['user_id'];
+        $isSelf = $auth['id'] > 0 && $auth['id'] === $userId;
+
+        if (!$isOrganizer && !$auth['is_privileged'] && !$isSelf) {
+            return $this->response->setStatusCode(403)->setJSON([
+                'status'  => 'error',
+                'message' => 'Forbidden. You do not have permission to remove this participant.',
+            ]);
+        }
+
         $deleted = $this->bookingParticipantModel
             ->where('booking_id', $bookingId)
             ->where('user_id', $userId)
@@ -241,5 +345,39 @@ class BookingParticipant extends BaseController
             'status'  => 'success',
             'message' => 'Booking participant deleted successfully.',
         ]);
+    }
+
+    /**
+     * Resolve current user identity and roles.
+     */
+    protected function getAuthUser(): array
+    {
+        $session = service('session');
+        $userId = (int) ($session->get('user_id') ?? 0);
+        $roleName = (string) ($session->get('role_name') ?? $session->get('role') ?? '');
+        $roleId = (int) ($session->get('role_id') ?? 0);
+
+        if ($userId > 0 && (empty($roleName) || $roleId <= 0)) {
+            $user = $this->userModel->find($userId);
+            if ($user && !empty($user['role_id'])) {
+                $roleId = (int) $user['role_id'];
+                $db = \Config\Database::connect();
+                $role = $db->table('roles')->where('id', $roleId)->get()->getRowArray();
+                if ($role) {
+                    $roleName = (string) $role['name'];
+                }
+            }
+        }
+
+        $isAdmin = ($roleId === 1 || strcasecmp($roleName, 'Admin') === 0);
+        $isPrivileged = ($isAdmin || $roleId === 6 || in_array($roleName, ['Facilities Manager', 'Facility Manager'], true));
+
+        return [
+            'id'           => $userId,
+            'role_id'      => $roleId,
+            'role_name'    => $roleName,
+            'is_admin'     => $isAdmin,
+            'is_privileged'=> $isPrivileged,
+        ];
     }
 }

@@ -25,6 +25,7 @@ class AuditLog extends Model
 
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
+    protected $updatedField  = '';
 
     protected $validationRules = [
         'user_id'    => 'permit_empty|integer',

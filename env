@@ -67,3 +67,25 @@
 #--------------------------------------------------------------------
 
 # logger.threshold = 4
+
+#--------------------------------------------------------------------
+# EMAIL / BREVO SMTP CONFIGURATION
+#--------------------------------------------------------------------
+# To enable transactional email delivery via Brevo (formerly Sendinblue) SMTP:
+# 1. Sign in to your Brevo account (app.brevo.com)
+# 2. Navigate to Transactional -> Configuration -> SMTP / API Keys
+# 3. Copy your SMTP Login and Master / SMTP Key
+# 4. Fill in your Brevo SMTP credentials below in your .env file:
+#
+# email.protocol = 'smtp'
+# email.SMTPHost = 'smtp-relay.brevo.com'
+# email.SMTPPort = 587
+# email.SMTPCrypto = 'tls'
+# email.SMTPUser = 'your-brevo-smtp-login'
+# email.SMTPPass = 'your-brevo-smtp-key'
+# email.fromEmail = 'your-authorized-sender@yourdomain.com'
+# email.fromName = 'MeetSpace Enterprise Suite'
+# email.mailType = 'html'
+#
+# SMTP_USER = 'your-brevo-smtp-login'
+# SMTP_PASS = 'your-brevo-smtp-key'

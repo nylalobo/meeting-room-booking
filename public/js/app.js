@@ -1,20 +1,22 @@
 /**
  * MeetSpace Enterprise Suite - Application JavaScript
  *
- * Updated:
- * - Custom in-page notifications
- * - Custom delete confirmation modal
- * - No browser alert()
- * - No browser confirm()
- * - Room CRUD
- * - Booking CRUD
- * - Dashboard statistics
+ * Core / Global functionality:
+ * - In-page notification system
+ * - Custom confirmation modal dialog
+ * - Global search input handler
+ * - Shared helper utilities (escapeHtml)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
     // Inject notification / confirmation UI
     initializeAppNotifications();
+
+    // UI/UX feature initializations
+    initializeThemeToggle();
+    initializeSidebarToggle();
+    initializeLogoutConfirmation();
 
     // Global search input
     const searchInput = document.querySelector('.search-input');
@@ -30,25 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             }
         });
-    }
-
-    // Dashboard
-    if (document.getElementById('total-rooms')) {
-        loadDashboardStats();
-    }
-
-    // Bookings page
-    if (document.getElementById('bookingsTableBody')) {
-        loadBookings();
-        setupBookingFilters();
-        setupBookingModal();
-    }
-
-    // Rooms page
-    if (document.getElementById('roomsTableBody')) {
-        loadRooms();
-        setupRoomFilters();
-        setupRoomModal();
     }
 
     console.log(
@@ -267,20 +250,22 @@ function injectAppNotificationStyles() {
 
             padding: 16px 18px;
 
-            background: #111827;
-            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(17, 26, 46, 0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(129, 140, 248, 0.18);
 
             border-radius: 12px;
 
             box-shadow:
-                0 20px 50px rgba(0,0,0,0.35);
+                0 20px 50px rgba(0, 0, 0, 0.45);
 
             transform: translateX(120%);
             opacity: 0;
 
             transition:
-                transform 0.3s ease,
-                opacity 0.3s ease;
+                transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.35s ease;
 
             pointer-events: auto;
         }
@@ -291,7 +276,7 @@ function injectAppNotificationStyles() {
         }
 
         .app-notification.success {
-            border-left: 4px solid #22c55e;
+            border-left: 4px solid #10b981;
         }
 
         .app-notification.error {
@@ -303,7 +288,7 @@ function injectAppNotificationStyles() {
         }
 
         .app-notification.info {
-            border-left: 4px solid #3b82f6;
+            border-left: 4px solid #38bdf8;
         }
 
         .app-notification-icon {
@@ -321,22 +306,22 @@ function injectAppNotificationStyles() {
 
         .app-notification.success
         .app-notification-icon {
-            color: #22c55e;
+            color: #34d399;
         }
 
         .app-notification.error
         .app-notification-icon {
-            color: #ef4444;
+            color: #fb7185;
         }
 
         .app-notification.warning
         .app-notification-icon {
-            color: #f59e0b;
+            color: #fbbf24;
         }
 
         .app-notification.info
         .app-notification-icon {
-            color: #3b82f6;
+            color: #38bdf8;
         }
 
         .app-notification-content {
@@ -345,14 +330,14 @@ function injectAppNotificationStyles() {
         }
 
         .app-notification-title {
-            color: #ffffff;
+            color: #f8fafc;
             font-size: 14px;
             font-weight: 700;
             margin-bottom: 4px;
         }
 
         .app-notification-message {
-            color: #aab2d5;
+            color: #cbd5e1;
             font-size: 13px;
             line-height: 1.5;
         }
@@ -361,7 +346,7 @@ function injectAppNotificationStyles() {
             border: 0;
             background: transparent;
 
-            color: #7f89ad;
+            color: #94a3b8;
 
             cursor: pointer;
 
@@ -374,7 +359,68 @@ function injectAppNotificationStyles() {
         }
 
         .app-notification-close:hover {
-            color: #ffffff;
+            color: #f8fafc;
+        }
+
+        [data-theme="light"] .app-notification {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.05);
+        }
+
+        [data-theme="light"] .app-notification-title {
+            color: #0f172a;
+        }
+
+        [data-theme="light"] .app-notification-message {
+            color: #334155;
+        }
+
+        [data-theme="light"] .app-notification-close {
+            color: #64748b;
+        }
+
+        [data-theme="light"] .app-notification-close:hover {
+            color: #0f172a;
+        }
+
+        [data-theme="light"] .app-notification.success {
+            border-left: 4px solid #059669;
+        }
+
+        [data-theme="light"] .app-notification.success .app-notification-icon {
+            color: #059669;
+        }
+
+        [data-theme="light"] .app-notification.error {
+            border-left: 4px solid #dc2626;
+        }
+
+        [data-theme="light"] .app-notification.error .app-notification-icon {
+            color: #dc2626;
+        }
+
+        [data-theme="light"] .app-notification.warning {
+            border-left: 4px solid #d97706;
+        }
+
+        [data-theme="light"] .app-notification.warning .app-notification-icon {
+            color: #d97706;
+        }
+
+        [data-theme="light"] .app-notification.info {
+            border-left: 4px solid #2563eb;
+        }
+
+        [data-theme="light"] .app-notification.info .app-notification-icon {
+            color: #2563eb;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .app-notification {
+                transition: opacity 0.15s ease !important;
+                transform: none !important;
+            }
         }
 
 
@@ -397,28 +443,31 @@ function injectAppNotificationStyles() {
             padding: 24px;
 
             background:
-                rgba(3, 7, 18, 0.72);
+                rgba(3, 7, 18, 0.78);
 
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
         }
 
         .app-confirm-modal {
             width: min(440px, 100%);
 
-            background: #111827;
+            background: rgba(17, 24, 39, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
 
             border:
-                1px solid rgba(255,255,255,0.10);
+                1px solid rgba(255,255,255,0.12);
 
             border-radius: 16px;
 
             padding: 28px;
 
             box-shadow:
-                0 30px 80px rgba(0,0,0,0.50);
+                0 30px 80px rgba(0,0,0,0.55);
 
             animation:
-                appConfirmAppear 0.2s ease;
+                appConfirmAppear 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         @keyframes appConfirmAppear {
@@ -608,6 +657,14 @@ function showAppNotification(
     );
 
     notification.classList.add(type);
+    notification.setAttribute(
+        'role',
+        type === 'error' || type === 'warning' ? 'alert' : 'status'
+    );
+    notification.setAttribute(
+        'aria-live',
+        'polite'
+    );
 
     if (!title) {
 
@@ -778,2608 +835,6 @@ function hideAppConfirm() {
 
 
 /* ==========================================================================
-   DASHBOARD
-   ========================================================================== */
-
-async function loadDashboardStats() {
-
-    try {
-
-        const response =
-            await fetch('/dashboard/stats');
-
-        if (!response.ok) {
-            throw new Error(
-                `HTTP error: ${response.status}`
-            );
-        }
-
-        const result =
-            await response.json();
-
-        if (result.status !== 'success') {
-            throw new Error(
-                'Dashboard statistics request failed.'
-            );
-        }
-
-        const stats =
-            result.data;
-
-        document.getElementById(
-            'total-rooms'
-        ).textContent =
-            stats.total_rooms;
-
-        document.getElementById(
-            'total-bookings'
-        ).textContent =
-            stats.total_bookings;
-
-        document.getElementById(
-            'pending-requests'
-        ).textContent =
-            stats.pending_requests;
-
-        document.getElementById(
-            'active-users'
-        ).textContent =
-            stats.active_users;
-
-    } catch (error) {
-
-        console.error(
-            'Unable to load dashboard statistics:',
-            error
-        );
-
-    }
-}
-
-
-/* ==========================================================================
-   BOOKINGS
-   ========================================================================== */
-
-let allBookings = [];
-
-
-async function loadBookings() {
-
-    const loading =
-        document.getElementById(
-            'bookingsLoading'
-        );
-
-    const error =
-        document.getElementById(
-            'bookingsError'
-        );
-
-    const empty =
-        document.getElementById(
-            'bookingsEmpty'
-        );
-
-    const tableWrapper =
-        document.getElementById(
-            'bookingsTableWrapper'
-        );
-
-    try {
-
-        loading?.classList.remove(
-            'd-none'
-        );
-
-        error?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.add(
-            'd-none'
-        );
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        const response =
-            await fetch('/api/bookings');
-
-        if (!response.ok) {
-            throw new Error(
-                `HTTP error: ${response.status}`
-            );
-        }
-
-        const result =
-            await response.json();
-
-        if (result.status !== 'success') {
-            throw new Error(
-                'Bookings request failed.'
-            );
-        }
-
-        allBookings =
-            result.data || [];
-
-        loading?.classList.add(
-            'd-none'
-        );
-
-        renderBookings(
-            allBookings
-        );
-
-    } catch (err) {
-
-        console.error(
-            'Unable to load bookings:',
-            err
-        );
-
-        loading?.classList.add(
-            'd-none'
-        );
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.add(
-            'd-none'
-        );
-
-        error?.classList.remove(
-            'd-none'
-        );
-    }
-}
-
-
-function renderBookings(bookings) {
-
-    const tableBody =
-        document.getElementById(
-            'bookingsTableBody'
-        );
-
-    const empty =
-        document.getElementById(
-            'bookingsEmpty'
-        );
-
-    const tableWrapper =
-        document.getElementById(
-            'bookingsTableWrapper'
-        );
-
-    if (!tableBody) {
-        return;
-    }
-
-    tableBody.innerHTML = '';
-
-    if (!bookings.length) {
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.remove(
-            'd-none'
-        );
-
-        return;
-    }
-
-    empty?.classList.add(
-        'd-none'
-    );
-
-    tableWrapper?.classList.remove(
-        'd-none'
-    );
-
-    bookings.forEach((booking) => {
-
-        const row =
-            document.createElement('tr');
-
-        const startDate =
-            new Date(
-                String(
-                    booking.start_time
-                ).replace(' ', 'T')
-            );
-
-        const endDate =
-            new Date(
-                String(
-                    booking.end_time
-                ).replace(' ', 'T')
-            );
-
-        const dateText =
-            formatBookingDate(
-                startDate
-            );
-
-        const timeText =
-            `${formatBookingTime(startDate)} - ${formatBookingTime(endDate)}`;
-
-        const organizer =
-            booking.organizer_name ||
-            `User #${booking.user_id}`;
-
-        const room =
-            booking.room_name ||
-            `Room #${booking.room_id}`;
-
-        row.innerHTML = `
-
-            <td>
-
-                <div class="booking-title">
-                    ${escapeHtml(
-                        booking.title ||
-                        'Untitled Meeting'
-                    )}
-                </div>
-
-                ${
-                    booking.description
-                        ? `
-                            <div class="booking-description">
-                                ${escapeHtml(
-                                    booking.description
-                                )}
-                            </div>
-                        `
-                        : ''
-                }
-
-            </td>
-
-            <td>
-
-                <div class="booking-room-name">
-                    ${escapeHtml(room)}
-                </div>
-
-                ${
-                    booking.room_code
-                        ? `
-                            <div class="booking-room-code">
-                                ${escapeHtml(
-                                    booking.room_code
-                                )}
-                            </div>
-                        `
-                        : ''
-                }
-
-            </td>
-
-            <td>
-
-                <span class="booking-date">
-                    ${escapeHtml(dateText)}
-                </span>
-
-            </td>
-
-            <td>
-
-                <span class="booking-time">
-                    ${escapeHtml(timeText)}
-                </span>
-
-            </td>
-
-            <td>
-
-                <span class="booking-organizer">
-                    ${escapeHtml(organizer)}
-                </span>
-
-            </td>
-
-            <td>
-                ${renderBookingStatus(
-                    booking.status
-                )}
-            </td>
-
-        `;
-
-        tableBody.appendChild(row);
-    });
-}
-
-
-/* ==========================================================================
-   BOOKING FILTERS
-   ========================================================================== */
-
-function setupBookingFilters() {
-
-    const searchInput =
-        document.getElementById(
-            'bookingSearch'
-        );
-
-    const statusFilter =
-        document.getElementById(
-            'statusFilter'
-        );
-
-    if (searchInput) {
-
-        searchInput.addEventListener(
-            'input',
-            applyBookingFilters
-        );
-    }
-
-    if (statusFilter) {
-
-        statusFilter.addEventListener(
-            'change',
-            applyBookingFilters
-        );
-    }
-}
-
-
-function applyBookingFilters() {
-
-    const searchInput =
-        document.getElementById(
-            'bookingSearch'
-        );
-
-    const statusFilter =
-        document.getElementById(
-            'statusFilter'
-        );
-
-    const searchTerm =
-        searchInput
-            ? searchInput.value
-                .trim()
-                .toLowerCase()
-            : '';
-
-    const selectedStatus =
-        statusFilter
-            ? statusFilter.value
-                .toLowerCase()
-            : '';
-
-    const filteredBookings =
-        allBookings.filter(
-            (booking) => {
-
-                const searchableText = [
-                    booking.title,
-                    booking.description,
-                    booking.room_name,
-                    booking.room_code,
-                    booking.organizer_name,
-                    booking.organizer_email
-                ]
-                    .filter(Boolean)
-                    .join(' ')
-                    .toLowerCase();
-
-                const matchesSearch =
-                    !searchTerm ||
-                    searchableText.includes(
-                        searchTerm
-                    );
-
-                const matchesStatus =
-                    !selectedStatus ||
-                    String(
-                        booking.status
-                    ).toLowerCase() ===
-                    selectedStatus;
-
-                return (
-                    matchesSearch &&
-                    matchesStatus
-                );
-            }
-        );
-
-    renderBookings(
-        filteredBookings
-    );
-}
-
-
-/* ==========================================================================
-   NEW BOOKING MODAL
-   ========================================================================== */
-
-function setupBookingModal() {
-
-    const modal =
-        document.getElementById(
-            'bookingModal'
-        );
-
-    const newBookingBtn =
-        document.getElementById(
-            'newBookingBtn'
-        );
-
-    const closeBookingModal =
-        document.getElementById(
-            'closeBookingModal'
-        );
-
-    const cancelBookingBtn =
-        document.getElementById(
-            'cancelBookingBtn'
-        );
-
-    const form =
-        document.getElementById(
-            'newBookingForm'
-        );
-
-    if (
-        !modal ||
-        !newBookingBtn ||
-        !form
-    ) {
-        return;
-    }
-
-    newBookingBtn.addEventListener(
-        'click',
-        async () => {
-
-            resetBookingForm();
-
-            openBookingModal();
-
-            await Promise.all([
-                loadBookingRooms(),
-                loadBookingUsers()
-            ]);
-        }
-    );
-
-    closeBookingModal?.addEventListener(
-        'click',
-        closeBookingModalWindow
-    );
-
-    cancelBookingBtn?.addEventListener(
-        'click',
-        closeBookingModalWindow
-    );
-
-    modal.addEventListener(
-        'click',
-        (event) => {
-
-            if (
-                event.target === modal
-            ) {
-                closeBookingModalWindow();
-            }
-        }
-    );
-
-    document.addEventListener(
-        'keydown',
-        (event) => {
-
-            if (
-                event.key === 'Escape' &&
-                !modal.classList.contains(
-                    'd-none'
-                )
-            ) {
-                closeBookingModalWindow();
-            }
-
-            const confirmModal =
-                document.getElementById(
-                    'appConfirmModal'
-                );
-
-            if (
-                event.key === 'Escape' &&
-                confirmModal &&
-                !confirmModal.classList.contains(
-                    'd-none'
-                )
-            ) {
-                hideAppConfirm();
-            }
-        }
-    );
-
-    form.addEventListener(
-        'submit',
-        handleNewBookingSubmit
-    );
-}
-
-
-function openBookingModal() {
-
-    const modal =
-        document.getElementById(
-            'bookingModal'
-        );
-
-    if (!modal) {
-        return;
-    }
-
-    modal.classList.remove(
-        'd-none'
-    );
-
-    document.body.classList.add(
-        'booking-modal-open'
-    );
-
-    setTimeout(() => {
-
-        document.getElementById(
-            'bookingTitle'
-        )?.focus();
-
-    }, 50);
-}
-
-
-function closeBookingModalWindow() {
-
-    const modal =
-        document.getElementById(
-            'bookingModal'
-        );
-
-    if (!modal) {
-        return;
-    }
-
-    modal.classList.add(
-        'd-none'
-    );
-
-    document.body.classList.remove(
-        'booking-modal-open'
-    );
-}
-
-
-function resetBookingForm() {
-
-    const form =
-        document.getElementById(
-            'newBookingForm'
-        );
-
-    form?.reset();
-
-    hideBookingFormMessages();
-
-    const submitButton =
-        document.getElementById(
-            'submitBookingBtn'
-        );
-
-    if (submitButton) {
-
-        submitButton.disabled =
-            false;
-
-        submitButton.innerHTML = `
-            <i class="bi bi-calendar-check"></i>
-            Create Booking
-        `;
-    }
-
-    const roomSelect =
-        document.getElementById(
-            'bookingRoom'
-        );
-
-    if (roomSelect) {
-
-        roomSelect.innerHTML =
-            '<option value="">Loading rooms...</option>';
-    }
-
-    const userSelect =
-        document.getElementById(
-            'bookingUser'
-        );
-
-    if (userSelect) {
-
-        userSelect.innerHTML =
-            '<option value="">Loading users...</option>';
-    }
-}
-
-
-/* ==========================================================================
-   BOOKING ROOM LOADING
-   ========================================================================== */
-
-async function loadBookingRooms() {
-
-    const select =
-        document.getElementById(
-            'bookingRoom'
-        );
-
-    if (!select) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch('/api/rooms');
-
-        if (!response.ok) {
-
-            throw new Error(
-                `HTTP error: ${response.status}`
-            );
-        }
-
-        const result =
-            await response.json();
-
-        if (
-            result.status !==
-            'success'
-        ) {
-
-            throw new Error(
-                'Rooms request failed.'
-            );
-        }
-
-        const rooms =
-            result.data || [];
-
-        select.innerHTML = '';
-
-        const defaultOption =
-            document.createElement(
-                'option'
-            );
-
-        defaultOption.value = '';
-
-        defaultOption.textContent =
-            'Select a room';
-
-        select.appendChild(
-            defaultOption
-        );
-
-        rooms
-            .filter(
-                (room) =>
-                    String(
-                        room.is_active
-                    ) === '1'
-            )
-            .forEach(
-                (room) => {
-
-                    const option =
-                        document.createElement(
-                            'option'
-                        );
-
-                    option.value =
-                        room.id;
-
-                    option.textContent =
-                        `${room.name} (${room.room_code})`;
-
-                    select.appendChild(
-                        option
-                    );
-                }
-            );
-
-        if (
-            select.options.length === 1
-        ) {
-
-            select.innerHTML =
-                '<option value="">No active rooms available</option>';
-        }
-
-    } catch (error) {
-
-        console.error(
-            'Unable to load rooms:',
-            error
-        );
-
-        select.innerHTML =
-            '<option value="">Unable to load rooms</option>';
-
-        showBookingFormError(
-            'Unable to load rooms. Please try again.'
-        );
-    }
-}
-
-
-/* ==========================================================================
-   BOOKING USER LOADING
-   ========================================================================== */
-
-async function loadBookingUsers() {
-
-    const select =
-        document.getElementById(
-            'bookingUser'
-        );
-
-    if (!select) {
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch('/users');
-
-        if (!response.ok) {
-
-            throw new Error(
-                `HTTP error: ${response.status}`
-            );
-        }
-
-        const result =
-            await response.json();
-
-        if (
-            result.status !==
-            'success'
-        ) {
-
-            throw new Error(
-                'Users request failed.'
-            );
-        }
-
-        const users =
-            result.data || [];
-
-        select.innerHTML = '';
-
-        const defaultOption =
-            document.createElement(
-                'option'
-            );
-
-        defaultOption.value = '';
-
-        defaultOption.textContent =
-            'Select organizer';
-
-        select.appendChild(
-            defaultOption
-        );
-
-        users
-            .filter(
-                (user) =>
-                    String(
-                        user.is_active
-                    ) === '1'
-            )
-            .forEach(
-                (user) => {
-
-                    const option =
-                        document.createElement(
-                            'option'
-                        );
-
-                    option.value =
-                        user.id;
-
-                    const fullName =
-                        `${user.first_name || ''} ${user.last_name || ''}`
-                            .trim();
-
-                    option.textContent =
-                        fullName ||
-                        user.email ||
-                        `User #${user.id}`;
-
-                    select.appendChild(
-                        option
-                    );
-                }
-            );
-
-        if (
-            select.options.length === 1
-        ) {
-
-            select.innerHTML =
-                '<option value="">No active users available</option>';
-        }
-
-    } catch (error) {
-
-        console.error(
-            'Unable to load users:',
-            error
-        );
-
-        select.innerHTML =
-            '<option value="">Unable to load users</option>';
-
-        showBookingFormError(
-            'Unable to load organizers. Please try again.'
-        );
-    }
-}
-
-
-/* ==========================================================================
-   CREATE BOOKING
-   ========================================================================== */
-
-async function handleNewBookingSubmit(event) {
-
-    event.preventDefault();
-
-    const form =
-        document.getElementById(
-            'newBookingForm'
-        );
-
-    const submitButton =
-        document.getElementById(
-            'submitBookingBtn'
-        );
-
-    if (
-        !form ||
-        !submitButton
-    ) {
-        return;
-    }
-
-    hideBookingFormMessages();
-
-    const formData =
-        new FormData(form);
-
-    const title =
-        formData.get('title')
-            ?.trim() || '';
-
-    const roomId =
-        formData.get('room_id');
-
-    const userId =
-        formData.get('user_id');
-
-    const startTime =
-        formData.get('start_time');
-
-    const endTime =
-        formData.get('end_time');
-
-    const description =
-        formData.get('description')
-            ?.trim() || '';
-
-    if (
-        !title ||
-        !roomId ||
-        !userId ||
-        !startTime ||
-        !endTime
-    ) {
-
-        showBookingFormError(
-            'Please fill in all required fields.'
-        );
-
-        return;
-    }
-
-    if (
-        new Date(startTime) >=
-        new Date(endTime)
-    ) {
-
-        showBookingFormError(
-            'End time must be after start time.'
-        );
-
-        return;
-    }
-
-    const payload = {
-
-        title: title,
-
-        room_id:
-            Number(roomId),
-
-        user_id:
-            Number(userId),
-
-        start_time:
-            formatDateTimeForApi(
-                startTime
-            ),
-
-        end_time:
-            formatDateTimeForApi(
-                endTime
-            ),
-
-        description:
-            description,
-
-        status:
-            'pending'
-    };
-
-    try {
-
-        submitButton.disabled =
-            true;
-
-        submitButton.innerHTML = `
-            <i class="bi bi-arrow-repeat spin"></i>
-            Creating...
-        `;
-
-        const response =
-            await fetch(
-                '/bookings',
-                {
-                    method: 'POST',
-
-                    headers: {
-                        'Content-Type':
-                            'application/json',
-
-                        'Accept':
-                            'application/json'
-                    },
-
-                    body:
-                        JSON.stringify(
-                            payload
-                        )
-                }
-            );
-
-        const result =
-            await response.json();
-
-        if (
-            !response.ok ||
-            result.status !==
-            'success'
-        ) {
-
-            handleBookingApiError(
-                response.status,
-                result
-            );
-
-            return;
-        }
-
-        showBookingFormSuccess(
-            result.message ||
-            'Booking created successfully.'
-        );
-
-        showAppNotification(
-            result.message ||
-            'Booking created successfully.',
-            'success',
-            'Booking Created'
-        );
-
-        await loadBookings();
-
-        setTimeout(() => {
-
-            closeBookingModalWindow();
-
-        }, 800);
-
-    } catch (error) {
-
-        console.error(
-            'Unable to create booking:',
-            error
-        );
-
-        showBookingFormError(
-            'Unable to create booking. Please try again.'
-        );
-
-    } finally {
-
-        submitButton.disabled =
-            false;
-
-        submitButton.innerHTML = `
-            <i class="bi bi-calendar-check"></i>
-            Create Booking
-        `;
-    }
-}
-
-
-/* ==========================================================================
-   BOOKING API ERROR HANDLING
-   ========================================================================== */
-
-function handleBookingApiError(
-    status,
-    result
-) {
-
-    if (
-        status === 409
-    ) {
-
-        showBookingFormError(
-            result.message ||
-            'Room is already booked during this time.'
-        );
-
-        showAppNotification(
-            result.message ||
-            'Room is already booked during this time.',
-            'warning',
-            'Booking Conflict'
-        );
-
-        return;
-    }
-
-    if (
-        status === 422 &&
-        result.errors
-    ) {
-
-        const messages =
-            Object.values(
-                result.errors
-            );
-
-        showBookingFormError(
-            messages.join(' ')
-        );
-
-        return;
-    }
-
-    if (
-        status === 404
-    ) {
-
-        showBookingFormError(
-            result.message ||
-            'The selected room or organizer could not be found.'
-        );
-
-        return;
-    }
-
-    showBookingFormError(
-        result.message ||
-        'Unable to create booking.'
-    );
-}
-
-
-/* ==========================================================================
-   BOOKING FORM MESSAGES
-   ========================================================================== */
-
-function showBookingFormError(message) {
-
-    const errorBox =
-        document.getElementById(
-            'bookingFormError'
-        );
-
-    const errorText =
-        document.getElementById(
-            'bookingFormErrorText'
-        );
-
-    const successBox =
-        document.getElementById(
-            'bookingFormSuccess'
-        );
-
-    successBox?.classList.add(
-        'd-none'
-    );
-
-    if (errorText) {
-        errorText.textContent =
-            message;
-    }
-
-    errorBox?.classList.remove(
-        'd-none'
-    );
-}
-
-
-function showBookingFormSuccess(message) {
-
-    const successBox =
-        document.getElementById(
-            'bookingFormSuccess'
-        );
-
-    const successText =
-        document.getElementById(
-            'bookingFormSuccessText'
-        );
-
-    const errorBox =
-        document.getElementById(
-            'bookingFormError'
-        );
-
-    errorBox?.classList.add(
-        'd-none'
-    );
-
-    if (successText) {
-        successText.textContent =
-            message;
-    }
-
-    successBox?.classList.remove(
-        'd-none'
-    );
-}
-
-
-function hideBookingFormMessages() {
-
-    document.getElementById(
-        'bookingFormError'
-    )?.classList.add(
-        'd-none'
-    );
-
-    document.getElementById(
-        'bookingFormSuccess'
-    )?.classList.add(
-        'd-none'
-    );
-}
-
-
-/* ==========================================================================
-   BOOKING HELPERS
-   ========================================================================== */
-
-function formatDateTimeForApi(value) {
-
-    if (!value) {
-        return '';
-    }
-
-    return value.replace(
-        'T',
-        ' '
-    ) + ':00';
-}
-
-
-function formatBookingDate(date) {
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return '—';
-    }
-
-    return date.toLocaleDateString(
-        'en-IN',
-        {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        }
-    );
-}
-
-
-function formatBookingTime(date) {
-
-    if (
-        Number.isNaN(
-            date.getTime()
-        )
-    ) {
-        return '—';
-    }
-
-    return date.toLocaleTimeString(
-        'en-IN',
-        {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        }
-    );
-}
-
-
-function renderBookingStatus(status) {
-
-    const normalizedStatus =
-        String(
-            status || 'pending'
-        ).toLowerCase();
-
-    const label =
-        normalizedStatus
-            .charAt(0)
-            .toUpperCase() +
-        normalizedStatus.slice(1);
-
-    return `
-        <span
-            class="booking-status booking-status-${escapeHtml(
-                normalizedStatus
-            )}"
-        >
-            ${escapeHtml(label)}
-        </span>
-    `;
-}
-
-
-/* ==========================================================================
-   ROOMS
-   ========================================================================== */
-
-let allRooms = [];
-
-
-async function loadRooms() {
-
-    const loading =
-        document.getElementById(
-            'roomsLoading'
-        );
-
-    const error =
-        document.getElementById(
-            'roomsError'
-        );
-
-    const empty =
-        document.getElementById(
-            'roomsEmpty'
-        );
-
-    const tableWrapper =
-        document.getElementById(
-            'roomsTableWrapper'
-        );
-
-    try {
-
-        loading?.classList.remove(
-            'd-none'
-        );
-
-        error?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.add(
-            'd-none'
-        );
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        const response =
-            await fetch(
-                '/api/rooms'
-            );
-
-        if (!response.ok) {
-
-            throw new Error(
-                `HTTP error: ${response.status}`
-            );
-        }
-
-        const result =
-            await response.json();
-
-        if (
-            result.status !==
-            'success'
-        ) {
-
-            throw new Error(
-                'Rooms request failed.'
-            );
-        }
-
-        allRooms =
-            result.data || [];
-
-        loading?.classList.add(
-            'd-none'
-        );
-
-        renderRooms(
-            allRooms
-        );
-
-    } catch (err) {
-
-        console.error(
-            'Unable to load rooms:',
-            err
-        );
-
-        loading?.classList.add(
-            'd-none'
-        );
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.add(
-            'd-none'
-        );
-
-        error?.classList.remove(
-            'd-none'
-        );
-    }
-}
-
-
-function renderRooms(rooms) {
-
-    const tableBody =
-        document.getElementById(
-            'roomsTableBody'
-        );
-
-    const empty =
-        document.getElementById(
-            'roomsEmpty'
-        );
-
-    const tableWrapper =
-        document.getElementById(
-            'roomsTableWrapper'
-        );
-
-    if (!tableBody) {
-        return;
-    }
-
-    tableBody.innerHTML = '';
-
-    if (!rooms.length) {
-
-        tableWrapper?.classList.add(
-            'd-none'
-        );
-
-        empty?.classList.remove(
-            'd-none'
-        );
-
-        return;
-    }
-
-    empty?.classList.add(
-        'd-none'
-    );
-
-    tableWrapper?.classList.remove(
-        'd-none'
-    );
-
-    rooms.forEach((room) => {
-
-        const row =
-            document.createElement(
-                'tr'
-            );
-
-        const isActive =
-            String(
-                room.is_active
-            ) === '1';
-
-        const status =
-            isActive
-                ? 'Active'
-                : 'Inactive';
-
-        const statusClass =
-            isActive
-                ? 'active'
-                : 'inactive';
-
-        row.innerHTML = `
-
-            <td>
-
-                <div class="booking-room-name">
-                    ${escapeHtml(
-                        room.name ||
-                        'Unnamed Room'
-                    )}
-                </div>
-
-            </td>
-
-            <td>
-
-                <span class="booking-room-code">
-                    ${escapeHtml(
-                        room.room_code ||
-                        '—'
-                    )}
-                </span>
-
-            </td>
-
-            <td>
-
-                <span class="booking-time">
-                    ${escapeHtml(
-                        room.capacity ||
-                        '—'
-                    )}
-                </span>
-
-            </td>
-
-            <td>
-
-                <span class="booking-date">
-                    ${escapeHtml(
-                        room.floor ||
-                        '—'
-                    )}
-                </span>
-
-            </td>
-
-            <td>
-
-                <div class="booking-description">
-                    ${escapeHtml(
-                        room.description ||
-                        '—'
-                    )}
-                </div>
-
-            </td>
-
-            <td>
-
-                <span
-                    class="booking-status booking-status-${statusClass}"
-                >
-                    ${status}
-                </span>
-
-            </td>
-
-            <td>
-
-                <div class="room-actions">
-
-                    <button
-                        type="button"
-                        class="room-action-btn room-edit-btn"
-                        data-room-id="${escapeHtml(
-                            room.id
-                        )}"
-                        title="Edit room"
-                        aria-label="Edit room"
-                    >
-                        <i class="bi bi-pencil"></i>
-                    </button>
-
-                    <button
-                        type="button"
-                        class="room-action-btn room-delete-btn"
-                        data-room-id="${escapeHtml(
-                            room.id
-                        )}"
-                        title="Delete room"
-                        aria-label="Delete room"
-                    >
-                        <i class="bi bi-trash"></i>
-                    </button>
-
-                </div>
-
-            </td>
-
-        `;
-
-        tableBody.appendChild(
-            row
-        );
-    });
-
-    setupRoomActionButtons();
-}
-
-
-/* ==========================================================================
-   ROOM FILTERS
-   ========================================================================== */
-
-function setupRoomFilters() {
-
-    const searchInput =
-        document.getElementById(
-            'roomSearch'
-        );
-
-    const statusFilter =
-        document.getElementById(
-            'roomStatusFilter'
-        );
-
-    searchInput?.addEventListener(
-        'input',
-        applyRoomFilters
-    );
-
-    statusFilter?.addEventListener(
-        'change',
-        applyRoomFilters
-    );
-}
-
-
-function applyRoomFilters() {
-
-    const searchInput =
-        document.getElementById(
-            'roomSearch'
-        );
-
-    const statusFilter =
-        document.getElementById(
-            'roomStatusFilter'
-        );
-
-    const searchTerm =
-        searchInput
-            ? searchInput.value
-                .trim()
-                .toLowerCase()
-            : '';
-
-    const selectedStatus =
-        statusFilter
-            ? statusFilter.value
-            : '';
-
-    const filteredRooms =
-        allRooms.filter(
-            (room) => {
-
-                const searchableText = [
-                    room.name,
-                    room.room_code,
-                    room.floor,
-                    room.description
-                ]
-                    .filter(Boolean)
-                    .join(' ')
-                    .toLowerCase();
-
-                const matchesSearch =
-                    !searchTerm ||
-                    searchableText.includes(
-                        searchTerm
-                    );
-
-                const matchesStatus =
-                    !selectedStatus ||
-                    String(
-                        room.is_active
-                    ) ===
-                    selectedStatus;
-
-                return (
-                    matchesSearch &&
-                    matchesStatus
-                );
-            }
-        );
-
-    renderRooms(
-        filteredRooms
-    );
-}
-
-
-/* ==========================================================================
-   ROOM MODAL
-   ========================================================================== */
-
-function setupRoomModal() {
-
-    const modal =
-        document.getElementById(
-            'roomModal'
-        );
-
-    const newRoomBtn =
-        document.getElementById(
-            'newRoomBtn'
-        );
-
-    const closeRoomModal =
-        document.getElementById(
-            'closeRoomModal'
-        );
-
-    const cancelRoomBtn =
-        document.getElementById(
-            'cancelRoomBtn'
-        );
-
-    const form =
-        document.getElementById(
-            'roomForm'
-        );
-
-    if (
-        !modal ||
-        !newRoomBtn ||
-        !form
-    ) {
-        return;
-    }
-
-    newRoomBtn.addEventListener(
-        'click',
-        () => {
-
-            resetRoomForm();
-
-            openRoomModal();
-        }
-    );
-
-    closeRoomModal?.addEventListener(
-        'click',
-        closeRoomModalWindow
-    );
-
-    cancelRoomBtn?.addEventListener(
-        'click',
-        closeRoomModalWindow
-    );
-
-    modal.addEventListener(
-        'click',
-        (event) => {
-
-            if (
-                event.target === modal
-            ) {
-                closeRoomModalWindow();
-            }
-        }
-    );
-
-    form.addEventListener(
-        'submit',
-        handleRoomFormSubmit
-    );
-}
-
-
-function openRoomModal() {
-
-    const modal =
-        document.getElementById(
-            'roomModal'
-        );
-
-    if (!modal) {
-        return;
-    }
-
-    modal.classList.remove(
-        'd-none'
-    );
-
-    document.body.classList.add(
-        'booking-modal-open'
-    );
-
-    setTimeout(() => {
-
-        document.getElementById(
-            'roomName'
-        )?.focus();
-
-    }, 50);
-}
-
-
-function closeRoomModalWindow() {
-
-    const modal =
-        document.getElementById(
-            'roomModal'
-        );
-
-    if (!modal) {
-        return;
-    }
-
-    modal.classList.add(
-        'd-none'
-    );
-
-    document.body.classList.remove(
-        'booking-modal-open'
-    );
-}
-
-
-function resetRoomForm() {
-
-    const form =
-        document.getElementById(
-            'roomForm'
-        );
-
-    form?.reset();
-
-    const roomId =
-        document.getElementById(
-            'roomId'
-        );
-
-    if (roomId) {
-        roomId.value = '';
-    }
-
-    const modalTitle =
-        document.getElementById(
-            'roomModalTitle'
-        );
-
-    if (modalTitle) {
-
-        modalTitle.textContent =
-            'New Room';
-    }
-
-    const modalSubtitle =
-        document.getElementById(
-            'roomModalSubtitle'
-        );
-
-    if (modalSubtitle) {
-
-        modalSubtitle.textContent =
-            'Create a new meeting room.';
-    }
-
-    const submitButton =
-        document.getElementById(
-            'submitRoomBtn'
-        );
-
-    if (submitButton) {
-
-        submitButton.disabled =
-            false;
-
-        submitButton.innerHTML = `
-            <i class="bi bi-check-lg"></i>
-            Save Room
-        `;
-    }
-
-    hideRoomFormMessages();
-}
-
-
-/* ==========================================================================
-   ROOM ACTION BUTTONS
-   ========================================================================== */
-
-function setupRoomActionButtons() {
-
-    const editButtons =
-        document.querySelectorAll(
-            '.room-edit-btn'
-        );
-
-    const deleteButtons =
-        document.querySelectorAll(
-            '.room-delete-btn'
-        );
-
-    editButtons.forEach(
-        (button) => {
-
-            button.addEventListener(
-                'click',
-                () => {
-
-                    const roomId =
-                        button.dataset.roomId;
-
-                    editRoom(
-                        roomId
-                    );
-                }
-            );
-        }
-    );
-
-    deleteButtons.forEach(
-        (button) => {
-
-            button.addEventListener(
-                'click',
-                () => {
-
-                    const roomId =
-                        button.dataset.roomId;
-
-                    deleteRoom(
-                        roomId
-                    );
-                }
-            );
-        }
-    );
-}
-
-
-function findRoomById(roomId) {
-
-    return allRooms.find(
-        (room) =>
-            String(room.id) ===
-            String(roomId)
-    );
-}
-
-
-/* ==========================================================================
-   EDIT ROOM
-   ========================================================================== */
-
-function editRoom(roomId) {
-
-    const room =
-        findRoomById(
-            roomId
-        );
-
-    if (!room) {
-
-        showRoomFormError(
-            'Unable to find the selected room.'
-        );
-
-        return;
-    }
-
-    const roomIdInput =
-        document.getElementById(
-            'roomId'
-        );
-
-    const roomNameInput =
-        document.getElementById(
-            'roomName'
-        );
-
-    const roomCodeInput =
-        document.getElementById(
-            'roomCode'
-        );
-
-    const roomLocationInput =
-        document.getElementById(
-            'roomLocation'
-        );
-
-    const roomCapacityInput =
-        document.getElementById(
-            'roomCapacity'
-        );
-
-    const roomFloorInput =
-        document.getElementById(
-            'roomFloor'
-        );
-
-    const roomStatusInput =
-        document.getElementById(
-            'roomStatus'
-        );
-
-    const roomDescriptionInput =
-        document.getElementById(
-            'roomDescription'
-        );
-
-    if (roomIdInput) {
-        roomIdInput.value =
-            room.id;
-    }
-
-    if (roomNameInput) {
-        roomNameInput.value =
-            room.name || '';
-    }
-
-    if (roomCodeInput) {
-        roomCodeInput.value =
-            room.room_code || '';
-    }
-
-    if (roomLocationInput) {
-        roomLocationInput.value =
-            room.location_id || '';
-    }
-
-    if (roomCapacityInput) {
-        roomCapacityInput.value =
-            room.capacity || '';
-    }
-
-    if (roomFloorInput) {
-        roomFloorInput.value =
-            room.floor || '';
-    }
-
-    if (roomStatusInput) {
-        roomStatusInput.value =
-            String(
-                room.is_active ?? '1'
-            );
-    }
-
-    if (roomDescriptionInput) {
-        roomDescriptionInput.value =
-            room.description || '';
-    }
-
-    const modalTitle =
-        document.getElementById(
-            'roomModalTitle'
-        );
-
-    if (modalTitle) {
-
-        modalTitle.textContent =
-            'Edit Room';
-    }
-
-    const modalSubtitle =
-        document.getElementById(
-            'roomModalSubtitle'
-        );
-
-    if (modalSubtitle) {
-
-        modalSubtitle.textContent =
-            'Update meeting room details.';
-    }
-
-    hideRoomFormMessages();
-
-    openRoomModal();
-}
-
-
-/* ==========================================================================
-   CREATE / UPDATE ROOM
-   ========================================================================== */
-
-async function handleRoomFormSubmit(
-    event
-) {
-
-    event.preventDefault();
-
-    const form =
-        document.getElementById(
-            'roomForm'
-        );
-
-    const submitButton =
-        document.getElementById(
-            'submitRoomBtn'
-        );
-
-    if (
-        !form ||
-        !submitButton
-    ) {
-        return;
-    }
-
-    hideRoomFormMessages();
-
-    const roomId =
-        document.getElementById(
-            'roomId'
-        ).value.trim();
-
-    const name =
-        document.getElementById(
-            'roomName'
-        ).value.trim();
-
-    const roomCode =
-        document.getElementById(
-            'roomCode'
-        ).value.trim();
-
-    const locationId =
-        document.getElementById(
-            'roomLocation'
-        ).value;
-
-    const capacity =
-        document.getElementById(
-            'roomCapacity'
-        ).value;
-
-    const floor =
-        document.getElementById(
-            'roomFloor'
-        ).value.trim();
-
-    const description =
-        document.getElementById(
-            'roomDescription'
-        ).value.trim();
-
-    const isActive =
-        document.getElementById(
-            'roomStatus'
-        ).value;
-
-    if (
-        !name ||
-        !roomCode ||
-        !locationId ||
-        !capacity
-    ) {
-
-        showRoomFormError(
-            'Please fill in all required fields.'
-        );
-
-        return;
-    }
-
-    if (
-        Number(locationId) <= 0
-    ) {
-
-        showRoomFormError(
-            'Location ID must be greater than zero.'
-        );
-
-        return;
-    }
-
-    if (
-        Number(capacity) <= 0
-    ) {
-
-        showRoomFormError(
-            'Room capacity must be greater than zero.'
-        );
-
-        return;
-    }
-
-    const payload = {
-
-        location_id:
-            Number(locationId),
-
-        name:
-            name,
-
-        room_code:
-            roomCode,
-
-        capacity:
-            Number(capacity),
-
-        floor:
-            floor,
-
-        description:
-            description,
-
-        is_active:
-            Number(isActive)
-    };
-
-    const isEditing =
-        Boolean(roomId);
-
-    const url =
-        isEditing
-            ? `/api/rooms/${roomId}`
-            : '/api/rooms';
-
-    const method =
-        isEditing
-            ? 'PUT'
-            : 'POST';
-
-    try {
-
-        submitButton.disabled =
-            true;
-
-        submitButton.innerHTML = `
-            <i class="bi bi-arrow-repeat spin"></i>
-            ${
-                isEditing
-                    ? 'Updating...'
-                    : 'Creating...'
-            }
-        `;
-
-        const response =
-            await fetch(
-                url,
-                {
-                    method:
-                        method,
-
-                    headers: {
-                        'Content-Type':
-                            'application/json',
-
-                        'Accept':
-                            'application/json'
-                    },
-
-                    body:
-                        JSON.stringify(
-                            payload
-                        )
-                }
-            );
-
-        const result =
-            await response.json();
-
-        if (
-            !response.ok ||
-            result.status !==
-            'success'
-        ) {
-
-            handleRoomApiError(
-                response.status,
-                result
-            );
-
-            return;
-        }
-
-        const successMessage =
-            result.message ||
-            (
-                isEditing
-                    ? 'Room updated successfully.'
-                    : 'Room created successfully.'
-            );
-
-        showRoomFormSuccess(
-            successMessage
-        );
-
-        showAppNotification(
-            successMessage,
-            'success',
-            isEditing
-                ? 'Room Updated'
-                : 'Room Created'
-        );
-
-        await loadRooms();
-
-        setTimeout(() => {
-
-            closeRoomModalWindow();
-
-        }, 800);
-
-    } catch (error) {
-
-        console.error(
-            'Unable to save room:',
-            error
-        );
-
-        showRoomFormError(
-            'Unable to save room. Please try again.'
-        );
-
-        showAppNotification(
-            'Unable to save room. Please try again.',
-            'error',
-            'Room Update Failed'
-        );
-
-    } finally {
-
-        submitButton.disabled =
-            false;
-
-        submitButton.innerHTML = `
-            <i class="bi bi-check-lg"></i>
-            Save Room
-        `;
-    }
-}
-
-
-/* ==========================================================================
-   DELETE ROOM
-   ========================================================================== */
-
-async function deleteRoom(roomId) {
-
-    const room =
-        findRoomById(
-            roomId
-        );
-
-    if (!room) {
-
-        showAppNotification(
-            'Unable to find the selected room.',
-            'error',
-            'Room Not Found'
-        );
-
-        return;
-    }
-
-    /*
-     * IMPORTANT:
-     *
-     * We no longer use:
-     *
-     * window.confirm()
-     *
-     * Instead, we show our custom
-     * MeetSpace confirmation dialog.
-     */
-
-    showAppConfirm(
-
-        `Are you sure you want to delete "${room.name}"?`,
-
-        async () => {
-
-            await performRoomDelete(
-                roomId,
-                room.name
-            );
-        },
-
-        'Delete Room',
-
-        'Delete Room'
-    );
-}
-
-
-/**
- * Actually performs the room deletion
- * after the user clicks "Delete Room".
- */
-async function performRoomDelete(
-    roomId,
-    roomName
-) {
-
-    try {
-
-        const response =
-            await fetch(
-                `/api/rooms/${roomId}`,
-                {
-                    method:
-                        'DELETE',
-
-                    headers: {
-                        'Accept':
-                            'application/json'
-                    }
-                }
-            );
-
-        const result =
-            await response.json();
-
-        if (
-            !response.ok ||
-            result.status !==
-            'success'
-        ) {
-
-            throw new Error(
-                result.message ||
-                'Unable to delete room.'
-            );
-        }
-
-        await loadRooms();
-
-        /*
-         * Success message appears
-         * INSIDE the application.
-         */
-
-        showAppNotification(
-
-            result.message ||
-            `"${roomName}" has been deleted successfully.`,
-
-            'success',
-
-            'Room Deleted'
-        );
-
-    } catch (error) {
-
-        console.error(
-            'Unable to delete room:',
-            error
-        );
-
-        /*
-         * No browser alert().
-         * Use application notification instead.
-         */
-
-        showAppNotification(
-
-            error.message ||
-            'Unable to delete room. Please try again.',
-
-            'error',
-
-            'Delete Failed'
-        );
-    }
-}
-
-
-/* ==========================================================================
-   ROOM API ERROR HANDLING
-   ========================================================================== */
-
-function handleRoomApiError(
-    status,
-    result
-) {
-
-    if (
-        status === 422 &&
-        result.errors
-    ) {
-
-        const messages =
-            Object.values(
-                result.errors
-            );
-
-        const message =
-            messages.join(' ');
-
-        showRoomFormError(
-            message
-        );
-
-        showAppNotification(
-            message,
-            'error',
-            'Validation Error'
-        );
-
-        return;
-    }
-
-    if (
-        status === 404
-    ) {
-
-        const message =
-            result.message ||
-            'Room or location could not be found.';
-
-        showRoomFormError(
-            message
-        );
-
-        showAppNotification(
-            message,
-            'error',
-            'Room Not Found'
-        );
-
-        return;
-    }
-
-    const message =
-        result.message ||
-        'Unable to save room.';
-
-    showRoomFormError(
-        message
-    );
-
-    showAppNotification(
-        message,
-        'error',
-        'Room Error'
-    );
-}
-
-
-/* ==========================================================================
-   ROOM FORM MESSAGES
-   ========================================================================== */
-
-function showRoomFormError(
-    message
-) {
-
-    const errorBox =
-        document.getElementById(
-            'roomFormError'
-        );
-
-    const errorText =
-        document.getElementById(
-            'roomFormErrorText'
-        );
-
-    const successBox =
-        document.getElementById(
-            'roomFormSuccess'
-        );
-
-    successBox?.classList.add(
-        'd-none'
-    );
-
-    if (errorText) {
-
-        errorText.textContent =
-            message;
-    }
-
-    errorBox?.classList.remove(
-        'd-none'
-    );
-}
-
-
-function showRoomFormSuccess(
-    message
-) {
-
-    const successBox =
-        document.getElementById(
-            'roomFormSuccess'
-        );
-
-    const successText =
-        document.getElementById(
-            'roomFormSuccessText'
-        );
-
-    const errorBox =
-        document.getElementById(
-            'roomFormError'
-        );
-
-    errorBox?.classList.add(
-        'd-none'
-    );
-
-    if (successText) {
-
-        successText.textContent =
-            message;
-    }
-
-    successBox?.classList.remove(
-        'd-none'
-    );
-}
-
-
-function hideRoomFormMessages() {
-
-    document.getElementById(
-        'roomFormError'
-    )?.classList.add(
-        'd-none'
-    );
-
-    document.getElementById(
-        'roomFormSuccess'
-    )?.classList.add(
-        'd-none'
-    );
-}
-
-
-/* ==========================================================================
    GLOBAL HELPERS
    ========================================================================== */
 
@@ -3412,3 +867,211 @@ function escapeHtml(value) {
             '&#039;'
         );
 }
+
+
+/* ==========================================================================
+   UI / UX ENHANCEMENTS (THEME, SIDEBAR, LOGOUT)
+   ========================================================================== */
+
+/**
+ * Global MeetSpace Loading Indicator (Uiverse Inspired)
+ * Generates reusable progress-bar loader markup with animated track,
+ * highlight bars, and staggered typography dots.
+ *
+ * @param {string} labelText - Text description (e.g. "Loading bookings")
+ * @returns {string} HTML string
+ */
+window.createMeetSpaceLoader = function(labelText = 'Loading') {
+    const cleanLabel = String(labelText).replace(/\.{3,}$/, '').trim();
+    return `
+        <div class="meetspace-loader" role="status" aria-live="polite">
+            <div class="meetspace-loader-track">
+                <div class="meetspace-loader-bar">
+                    <div class="meetspace-loader-highlights"></div>
+                </div>
+            </div>
+            <div class="meetspace-loader-text">
+                <span class="loader-label">${cleanLabel}</span><span class="loader-dots"><span>.</span><span>.</span><span>.</span></span>
+            </div>
+        </div>
+    `;
+};
+
+/**
+ * Light / Dark mode theme toggle
+ * Supports instant anti-flash rendering and persists selection in localStorage.
+ * Integrates Cosmic Toggle animations.
+ */
+function initializeThemeToggle() {
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeLabel = document.getElementById('themeLabel');
+
+    function applyTheme(theme, persist = true) {
+        const activeTheme = theme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', activeTheme);
+        if (themeLabel) {
+            themeLabel.textContent = activeTheme === 'light' ? 'Light' : 'Dark';
+        }
+        if (themeToggleBtn) {
+            const nextMode = activeTheme === 'light' ? 'dark' : 'light';
+            themeToggleBtn.setAttribute('aria-label', `Switch to ${nextMode} theme`);
+            themeToggleBtn.title = `Switch to ${nextMode} theme`;
+            themeToggleBtn.setAttribute('aria-checked', activeTheme === 'dark' ? 'true' : 'false');
+        }
+        if (persist) {
+            try {
+                localStorage.setItem('meetspace-theme', activeTheme);
+            } catch (err) {
+                // Ignore localStorage errors (e.g. private mode)
+            }
+        }
+    }
+
+    // Determine initial active theme
+    const currentTheme = document.documentElement.getAttribute('data-theme')
+        || (function() {
+            try { return localStorage.getItem('meetspace-theme'); } catch(e) { return null; }
+        })()
+        || 'dark';
+
+    applyTheme(currentTheme, false);
+
+    let themeTransitionTimer = null;
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const nowTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            const nextTheme = nowTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.classList.add('theme-transitioning');
+            if (themeTransitionTimer) {
+                clearTimeout(themeTransitionTimer);
+            }
+            themeTransitionTimer = setTimeout(() => {
+                document.documentElement.classList.remove('theme-transitioning');
+            }, 260);
+            applyTheme(nextTheme, true);
+        });
+    }
+}
+
+/**
+ * Responsive sidebar navigation & collapse
+ * - On desktop (>= 992px): toggles compact icon-only collapsed state (.sidebar-collapsed on #appWrapper)
+ * - On mobile (< 992px): toggles off-canvas drawer (.sidebar-open on #appWrapper)
+ * - Backdrop click, close button, ESC key, and link navigation dismiss drawer
+ */
+function initializeSidebarToggle() {
+    const appWrapper = document.getElementById('appWrapper');
+    const toggleBtn = document.getElementById('sidebarToggleBtn');
+    const closeBtn = document.getElementById('sidebarCloseBtn');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    if (!appWrapper) return;
+
+    // Restore desktop collapsed state if saved
+    try {
+        if (window.innerWidth >= 992 && localStorage.getItem('meetspace-sidebar-collapsed') === '1') {
+            appWrapper.classList.add('sidebar-collapsed');
+        }
+    } catch (err) {}
+
+    function closeMobileSidebar() {
+        appWrapper.classList.remove('sidebar-open');
+        if (toggleBtn) {
+            toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function toggleSidebar() {
+        if (window.innerWidth >= 992) {
+            // Desktop: toggle compact icon mode
+            const isCollapsed = appWrapper.classList.toggle('sidebar-collapsed');
+            try {
+                localStorage.setItem('meetspace-sidebar-collapsed', isCollapsed ? '1' : '0');
+            } catch (err) {}
+        } else {
+            // Mobile: toggle drawer
+            const isOpen = appWrapper.classList.toggle('sidebar-open');
+            if (toggleBtn) {
+                toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        }
+    }
+
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleSidebar);
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeMobileSidebar);
+    }
+
+    if (backdrop) {
+        backdrop.addEventListener('click', closeMobileSidebar);
+    }
+
+    // Keyboard ESC dismissal for mobile drawer
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (appWrapper.classList.contains('sidebar-open')) {
+                closeMobileSidebar();
+            }
+        }
+    });
+
+    // Close mobile drawer on navigation link click
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-item');
+    navLinks.forEach((link) => {
+        link.addEventListener('click', () => {
+            if (window.innerWidth < 992) {
+                closeMobileSidebar();
+            }
+        });
+    });
+
+    // Handle responsive resize: remove mobile open state when expanding to desktop
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 992 && appWrapper.classList.contains('sidebar-open')) {
+            closeMobileSidebar();
+        }
+    });
+}
+
+/**
+ * User account section logout confirmation dialog
+ * Intercepts #sidebarLogoutBtn and prompts with custom showAppConfirm
+ */
+function initializeLogoutConfirmation() {
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+    if (!logoutBtn) return;
+
+    logoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        showAppConfirm(
+            'Are you sure you want to logout of MeetSpace?',
+            () => {
+                window.location.href = '/logout';
+            },
+            'Confirm Logout',
+            'Logout'
+        );
+    });
+}
+
+/**
+ * Universal MeetSpace Server-Side Pagination Component
+ *
+ * @param {HTMLElement|string} target - Container element or selector
+ * @param {Object} meta - Pagination metadata: { page, per_page, total, total_pages }
+ * @param {Function} onPageChange - Callback when page changes: (newPage) => void
+ * @param {Function} onPerPageChange - Callback when per_page changes: (newPerPage) => void
+ */
+function renderPagination(target, _meta, _onPageChange, _onPerPageChange) {
+    const container = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!container) return;
+
+    container.innerHTML = '';
+    container.classList.add('d-none');
+}
+
+window.renderPagination = renderPagination;
