@@ -7944,3 +7944,366 @@ input#recurrenceUntilDate {
     color: #1E40AF;
     border-color: #BFDBFE;
 }
+
+/* ==========================================================================
+   Enterprise UI Polish — Subtle Professional Animations & Transitions
+   ========================================================================== */
+
+@keyframes msSubtleFadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes msModalOverlayFade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes msModalDialogIn {
+    from {
+        opacity: 0;
+        transform: scale(0.98) translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes msAlertSlideFade {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 1. Dashboard Cards — Subtle Entrance & Refined Hover Lift */
+.stats-row > [class*="col-"] .stat-card,
+.flash-cards-row > [class*="col-"] .flash-card-container,
+.dashboard-grid .panel-card,
+.performance-card {
+    animation: msSubtleFadeUp 220ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.stats-row > [class*="col-"]:nth-child(1) .stat-card,
+.flash-cards-row > [class*="col-"]:nth-child(1) .flash-card-container {
+    animation-delay: 20ms;
+}
+
+.stats-row > [class*="col-"]:nth-child(2) .stat-card,
+.flash-cards-row > [class*="col-"]:nth-child(2) .flash-card-container {
+    animation-delay: 50ms;
+}
+
+.stats-row > [class*="col-"]:nth-child(3) .stat-card,
+.flash-cards-row > [class*="col-"]:nth-child(3) .flash-card-container {
+    animation-delay: 80ms;
+}
+
+.stats-row > [class*="col-"]:nth-child(4) .stat-card,
+.flash-cards-row > [class*="col-"]:nth-child(4) .flash-card-container {
+    animation-delay: 110ms;
+}
+
+.stat-card {
+    transition: transform 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                box-shadow 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                border-color 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                background-color 200ms ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card:hover .stat-icon-wrapper {
+    transform: scale(1.06) rotate(-2deg);
+}
+
+.room-avail-item {
+    transition: transform 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                border-color 180ms ease,
+                background-color 180ms ease,
+                box-shadow 180ms ease;
+}
+
+.room-avail-item:hover {
+    transform: translateY(-1px);
+}
+
+/* 2. Sidebar & Navigation — Smooth Hover, Active-State & New Booking CTA */
+.sidebar-nav .nav-item {
+    transition: background-color 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                color 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                border-color 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                box-shadow 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                transform 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.sidebar-nav .nav-item .nav-icon {
+    transition: transform 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                color 180ms ease,
+                opacity 180ms ease;
+}
+
+.sidebar-nav .nav-item:not(.active):hover {
+    transform: translateX(2px);
+}
+
+.sidebar-nav .nav-item:hover .nav-icon {
+    transform: scale(1.05);
+}
+
+.btn-new-booking {
+    transition: transform 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                box-shadow 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                background 180ms ease,
+                border-color 180ms ease;
+}
+
+.btn-new-booking:hover {
+    transform: translateY(-1px);
+}
+
+.btn-new-booking:active {
+    transform: translateY(0) scale(0.99);
+}
+
+/* 3. Buttons — Subtle Hover, Focus & Active/Pressed Transitions */
+.btn-primary-action,
+.btn-secondary-action,
+.btn-booking-submit,
+.btn-booking-cancel,
+.btn-sidebar-logout,
+.sidebar-toggle-btn,
+.booking-modal-close,
+.btn-action-edit,
+.btn-action-delete,
+.equip-action-btn,
+.user-action-btn,
+.location-action-btn,
+.room-action-btn,
+.facility-action-btn,
+.booking-action-btn,
+.participant-action-btn,
+.department-action-btn,
+.app-confirm-cancel,
+.app-confirm-proceed {
+    transition: transform 160ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                box-shadow 160ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                background-color 160ms ease,
+                border-color 160ms ease,
+                color 160ms ease;
+}
+
+.btn-primary-action:hover:not(:disabled),
+.btn-booking-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn-primary-action:active:not(:disabled),
+.btn-secondary-action:active:not(:disabled),
+.btn-booking-submit:active:not(:disabled),
+.btn-booking-cancel:active:not(:disabled),
+.btn-sidebar-logout:active:not(:disabled),
+.app-confirm-cancel:active:not(:disabled),
+.app-confirm-proceed:active:not(:disabled) {
+    transform: translateY(0) scale(0.985);
+}
+
+.btn-action-edit:hover:not(:disabled),
+.btn-action-delete:hover:not(:disabled),
+.equip-action-btn:hover:not(:disabled),
+.user-action-btn:hover:not(:disabled),
+.location-action-btn:hover:not(:disabled),
+.room-action-btn:hover:not(:disabled),
+.facility-action-btn:hover:not(:disabled),
+.booking-action-btn:hover:not(:disabled),
+.participant-action-btn:hover:not(:disabled),
+.department-action-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.btn-action-edit:active:not(:disabled),
+.btn-action-delete:active:not(:disabled),
+.equip-action-btn:active:not(:disabled),
+.user-action-btn:active:not(:disabled),
+.location-action-btn:active:not(:disabled),
+.room-action-btn:active:not(:disabled),
+.facility-action-btn:active:not(:disabled),
+.booking-action-btn:active:not(:disabled),
+.participant-action-btn:active:not(:disabled),
+.department-action-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.97);
+}
+
+/* 4. Tables & Listings — Subtle Container Entrance & Row Hover Polish */
+#usersTableWrapper:not(.d-none),
+#rolesTableWrapper:not(.d-none),
+#departmentsTableWrapper:not(.d-none),
+#locationsTableWrapper:not(.d-none),
+#roomsTableWrapper:not(.d-none),
+#bookingsTableWrapper:not(.d-none),
+#participantsCardsContainer:not(.d-none),
+#facilitiesTableWrapper:not(.d-none),
+#equipmentTableWrapper:not(.d-none) {
+    animation: msSubtleFadeUp 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.custom-dark-table tbody tr td {
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.participant-booking-card {
+    transition: transform 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                box-shadow 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                border-color 200ms ease;
+}
+
+.participant-booking-card:hover {
+    transform: translateY(-2px);
+}
+
+/* 5. Modals — Clean Overlay Fade & Subtle 0.98 -> 1.0 Scale Entrance */
+.booking-modal-overlay:not(.d-none),
+.app-confirm-overlay:not(.d-none) {
+    animation: msModalOverlayFade 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.booking-modal-overlay:not(.d-none) .booking-modal,
+.app-confirm-overlay:not(.d-none) .app-confirm-modal {
+    animation: msModalDialogIn 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.modal.fade .modal-dialog {
+    transition: transform 200ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                opacity 180ms ease;
+    transform: scale(0.98) translateY(6px);
+}
+
+.modal.show .modal-dialog {
+    transform: scale(1) translateY(0);
+}
+
+/* 6. Success / Error Alerts — Subtle Slide & Fade Entrance */
+.booking-form-alert:not(.d-none),
+.visitor-form-alert:not(.d-none),
+.alert {
+    animation: msAlertSlideFade 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+/* 7. Dark / Light Theme — Smooth Color & Surface Transition on Toggle */
+html.theme-transitioning,
+html.theme-transitioning body,
+html.theme-transitioning .sidebar,
+html.theme-transitioning .sidebar-footer,
+html.theme-transitioning .main-area,
+html.theme-transitioning .topbar,
+html.theme-transitioning .panel-card,
+html.theme-transitioning .stat-card,
+html.theme-transitioning .flash-card-face,
+html.theme-transitioning .booking-modal,
+html.theme-transitioning .modal-content,
+html.theme-transitioning .participant-booking-card,
+html.theme-transitioning .room-avail-item,
+html.theme-transitioning .account-profile,
+html.theme-transitioning input,
+html.theme-transitioning select,
+html.theme-transitioning textarea,
+html.theme-transitioning .custom-dark-table th,
+html.theme-transitioning .custom-dark-table td {
+    transition: background-color 220ms ease,
+                background 220ms ease,
+                color 220ms ease,
+                border-color 220ms ease,
+                box-shadow 220ms ease !important;
+}
+
+/* 8. Bookings Calendar — Smooth View Switching & Event Hover */
+#bookingsCalendarContainer:not(.d-none),
+.calendar-view-pane:not(.d-none) {
+    animation: msSubtleFadeUp 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.view-toggle-btn,
+.cal-mode-btn,
+.cal-nav-btn {
+    transition: background-color 160ms ease,
+                color 160ms ease,
+                border-color 160ms ease,
+                box-shadow 160ms ease,
+                transform 160ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.cal-event-chip,
+.cal-week-event,
+.cal-day-event {
+    transition: transform 150ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                box-shadow 150ms ease,
+                filter 150ms ease;
+}
+
+.cal-event-chip:hover,
+.cal-week-event:hover,
+.cal-day-event:hover {
+    transform: translateY(-1px);
+}
+
+/* Accessibility — Respect Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+    .stats-row > [class*="col-"] .stat-card,
+    .flash-cards-row > [class*="col-"] .flash-card-container,
+    .dashboard-grid .panel-card,
+    .performance-card,
+    #usersTableWrapper:not(.d-none),
+    #rolesTableWrapper:not(.d-none),
+    #departmentsTableWrapper:not(.d-none),
+    #locationsTableWrapper:not(.d-none),
+    #roomsTableWrapper:not(.d-none),
+    #bookingsTableWrapper:not(.d-none),
+    #participantsCardsContainer:not(.d-none),
+    #facilitiesTableWrapper:not(.d-none),
+    #equipmentTableWrapper:not(.d-none),
+    .booking-modal-overlay:not(.d-none),
+    .app-confirm-overlay:not(.d-none),
+    .booking-modal-overlay:not(.d-none) .booking-modal,
+    .app-confirm-overlay:not(.d-none) .app-confirm-modal,
+    .booking-form-alert:not(.d-none),
+    .visitor-form-alert:not(.d-none),
+    .alert,
+    #bookingsCalendarContainer:not(.d-none),
+    .calendar-view-pane:not(.d-none) {
+        animation: none !important;
+        transform: none !important;
+    }
+
+    .stat-card:hover,
+    .stat-card:hover .stat-icon-wrapper,
+    .room-avail-item:hover,
+    .sidebar-nav .nav-item:not(.active):hover,
+    .sidebar-nav .nav-item:hover .nav-icon,
+    .btn-new-booking:hover,
+    .btn-new-booking:active,
+    .btn-primary-action:hover:not(:disabled),
+    .btn-booking-submit:hover:not(:disabled),
+    .participant-booking-card:hover,
+    .cal-event-chip:hover,
+    .cal-week-event:hover,
+    .cal-day-event:hover {
+        transform: none !important;
+    }
+}

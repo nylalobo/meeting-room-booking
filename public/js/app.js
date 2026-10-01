@@ -936,10 +936,19 @@ function initializeThemeToggle() {
 
     applyTheme(currentTheme, false);
 
+    let themeTransitionTimer = null;
+
     if (themeToggleBtn) {
         themeToggleBtn.addEventListener('click', () => {
             const nowTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
             const nextTheme = nowTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.classList.add('theme-transitioning');
+            if (themeTransitionTimer) {
+                clearTimeout(themeTransitionTimer);
+            }
+            themeTransitionTimer = setTimeout(() => {
+                document.documentElement.classList.remove('theme-transitioning');
+            }, 260);
             applyTheme(nextTheme, true);
         });
     }
