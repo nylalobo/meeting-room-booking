@@ -587,6 +587,33 @@
                 transform: none !important;
             }
         }
+
+        .field-error {
+            display: none;
+            font-size: 12px;
+            font-weight: 500;
+            color: #F87171;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+
+        .field-error.visible {
+            display: block;
+        }
+
+        .form-control-custom.is-invalid {
+            border-color: rgba(239, 68, 68, 0.75) !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14) !important;
+        }
+
+        [data-theme="light"] .field-error {
+            color: #DC2626;
+        }
+
+        [data-theme="light"] .form-control-custom.is-invalid {
+            border-color: #DC2626 !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+        }
     </style>
 </head>
 <body>
@@ -640,7 +667,7 @@
             </div>
         <?php endif; ?>
 
-        <form action="<?= base_url('register') ?>" method="POST" autocomplete="on">
+        <form action="<?= base_url('register') ?>" method="POST" autocomplete="on" id="registerForm">
             <?= csrf_field() ?>
 
             <!-- Name Row -->
@@ -780,6 +807,7 @@
                     <i class="bi bi-lock input-icon"></i>
                 </div>
                 <span class="field-help">Must be at least 8 characters with 1 uppercase letter and 1 number.</span>
+                <div class="field-error" id="passwordError" role="alert" aria-live="polite"></div>
             </div>
 
             <!-- Confirm Password -->
@@ -797,6 +825,7 @@
                     >
                     <i class="bi bi-shield-check input-icon"></i>
                 </div>
+                <div class="field-error" id="passwordConfirmError" role="alert" aria-live="polite"></div>
             </div>
 
             <!-- Submit Button -->
@@ -857,6 +886,119 @@
                 localStorage.setItem('meetspace-theme', next);
             } catch (e) {}
             syncUI(next);
+        });
+    }
+
+    var registerForm = document.getElementById('registerForm');
+    var submitRegisterBtn = document.getElementById('submitRegisterBtn');
+    var passwordInput = document.getElementById('password');
+    var passwordConfirmInput = document.getElementById('password_confirm');
+    var passwordError = document.getElementById('passwordError');
+    var passwordConfirmError = document.getElementById('passwordConfirmError');
+    var confirmTouched = false;
+
+    function setFieldError(inputEl, errorEl, message) {
+        if (!inputEl || !errorEl) return;
+        if (message) {
+            errorEl.textContent = message;
+            errorEl.classList.add('visible');
+            inputEl.classList.add('is-invalid');
+            inputEl.setAttribute('aria-invalid', 'true');
+        } else {
+            errorEl.textContent = '';
+            errorEl.classList.remove('visible');
+            inputEl.classList.remove('is-invalid');
+            inputEl.removeAttribute('aria-invalid');
+        }
+    }
+
+    function validatePassword() {
+        if (!passwordInput) return true;
+        var val = passwordInput.value;
+        if (!val) {
+            setFieldError(passwordInput, passwordError, 'Password is required.');
+            return false;
+        }
+        if (val.length < 8) {
+            setFieldError(passwordInput, passwordError, 'Password must be at least 8 characters long.');
+            return false;
+        }
+        if (!/[A-Z]/.test(val) || !/[0-9]/.test(val)) {
+            setFieldError(passwordInput, passwordError, 'Password must contain at least one uppercase letter and one number.');
+            return false;
+        }
+        setFieldError(passwordInput, passwordError, '');
+        return true;
+    }
+
+    function validatePasswordConfirm() {
+        if (!passwordConfirmInput) return true;
+        var confirmVal = passwordConfirmInput.value;
+        var passVal = passwordInput ? passwordInput.value : '';
+        if (!confirmVal) {
+            setFieldError(passwordConfirmInput, passwordConfirmError, 'Please confirm your password.');
+            return false;
+        }
+        if (confirmVal !== passVal) {
+            setFieldError(passwordConfirmInput, passwordConfirmError, 'Passwords do not match.');
+            return false;
+        }
+        setFieldError(passwordConfirmInput, passwordConfirmError, '');
+        return true;
+    }
+
+    if (passwordInput) {
+        passwordInput.addEventListener('input', function() {
+            validatePassword();
+            if (confirmTouched || (passwordConfirmInput && passwordConfirmInput.value.length > 0)) {
+                validatePasswordConfirm();
+            }
+        });
+        passwordInput.addEventListener('blur', function() {
+            validatePassword();
+        });
+    }
+
+    if (passwordConfirmInput) {
+        passwordConfirmInput.addEventListener('input', function() {
+            confirmTouched = true;
+            validatePasswordConfirm();
+        });
+        passwordConfirmInput.addEventListener('blur', function() {
+            confirmTouched = true;
+            validatePasswordConfirm();
+        });
+    }
+
+    if (submitRegisterBtn) {
+        submitRegisterBtn.addEventListener('click', function(e) {
+            confirmTouched = true;
+            var passOk = validatePassword();
+            var confirmOk = validatePasswordConfirm();
+            if (!passOk || !confirmOk) {
+                e.preventDefault();
+                if (!passOk && passwordInput) {
+                    passwordInput.focus();
+                } else if (!confirmOk && passwordConfirmInput) {
+                    passwordConfirmInput.focus();
+                }
+            }
+        });
+    }
+
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(e) {
+            confirmTouched = true;
+            var passOk = validatePassword();
+            var confirmOk = validatePasswordConfirm();
+            if (!passOk || !confirmOk) {
+                e.preventDefault();
+                if (!passOk && passwordInput) {
+                    passwordInput.focus();
+                } else if (!confirmOk && passwordConfirmInput) {
+                    passwordConfirmInput.focus();
+                }
+            }
         });
     }
 })();

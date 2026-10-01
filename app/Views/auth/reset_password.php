@@ -633,6 +633,33 @@
                 transform: none !important;
             }
         }
+
+        .field-error {
+            display: none;
+            font-size: 12px;
+            font-weight: 500;
+            color: #F87171;
+            margin-top: 5px;
+            line-height: 1.4;
+        }
+
+        .field-error.visible {
+            display: block;
+        }
+
+        .form-control-custom.is-invalid {
+            border-color: rgba(239, 68, 68, 0.75) !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14) !important;
+        }
+
+        [data-theme="light"] .field-error {
+            color: #DC2626;
+        }
+
+        [data-theme="light"] .form-control-custom.is-invalid {
+            border-color: #DC2626 !important;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12) !important;
+        }
     </style>
 </head>
 <body>
@@ -756,6 +783,7 @@
                 <div class="password-hint">
                     At least 8 characters, with 1 uppercase letter and 1 number.
                 </div>
+                <div class="field-error" id="passwordError" role="alert" aria-live="polite"></div>
             </div>
 
             <!-- Confirm New Password -->
@@ -773,6 +801,7 @@
                     >
                     <i class="bi bi-lock-fill input-icon"></i>
                 </div>
+                <div class="field-error" id="passwordConfirmError" role="alert" aria-live="polite"></div>
             </div>
 
             <!-- Submit Button -->
@@ -890,6 +919,119 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() {
                 rootEl.classList.remove('theme-transitioning');
             }, 280);
+        });
+    }
+
+    const resetPasswordForm = document.getElementById('resetPasswordForm');
+    const resetSubmitBtn = document.getElementById('resetSubmitBtn');
+    const passwordInput = document.getElementById('password');
+    const passwordConfirmInput = document.getElementById('password_confirm');
+    const passwordError = document.getElementById('passwordError');
+    const passwordConfirmError = document.getElementById('passwordConfirmError');
+    let confirmTouched = false;
+
+    function setFieldError(inputEl, errorEl, message) {
+        if (!inputEl || !errorEl) return;
+        if (message) {
+            errorEl.textContent = message;
+            errorEl.classList.add('visible');
+            inputEl.classList.add('is-invalid');
+            inputEl.setAttribute('aria-invalid', 'true');
+        } else {
+            errorEl.textContent = '';
+            errorEl.classList.remove('visible');
+            inputEl.classList.remove('is-invalid');
+            inputEl.removeAttribute('aria-invalid');
+        }
+    }
+
+    function validatePassword() {
+        if (!passwordInput) return true;
+        const val = passwordInput.value;
+        if (!val) {
+            setFieldError(passwordInput, passwordError, 'New password is required.');
+            return false;
+        }
+        if (val.length < 8) {
+            setFieldError(passwordInput, passwordError, 'Password must be at least 8 characters long.');
+            return false;
+        }
+        if (!/[A-Z]/.test(val) || !/[0-9]/.test(val)) {
+            setFieldError(passwordInput, passwordError, 'Password must contain at least one uppercase letter and one number.');
+            return false;
+        }
+        setFieldError(passwordInput, passwordError, '');
+        return true;
+    }
+
+    function validatePasswordConfirm() {
+        if (!passwordConfirmInput) return true;
+        const confirmVal = passwordConfirmInput.value;
+        const passVal = passwordInput ? passwordInput.value : '';
+        if (!confirmVal) {
+            setFieldError(passwordConfirmInput, passwordConfirmError, 'Please confirm your new password.');
+            return false;
+        }
+        if (confirmVal !== passVal) {
+            setFieldError(passwordConfirmInput, passwordConfirmError, 'Passwords do not match.');
+            return false;
+        }
+        setFieldError(passwordConfirmInput, passwordConfirmError, '');
+        return true;
+    }
+
+    if (passwordInput) {
+        passwordInput.addEventListener('input', function() {
+            validatePassword();
+            if (confirmTouched || (passwordConfirmInput && passwordConfirmInput.value.length > 0)) {
+                validatePasswordConfirm();
+            }
+        });
+        passwordInput.addEventListener('blur', function() {
+            validatePassword();
+        });
+    }
+
+    if (passwordConfirmInput) {
+        passwordConfirmInput.addEventListener('input', function() {
+            confirmTouched = true;
+            validatePasswordConfirm();
+        });
+        passwordConfirmInput.addEventListener('blur', function() {
+            confirmTouched = true;
+            validatePasswordConfirm();
+        });
+    }
+
+    if (resetSubmitBtn) {
+        resetSubmitBtn.addEventListener('click', function(e) {
+            confirmTouched = true;
+            const passOk = validatePassword();
+            const confirmOk = validatePasswordConfirm();
+            if (!passOk || !confirmOk) {
+                e.preventDefault();
+                if (!passOk && passwordInput) {
+                    passwordInput.focus();
+                } else if (!confirmOk && passwordConfirmInput) {
+                    passwordConfirmInput.focus();
+                }
+            }
+        });
+    }
+
+    if (resetPasswordForm) {
+        resetPasswordForm.addEventListener('submit', function(e) {
+            confirmTouched = true;
+            const passOk = validatePassword();
+            const confirmOk = validatePasswordConfirm();
+            if (!passOk || !confirmOk) {
+                e.preventDefault();
+                if (!passOk && passwordInput) {
+                    passwordInput.focus();
+                } else if (!confirmOk && passwordConfirmInput) {
+                    passwordConfirmInput.focus();
+                }
+            }
         });
     }
 });
