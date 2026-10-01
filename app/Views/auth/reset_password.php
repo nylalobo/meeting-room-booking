@@ -1,9 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?? 'Reset Password' ?> - MeetSpace Enterprise Suite</title>
+    <!-- Prevent Flash of Unstyled Theme (FOUT) -->
+    <script>
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('meetspace-theme');
+                if (savedTheme === 'light' || savedTheme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', savedTheme);
+                }
+            } catch (e) {}
+        })();
+    </script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -415,6 +426,201 @@
             color: #64748b;
         }
 
+        .auth-theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--border-glass, rgba(129, 140, 248, 0.16));
+            background: rgba(17, 26, 46, 0.85);
+            color: var(--text-secondary, #CBD5E1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+        }
+
+        .auth-theme-toggle:hover {
+            border-color: rgba(99, 102, 241, 0.45);
+            color: #818CF8;
+            transform: translateY(-1px);
+        }
+
+        html.theme-transitioning,
+        html.theme-transitioning *,
+        html.theme-transitioning *::before,
+        html.theme-transitioning *::after {
+            transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease, box-shadow 0.25s ease !important;
+        }
+
+        /* Light Mode Overrides */
+        [data-theme="light"] {
+            --bg-primary: #F1F5F9;
+            --bg-secondary: #E2E8F0;
+            --surface: #FFFFFF;
+            --surface-elevated: #F8FAFC;
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --secondary: #7C3AED;
+            --accent-blue: #0284C7;
+            --text-primary: #0F172A;
+            --text-secondary: #334155;
+            --text-muted: #64748B;
+            --border-glass: #CBD5E1;
+            --border-subtle: #E2E8F0;
+            --border-focus: #4F46E5;
+            --color-text-white: #0F172A;
+            --color-text-muted: #64748B;
+        }
+
+        [data-theme="light"] body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            background-image:
+                radial-gradient(circle at 18% 18%, rgba(79, 70, 229, 0.08) 0%, transparent 45%),
+                radial-gradient(circle at 82% 82%, rgba(2, 132, 199, 0.07) 0%, transparent 42%),
+                radial-gradient(circle at 50% 10%, rgba(124, 58, 237, 0.05) 0%, transparent 38%);
+        }
+
+        [data-theme="light"] .ambient-orb {
+            opacity: 0.35;
+        }
+
+        [data-theme="light"] .auth-theme-toggle {
+            background: rgba(255, 255, 255, 0.92);
+            border-color: #CBD5E1;
+            color: #334155;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        }
+
+        [data-theme="light"] .auth-theme-toggle:hover {
+            background: #FFFFFF;
+            border-color: #4F46E5;
+            color: #4F46E5;
+        }
+
+        [data-theme="light"] .brand-title {
+            color: #0F172A;
+        }
+
+        [data-theme="light"] .brand-subtitle {
+            color: #475569;
+        }
+
+        [data-theme="light"] .auth-card {
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #CBD5E1;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+
+        [data-theme="light"] .auth-icon-circle {
+            background: rgba(124, 58, 237, 0.08);
+            border-color: rgba(124, 58, 237, 0.25);
+            color: #7C3AED;
+        }
+
+        [data-theme="light"] .auth-title {
+            color: #0F172A;
+        }
+
+        [data-theme="light"] .auth-description {
+            color: #475569;
+        }
+
+        [data-theme="light"] .auth-alert {
+            background: #FEF2F2;
+            border-color: #FECACA;
+            color: #B91C1C;
+        }
+
+        [data-theme="light"] .auth-alert i {
+            color: #DC2626;
+        }
+
+        [data-theme="light"] .auth-alert-success {
+            background: #F0FDF4;
+            border-color: #BBF7D0;
+            color: #15803D;
+        }
+
+        [data-theme="light"] .auth-alert-success i {
+            color: #16A34A;
+        }
+
+        [data-theme="light"] .form-label {
+            color: #334155;
+        }
+
+        [data-theme="light"] .form-control-custom {
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+        }
+
+        [data-theme="light"] .form-control-custom::placeholder {
+            color: #94A3B8;
+        }
+
+        [data-theme="light"] .form-control-custom:focus {
+            background: #FFFFFF;
+            border-color: #4F46E5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.16);
+        }
+
+        [data-theme="light"] .form-control-otp {
+            background: #F8FAFC;
+            border-color: rgba(124, 58, 237, 0.35);
+            color: #6D28D9;
+        }
+
+        [data-theme="light"] .form-control-otp:focus {
+            background: #FFFFFF;
+            border-color: #7C3AED;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.16);
+        }
+
+        [data-theme="light"] .password-hint {
+            color: #475569;
+        }
+
+        [data-theme="light"] .resend-section {
+            border-top-color: #E2E8F0;
+        }
+
+        [data-theme="light"] .resend-text {
+            color: #475569;
+        }
+
+        [data-theme="light"] .btn-resend {
+            border-color: rgba(124, 58, 237, 0.35);
+            color: #6D28D9;
+        }
+
+        [data-theme="light"] .btn-resend:hover:not(:disabled) {
+            background: rgba(124, 58, 237, 0.08);
+            border-color: #7C3AED;
+        }
+
+        [data-theme="light"] .auth-footer-links {
+            color: #475569;
+        }
+
+        [data-theme="light"] .auth-footer-links a {
+            color: #4F46E5;
+        }
+
+        [data-theme="light"] .auth-footer {
+            color: #64748B;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             body {
                 animation: none !important;
@@ -430,6 +636,10 @@
     </style>
 </head>
 <body>
+
+<button type="button" class="auth-theme-toggle" id="authThemeToggleBtn" title="Switch Theme" aria-label="Toggle Light/Dark Mode">
+    <i class="bi bi-sun-fill" id="authThemeToggleIcon"></i>
+</button>
 
 <div class="ambient-orb ambient-orb-1" aria-hidden="true"></div>
 <div class="ambient-orb ambient-orb-2" aria-hidden="true"></div>
@@ -649,6 +859,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 cooldownTimer.textContent = 'You can request another code in ' + remaining + ' seconds.';
             }
         }, 1000);
+    }
+
+    const themeBtn = document.getElementById('authThemeToggleBtn');
+    const themeIcon = document.getElementById('authThemeToggleIcon');
+    const rootEl = document.documentElement;
+
+    function syncThemeIcon() {
+        const current = rootEl.getAttribute('data-theme') || 'dark';
+        if (themeIcon) {
+            themeIcon.className = current === 'light' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
+        }
+        if (themeBtn) {
+            themeBtn.title = current === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode';
+        }
+    }
+
+    syncThemeIcon();
+
+    if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+            const current = rootEl.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            rootEl.classList.add('theme-transitioning');
+            rootEl.setAttribute('data-theme', next);
+            try {
+                localStorage.setItem('meetspace-theme', next);
+            } catch (e) {}
+            syncThemeIcon();
+            setTimeout(function() {
+                rootEl.classList.remove('theme-transitioning');
+            }, 280);
+        });
     }
 });
 </script>

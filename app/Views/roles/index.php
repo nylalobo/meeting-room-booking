@@ -157,4 +157,75 @@
 
 </div>
 
+
+<!-- ================================================================
+     Assigned Users Modal (Read-Only)
+     ================================================================ -->
+
+<div class="booking-modal-overlay d-none" id="roleUsersModal">
+
+    <div class="booking-modal role-users-modal" role="dialog" aria-modal="true" aria-labelledby="roleUsersModalTitle">
+
+        <div class="booking-modal-header">
+            <div>
+                <h2 id="roleUsersModalTitle">Assigned Users</h2>
+                <p id="roleUsersModalSubtitle">Users currently assigned to this role.</p>
+            </div>
+
+            <button
+                type="button"
+                class="booking-modal-close"
+                id="closeRoleUsersModal"
+                aria-label="Close"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="role-users-modal-body">
+
+            <div class="role-users-summary-bar">
+                <div class="role-users-summary-item">
+                    <span class="role-users-summary-label">Role:</span>
+                    <span class="role-users-summary-value" id="roleUsersRoleName">—</span>
+                </div>
+                <div class="role-users-summary-item">
+                    <span class="role-users-summary-label">Assigned Users:</span>
+                    <span class="badge bg-indigo-subtle text-indigo border border-indigo-subtle" id="roleUsersCountBadge">0</span>
+                </div>
+            </div>
+
+            <div id="roleUsersLoading" class="role-users-state d-none">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></div>
+                <span>Loading assigned users...</span>
+            </div>
+
+            <div id="roleUsersError" class="booking-form-alert booking-form-error d-none" role="alert">
+                <i class="bi bi-exclamation-circle"></i>
+                <span id="roleUsersErrorText">Unable to load assigned users.</span>
+            </div>
+
+            <div id="roleUsersEmpty" class="role-users-empty d-none">
+                <i class="bi bi-person-dash"></i>
+                <p class="mb-0">No users are currently assigned to this role.</p>
+            </div>
+
+            <ul class="role-users-list d-none" id="roleUsersList"></ul>
+
+            <div class="booking-modal-actions">
+                <button
+                    type="button"
+                    class="btn-secondary-action"
+                    id="closeRoleUsersFooterBtn"
+                >
+                    Close
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
 <?= $this->endSection() ?>

@@ -190,7 +190,9 @@ body {
 }
 
 .app-wrapper {
+    --sidebar-width: 240px;
     min-height: 100vh;
+    width: 100%;
     display: flex;
     position: relative;
     overflow-x: hidden;
@@ -543,13 +545,27 @@ body {
 
 .flash-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
+    width: 100%;
+}
+
+@media (max-width: 1199px) {
+    .flash-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 575px) {
+    .flash-card-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .flash-card-container {
     perspective: 1200px;
     height: 195px;
+    min-width: 0;
 }
 
 .flash-card {
@@ -855,7 +871,7 @@ body {
    ========================================================================== */
 
 .sidebar {
-    width: 240px;
+    width: var(--sidebar-width, 240px);
     min-height: 100vh;
     background-color: var(--bg-sidebar);
     border-right: 1px solid var(--border-subtle);
@@ -866,6 +882,7 @@ body {
     z-index: 1000;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
     transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 background-color 0.25s ease,
@@ -1206,12 +1223,18 @@ body {
    ========================================================================== */
 
 .main-area {
-    margin-left: 240px;
-    width: calc(100% - 240px);
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-left: var(--sidebar-width, 240px);
+    width: calc(100% - var(--sidebar-width, 240px));
+    max-width: calc(100% - var(--sidebar-width, 240px));
     min-height: 100vh;
     background-color: var(--bg-main);
+    display: flex;
+    flex-direction: column;
     transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
                 background-color 0.25s ease;
 }
 
@@ -1553,6 +1576,10 @@ body {
    ========================================================================== */
 
 @media (min-width: 992px) {
+    .app-wrapper.sidebar-collapsed {
+        --sidebar-width: 72px;
+    }
+
     .app-wrapper.sidebar-collapsed .sidebar {
         width: 72px;
     }
@@ -1560,18 +1587,34 @@ body {
     .app-wrapper.sidebar-collapsed .main-area {
         margin-left: 72px;
         width: calc(100% - 72px);
+        max-width: calc(100% - 72px);
     }
 
     .app-wrapper.sidebar-collapsed .brand-info,
     .app-wrapper.sidebar-collapsed .new-booking-text,
     .app-wrapper.sidebar-collapsed .nav-text,
+    .app-wrapper.sidebar-collapsed .nav-section-label,
     .app-wrapper.sidebar-collapsed .account-info,
     .app-wrapper.sidebar-collapsed .logout-text {
         display: none !important;
     }
 
+    .app-wrapper.sidebar-collapsed .sidebar-nav-section {
+        height: 1px;
+        width: 36px;
+        padding: 0;
+        margin: 8px auto;
+        background-color: var(--border-subtle);
+        overflow: hidden;
+    }
+
+    .app-wrapper.sidebar-collapsed .sidebar-nav-section:first-child {
+        display: none !important;
+    }
+
     .app-wrapper.sidebar-collapsed .sidebar-header {
         padding-right: 0;
+        justify-content: center;
     }
 
     .app-wrapper.sidebar-collapsed .sidebar-brand {
@@ -1584,8 +1627,12 @@ body {
     }
 
     .app-wrapper.sidebar-collapsed .btn-new-booking {
-        padding: 9px 0;
+        width: 46px;
+        height: 42px;
+        margin: 0 auto;
+        padding: 0;
         justify-content: center;
+        border-radius: 10px;
     }
 
     .app-wrapper.sidebar-collapsed .new-booking-icon {
@@ -1593,10 +1640,22 @@ body {
         font-size: 18px;
     }
 
+    .app-wrapper.sidebar-collapsed .sidebar-nav {
+        padding: 0 10px;
+        align-items: center;
+    }
+
     .app-wrapper.sidebar-collapsed .nav-item {
-        padding: 10px 0;
+        width: 46px;
+        height: 42px;
+        padding: 0;
         justify-content: center;
         gap: 0;
+        border-radius: 10px;
+    }
+
+    .app-wrapper.sidebar-collapsed .sidebar-nav .nav-item:not(.active):hover {
+        transform: translateY(-1px);
     }
 
     .app-wrapper.sidebar-collapsed .nav-icon {
@@ -1616,8 +1675,12 @@ body {
     }
 
     .app-wrapper.sidebar-collapsed .btn-sidebar-logout {
-        padding: 8px 0;
+        width: 46px;
+        height: 38px;
+        margin: 0 auto;
+        padding: 0;
         justify-content: center;
+        border-radius: 8px;
     }
 }
 
@@ -1638,6 +1701,7 @@ body {
 
 @media (max-width: 991px) {
     .sidebar {
+        width: 240px;
         transform: translateX(-100%);
         transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
                     background-color 0.25s ease,
@@ -1648,6 +1712,7 @@ body {
     .main-area {
         margin-left: 0 !important;
         width: 100% !important;
+        max-width: 100% !important;
     }
 
     .sidebar-close-btn {
@@ -1692,6 +1757,10 @@ body {
    ========================================================================== */
 
 .content {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: 10px 32px 36px 32px;
 }
 
@@ -2023,13 +2092,6 @@ body {
    ========================================================================== */
 
 @media (max-width: 991px) {
-    .sidebar {
-        width: 200px;
-    }
-    .main-area {
-        margin-left: 200px;
-        width: calc(100% - 200px);
-    }
     .content, .topbar {
         padding-left: 20px;
         padding-right: 20px;
@@ -2037,18 +2099,6 @@ body {
 }
 
 @media (max-width: 768px) {
-    .sidebar {
-        position: static;
-        width: 100%;
-        min-height: auto;
-    }
-    .app-wrapper {
-        flex-direction: column;
-    }
-    .main-area {
-        margin-left: 0;
-        width: 100%;
-    }
     .welcome-heading {
         font-size: 24px;
     }
@@ -7787,6 +7837,182 @@ input#recurrenceUntilDate {
     padding: 20px 22px 22px;
 }
 
+.role-users-badge {
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    font-weight: 600;
+    transition: transform 160ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)),
+                background-color 160ms ease,
+                border-color 160ms ease,
+                box-shadow 160ms ease,
+                color 160ms ease;
+}
+
+.role-users-badge:hover {
+    transform: translateY(-1px);
+    background-color: rgba(99, 102, 241, 0.24) !important;
+    border-color: rgba(99, 102, 241, 0.52) !important;
+    color: #E0E7FF !important;
+    box-shadow: 0 3px 10px rgba(99, 102, 241, 0.22);
+}
+
+.role-users-badge:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.role-users-badge:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
+}
+
+.role-users-badge.role-users-badge-empty:hover {
+    background-color: rgba(148, 163, 184, 0.2) !important;
+    border-color: rgba(148, 163, 184, 0.45) !important;
+    color: var(--color-text-white, #F8FAFC) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.role-users-modal {
+    max-width: 460px;
+    width: 100%;
+}
+
+.role-users-modal-body {
+    padding: 18px 22px 22px;
+}
+
+.role-users-summary-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 14px;
+    margin-bottom: 14px;
+    border-radius: 10px;
+    background: var(--bg-card-inner, rgba(15, 23, 42, 0.55));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.role-users-summary-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.role-users-summary-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted, #94A3B8);
+}
+
+.role-users-summary-value {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--color-text-white, #F8FAFC);
+}
+
+.role-users-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 16px;
+    font-size: 13.5px;
+    color: var(--color-text-muted, #94A3B8);
+}
+
+.role-users-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 28px 16px;
+    text-align: center;
+    border-radius: 10px;
+    background: var(--bg-card-inner, rgba(15, 23, 42, 0.4));
+    border: 1px dashed var(--border-subtle, rgba(255, 255, 255, 0.12));
+    color: var(--color-text-muted, #94A3B8);
+    font-size: 13.5px;
+}
+
+.role-users-empty i {
+    font-size: 24px;
+    opacity: 0.7;
+}
+
+.role-users-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 290px;
+    overflow-y: auto;
+}
+
+.role-user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 10px;
+    background: var(--bg-card-inner, rgba(15, 23, 42, 0.55));
+    border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+    transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+    animation: msSubtleFadeUp 180ms var(--ease-out-smooth, cubic-bezier(0.16, 1, 0.3, 1)) both;
+}
+
+.role-user-item:hover {
+    border-color: rgba(99, 102, 241, 0.35);
+}
+
+.role-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.22) 0%, rgba(124, 58, 237, 0.22) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.36);
+    color: #A5B4FC;
+    font-size: 12.5px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.03em;
+}
+
+.role-user-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.role-user-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--color-text-white, #F8FAFC);
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.role-user-email {
+    font-size: 12.5px;
+    color: var(--color-text-muted, #94A3B8);
+    line-height: 1.35;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .booking-modal-actions {
     display: flex;
     justify-content: flex-end;
@@ -7840,6 +8066,64 @@ input#recurrenceUntilDate {
 
 [data-theme="light"] .border-indigo-subtle {
     border-color: #C7D2FE !important;
+}
+
+[data-theme="light"] .role-users-badge:hover {
+    background-color: #E0E7FF !important;
+    border-color: #818CF8 !important;
+    color: #3730A3 !important;
+    box-shadow: 0 3px 8px rgba(79, 70, 229, 0.14);
+}
+
+[data-theme="light"] .role-users-badge.role-users-badge-empty:hover {
+    background-color: #E2E8F0 !important;
+    border-color: #94A3B8 !important;
+    color: #1E293B !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .role-users-summary-bar {
+    background: #F8FAFC;
+    border-color: #E2E8F0;
+}
+
+[data-theme="light"] .role-users-summary-label {
+    color: #64748B;
+}
+
+[data-theme="light"] .role-users-summary-value {
+    color: #0F172A;
+}
+
+[data-theme="light"] .role-users-empty {
+    background: #F8FAFC;
+    border-color: #CBD5E1;
+    color: #64748B;
+}
+
+[data-theme="light"] .role-user-item {
+    background: #FFFFFF;
+    border-color: #E2E8F0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .role-user-item:hover {
+    border-color: #A5B4FC;
+    background: #F8FAFC;
+}
+
+[data-theme="light"] .role-user-avatar {
+    background: #EEF2FF;
+    border-color: #C7D2FE;
+    color: #4338CA;
+}
+
+[data-theme="light"] .role-user-name {
+    color: #0F172A;
+}
+
+[data-theme="light"] .role-user-email {
+    color: #475569;
 }
 
 [data-theme="light"] .role-icon-box {
@@ -8286,7 +8570,8 @@ html.theme-transitioning .custom-dark-table td {
     .visitor-form-alert:not(.d-none),
     .alert,
     #bookingsCalendarContainer:not(.d-none),
-    .calendar-view-pane:not(.d-none) {
+    .calendar-view-pane:not(.d-none),
+    .role-user-item {
         animation: none !important;
         transform: none !important;
     }
@@ -8303,7 +8588,9 @@ html.theme-transitioning .custom-dark-table td {
     .participant-booking-card:hover,
     .cal-event-chip:hover,
     .cal-week-event:hover,
-    .cal-day-event:hover {
+    .cal-day-event:hover,
+    .role-users-badge:hover,
+    .role-users-badge:active {
         transform: none !important;
     }
 }

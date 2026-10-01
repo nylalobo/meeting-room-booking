@@ -1,9 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?? 'Verify Email' ?> - MeetSpace Enterprise Suite</title>
+
+    <!-- Anti-Flash Theme Script -->
+    <script>
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('meetspace-theme');
+                if (savedTheme === 'light' || savedTheme === 'dark') {
+                    document.documentElement.setAttribute('data-theme', savedTheme);
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                }
+            } catch (e) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -410,6 +426,212 @@
             color: #64748b;
         }
 
+        /* Theme Toggle Button */
+        .auth-theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 24px;
+            z-index: 20;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 9999px;
+            border: 1px solid rgba(129, 140, 248, 0.25);
+            background: rgba(17, 26, 46, 0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            color: #F8FAFC;
+            font-family: var(--font-family);
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+            transition: transform 0.18s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .auth-theme-toggle:hover {
+            transform: translateY(-1px);
+            border-color: rgba(129, 140, 248, 0.5);
+            box-shadow: 0 6px 18px rgba(99, 102, 241, 0.22);
+        }
+
+        .auth-theme-toggle:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .auth-theme-toggle i {
+            font-size: 14px;
+            color: #facc15;
+        }
+
+        /* Light Mode Overrides */
+        [data-theme="light"] {
+            --bg-primary: #F8FAFC;
+            --bg-secondary: #F1F5F9;
+            --surface: #FFFFFF;
+            --surface-elevated: #F8FAFC;
+            --text-primary: #0F172A;
+            --text-secondary: #334155;
+            --text-muted: #64748B;
+            --border-glass: #E2E8F0;
+            --border-subtle: #E2E8F0;
+            --color-text-white: #0F172A;
+            --color-text-muted: #64748B;
+        }
+
+        [data-theme="light"] body {
+            background-color: #F8FAFC;
+            color: #0F172A;
+            background-image:
+                radial-gradient(circle at 18% 18%, rgba(99, 102, 241, 0.08) 0%, transparent 42%),
+                radial-gradient(circle at 82% 82%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 50% 10%, rgba(124, 58, 237, 0.05) 0%, transparent 35%);
+        }
+
+        [data-theme="light"] .ambient-orb {
+            opacity: 0.22;
+        }
+
+        [data-theme="light"] .brand-title {
+            color: #0F172A;
+        }
+
+        [data-theme="light"] .brand-subtitle {
+            color: #64748B;
+        }
+
+        [data-theme="light"] .auth-card {
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+
+        [data-theme="light"] .auth-icon-circle {
+            background: #EFF6FF;
+            border-color: #BFDBFE;
+            color: #0284C7;
+        }
+
+        [data-theme="light"] .auth-title {
+            color: #0F172A;
+        }
+
+        [data-theme="light"] .auth-description {
+            color: #475569;
+        }
+
+        [data-theme="light"] .email-badge {
+            background: #EFF6FF;
+            color: #0369A1;
+            border-color: #BAE6FD;
+        }
+
+        [data-theme="light"] .form-label {
+            color: #334155;
+        }
+
+        [data-theme="light"] .form-control-custom {
+            background: #F8FAFC;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+        }
+
+        [data-theme="light"] .form-control-custom:focus {
+            background: #FFFFFF;
+            border-color: #6366F1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
+        }
+
+        [data-theme="light"] .form-control-otp {
+            background: #F8FAFC;
+            border: 2px solid #93C5FD;
+            color: #0369A1;
+        }
+
+        [data-theme="light"] .form-control-otp:focus {
+            background: #FFFFFF;
+            border-color: #6366F1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.16);
+        }
+
+        [data-theme="light"] .auth-alert {
+            background: #FEF2F2;
+            border-color: #FECACA;
+            color: #991B1B;
+        }
+
+        [data-theme="light"] .auth-alert i {
+            color: #DC2626;
+        }
+
+        [data-theme="light"] .auth-alert-success {
+            background: #ECFDF5;
+            border-color: #A7F3D0;
+            color: #065F46;
+        }
+
+        [data-theme="light"] .auth-alert-success i {
+            color: #059669;
+        }
+
+        [data-theme="light"] .resend-section {
+            border-top-color: #E2E8F0;
+        }
+
+        [data-theme="light"] .resend-text,
+        [data-theme="light"] .auth-footer-links {
+            color: #475569;
+        }
+
+        [data-theme="light"] .btn-resend {
+            border-color: #93C5FD;
+            color: #0284C7;
+        }
+
+        [data-theme="light"] .btn-resend:hover:not(:disabled) {
+            background: #EFF6FF;
+            border-color: #0284C7;
+        }
+
+        [data-theme="light"] .btn-resend:disabled {
+            border-color: #E2E8F0;
+            color: #94A3B8;
+        }
+
+        [data-theme="light"] .auth-footer-links a {
+            color: #4F46E5;
+        }
+
+        [data-theme="light"] .auth-footer {
+            color: #64748B;
+        }
+
+        [data-theme="light"] .auth-theme-toggle {
+            background: rgba(255, 255, 255, 0.92);
+            border-color: #CBD5E1;
+            color: #0F172A;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+        }
+
+        [data-theme="light"] .auth-theme-toggle:hover {
+            background: #FFFFFF;
+            border-color: #6366F1;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);
+        }
+
+        [data-theme="light"] .auth-theme-toggle i {
+            color: #D97706;
+        }
+
+        html.theme-transitioning body,
+        html.theme-transitioning .auth-card,
+        html.theme-transitioning .form-control-otp,
+        html.theme-transitioning .form-control-custom,
+        html.theme-transitioning .auth-theme-toggle {
+            transition: background-color 220ms ease, background 220ms ease, color 220ms ease, border-color 220ms ease, box-shadow 220ms ease !important;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             body {
                 animation: none !important;
@@ -417,7 +639,7 @@
             .auth-container, .register-container, .login-container, .resend-container, .status-container {
                 animation: none !important;
             }
-            .btn-signin, .btn-register, .btn-primary-auth, .btn-submit, .btn-action {
+            .btn-signin, .btn-register, .btn-primary-auth, .btn-submit, .btn-action, .auth-theme-toggle {
                 transition: none !important;
                 transform: none !important;
             }
@@ -425,6 +647,11 @@
     </style>
 </head>
 <body>
+
+<button type="button" class="auth-theme-toggle" id="authThemeToggleBtn" aria-label="Toggle theme mode" title="Switch Theme">
+    <i class="bi bi-moon-stars-fill" id="authThemeIcon"></i>
+    <span id="authThemeLabel">Dark</span>
+</button>
 
 <div class="ambient-orb ambient-orb-1" aria-hidden="true"></div>
 <div class="ambient-orb ambient-orb-2" aria-hidden="true"></div>
@@ -603,6 +830,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 1000);
     }
 });
+
+(function() {
+    var btn = document.getElementById('authThemeToggleBtn');
+    var icon = document.getElementById('authThemeIcon');
+    var label = document.getElementById('authThemeLabel');
+    var timer = null;
+
+    function syncUI(theme) {
+        var isLight = theme === 'light';
+        if (icon) {
+            icon.className = isLight ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        }
+        if (label) {
+            label.textContent = isLight ? 'Light' : 'Dark';
+        }
+        if (btn) {
+            var next = isLight ? 'dark' : 'light';
+            btn.setAttribute('aria-label', 'Switch to ' + next + ' theme');
+            btn.title = 'Switch to ' + next + ' theme';
+        }
+    }
+
+    var current = document.documentElement.getAttribute('data-theme') || 'dark';
+    syncUI(current);
+
+    if (btn) {
+        btn.addEventListener('click', function() {
+            var now = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            var next = now === 'light' ? 'dark' : 'light';
+            document.documentElement.classList.add('theme-transitioning');
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(function() {
+                document.documentElement.classList.remove('theme-transitioning');
+            }, 260);
+            document.documentElement.setAttribute('data-theme', next);
+            try {
+                localStorage.setItem('meetspace-theme', next);
+            } catch (e) {}
+            syncUI(next);
+        });
+    }
+})();
 </script>
 
 </body>

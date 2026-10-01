@@ -99,6 +99,15 @@ if ($isLoggedIn && $userId) {
 ?>
 
 <div class="app-wrapper" id="appWrapper">
+    <script>
+        (function() {
+            try {
+                if (window.innerWidth >= 992 && localStorage.getItem('meetspace-sidebar-collapsed') === '1') {
+                    document.getElementById('appWrapper').classList.add('sidebar-collapsed');
+                }
+            } catch (e) {}
+        })();
+    </script>
 
     <!-- Ambient Background Depth Orbs -->
     <div class="ambient-orb ambient-orb-1" aria-hidden="true"></div>

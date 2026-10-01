@@ -17,6 +17,7 @@
             loadRoles();
             setupRoleSearch();
             setupRoleModal();
+            setupRoleUsersModal();
         }
     });
 
@@ -161,8 +162,8 @@
             // Badges
             const roleBadgeClass = isAdminRole ? 'badge-admin-role' : 'badge-standard-role';
             const userCountBadge = hasAssignedUsers
-                ? `<span class="badge bg-indigo-subtle text-indigo border border-indigo-subtle" title="${role.user_count} assigned user(s)"><i class="bi bi-people me-1"></i>${role.user_count} user${role.user_count === 1 ? '' : 's'}</span>`
-                : `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" title="No assigned users"><i class="bi bi-person-dash me-1"></i>0 users</span>`;
+                ? `<span class="badge bg-indigo-subtle text-indigo border border-indigo-subtle role-users-badge" role="button" tabindex="0" data-action="view-users" data-id="${role.id}" title="Click to view ${role.user_count} assigned user(s)"><i class="bi bi-people me-1"></i>${role.user_count} user${role.user_count === 1 ? '' : 's'}</span>`
+                : `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle role-users-badge role-users-badge-empty" role="button" tabindex="0" data-action="view-users" data-id="${role.id}" title="Click to view assigned users (0)"><i class="bi bi-person-dash me-1"></i>0 users</span>`;
 
             // Created Date
             const createdDate = role.created_at
@@ -233,6 +234,26 @@
     function attachRowEventListeners() {
         const tbody = document.getElementById('rolesTableBody');
         if (!tbody) return;
+
+        // Assigned Users Badge (only badge triggers modal, not row)
+        tbody.querySelectorAll('[data-action="view-users"]').forEach(badge => {
+            badge.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = parseInt(badge.dataset.id, 10);
+                const role = allRoles.find(r => r.id === id);
+                if (role) openAssignedUsersModal(role);
+            });
+
+            badge.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const id = parseInt(badge.dataset.id, 10);
+                    const role = allRoles.find(r => r.id === id);
+                    if (role) openAssignedUsersModal(role);
+                }
+            });
+        });
 
         // Edit
         tbody.querySelectorAll('[data-action="edit"]').forEach(btn => {
@@ -516,6 +537,153 @@
                 alert('Network error while deleting role.');
             }
         }
+    }
+
+    /* ==========================================================================
+       ASSIGNED USERS MODAL
+       ========================================================================== */
+
+    let currentRoleUsersRequestId = 0;
+
+    function setupRoleUsersModal() {
+        const modal = document.getElementById('roleUsersModal');
+        const closeBtn = document.getElementById('closeRoleUsersModal');
+        const closeFooterBtn = document.getElementById('closeRoleUsersFooterBtn');
+
+        if (!modal) return;
+
+        closeBtn?.addEventListener('click', closeRoleUsersModal);
+        closeFooterBtn?.addEventListener('click', closeRoleUsersModal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeRoleUsersModal();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && !modal.classList.contains('d-none')) {
+                closeRoleUsersModal();
+            }
+        });
+    }
+
+    async function openAssignedUsersModal(role) {
+        const modal = document.getElementById('roleUsersModal');
+        const roleNameEl = document.getElementById('roleUsersRoleName');
+        const countBadgeEl = document.getElementById('roleUsersCountBadge');
+        const subtitleEl = document.getElementById('roleUsersModalSubtitle');
+        const loadingEl = document.getElementById('roleUsersLoading');
+        const errorEl = document.getElementById('roleUsersError');
+        const errorTextEl = document.getElementById('roleUsersErrorText');
+        const emptyEl = document.getElementById('roleUsersEmpty');
+        const listEl = document.getElementById('roleUsersList');
+
+        if (!modal || !role) return;
+
+        const requestId = ++currentRoleUsersRequestId;
+        const roleId = Number(role.id);
+        const initialCount = Number(role.user_count || 0);
+
+        if (roleNameEl) roleNameEl.textContent = role.name || '—';
+        if (subtitleEl) subtitleEl.textContent = `Users currently assigned to the ${role.name} role.`;
+        if (countBadgeEl) countBadgeEl.textContent = String(initialCount);
+
+        errorEl?.classList.add('d-none');
+        emptyEl?.classList.add('d-none');
+        if (listEl) {
+            listEl.innerHTML = '';
+            listEl.classList.add('d-none');
+        }
+        loadingEl?.classList.remove('d-none');
+
+        modal.classList.remove('d-none');
+
+        try {
+            const params = new URLSearchParams({
+                role_id: String(roleId),
+                all: '1'
+            });
+
+            const response = await fetch(`/api/users?${params.toString()}`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (requestId !== currentRoleUsersRequestId) return;
+
+            if (!response.ok) {
+                throw new Error(`Unable to retrieve assigned users (HTTP ${response.status}).`);
+            }
+
+            const result = await response.json();
+            if (requestId !== currentRoleUsersRequestId) return;
+
+            if (result.status !== 'success') {
+                throw new Error(result.message || 'Unable to retrieve assigned users.');
+            }
+
+            // Strictly filter by role_id to guarantee only users for the selected role are shown
+            const rawUsers = Array.isArray(result.data) ? result.data : [];
+            const assignedUsers = rawUsers.filter(u => Number(u.role_id) === roleId);
+
+            loadingEl?.classList.add('d-none');
+
+            if (countBadgeEl) {
+                countBadgeEl.textContent = String(assignedUsers.length);
+            }
+
+            if (assignedUsers.length === 0) {
+                emptyEl?.classList.remove('d-none');
+                return;
+            }
+
+            if (listEl) {
+                listEl.innerHTML = assignedUsers.map((u) => {
+                    const firstName = (u.first_name || '').trim();
+                    const lastName = (u.last_name || '').trim();
+                    const fullName = `${firstName} ${lastName}`.trim() || (u.email || `User #${u.id}`);
+                    const email = (u.email || '').trim();
+                    const initials = getInitials(firstName, lastName, email);
+
+                    return `
+                        <li class="role-user-item">
+                            <div class="role-user-avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+                            <div class="role-user-info">
+                                <div class="role-user-name">${escapeHtml(fullName)}</div>
+                                <div class="role-user-email">${escapeHtml(email)}</div>
+                            </div>
+                        </li>
+                    `;
+                }).join('');
+
+                listEl.classList.remove('d-none');
+            }
+        } catch (err) {
+            if (requestId !== currentRoleUsersRequestId) return;
+            console.error('Error loading assigned users for role:', err);
+            loadingEl?.classList.add('d-none');
+            if (errorEl) {
+                if (errorTextEl) {
+                    errorTextEl.textContent = err.message || 'Unable to load assigned users.';
+                }
+                errorEl.classList.remove('d-none');
+            }
+        }
+    }
+
+    function closeRoleUsersModal() {
+        const modal = document.getElementById('roleUsersModal');
+        currentRoleUsersRequestId++;
+        modal?.classList.add('d-none');
+    }
+
+    function getInitials(firstName, lastName, email) {
+        const f = (firstName || '').charAt(0).toUpperCase();
+        const l = (lastName || '').charAt(0).toUpperCase();
+        if (f && l) return `${f}${l}`;
+        if (f) return f;
+        if (email) return email.charAt(0).toUpperCase();
+        return 'U';
     }
 
     /* ==========================================================================
